@@ -21,19 +21,19 @@
   <meta name="description" content="定义定义了一个封装一组对象如何交互的对象（这个对象用来协调这一组对象（“同事类”））。通过使对象明确地相互引用来促进松散耦合，并允许独立地改变它们的交互。  类型行为型 适用场景121. 系统中对象之间存在复杂的引用关系，产生的相互依赖关系结构混乱难以理解，使用中介者进行协调2. 交互的公共行为，如果需要改变行为则可以增加新的中介者类  优点121. 将一对多转化成了一对一、降低程序复杂度2. 类">
 <meta property="og:type" content="article">
 <meta property="og:title" content="中介者模式">
-<meta property="og:url" content="https://gentryhuang.github.io/posts/d036071c/index.html">
+<meta property="og:url" content="gentryhuang.com/posts/d036071c/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="定义定义了一个封装一组对象如何交互的对象（这个对象用来协调这一组对象（“同事类”））。通过使对象明确地相互引用来促进松散耦合，并允许独立地改变它们的交互。  类型行为型 适用场景121. 系统中对象之间存在复杂的引用关系，产生的相互依赖关系结构混乱难以理解，使用中介者进行协调2. 交互的公共行为，如果需要改变行为则可以增加新的中介者类  优点121. 将一对多转化成了一对一、降低程序复杂度2. 类">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.github.io/posts/d036071c/mediator.png">
+<meta property="og:image" content="///mediator.png">
 <meta property="article:published_time" content="2019-10-03T16:00:00.000Z">
 <meta property="article:modified_time" content="2020-07-04T16:28:45.952Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="设计模式">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.github.io/posts/d036071c/mediator.png">
+<meta name="twitter:image" content="///mediator.png">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.github.io/posts/d036071c/index.html">
+  <link rel="canonical" href="gentryhuang.com/posts/d036071c/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -420,7 +420,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">两者有时结合使用，使用观察者模式实现中介者模式中角色间的通信</span><br></pre></td></tr></table></figure>
 
 <h3 id="简单需求"><a href="#简单需求" class="headerlink" title="简单需求"></a>简单需求</h3><p>公司的员工之间发送公有消息，使用工作群统一发送，不需要发送者逐一发给其他员工</p>
-<h3 id="中介者模式演练"><a href="#中介者模式演练" class="headerlink" title="中介者模式演练"></a>中介者模式演练</h3><p><img src="/posts/d036071c/mediator.png" alt></p>
+<h3 id="中介者模式演练"><a href="#中介者模式演练" class="headerlink" title="中介者模式演练"></a>中介者模式演练</h3><p><img src="///mediator.png" alt></p>
 <p><em>中介者</em></p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.design.pattern.mediator;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> lombok.extern.slf4j.Slf4j;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.util.Date;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * WorkGroup 中介者 - 工作群</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> shunhua</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@date</span> 2019-10-04</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WorkGroup</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 中介者显示员工发送的消息</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> worker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> msg</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">showMsg</span><span class="params">(Worker worker, String msg)</span></span>&#123;</span><br><span class="line">        log.info(String.format(<span class="string">"%s 【%s】: %s"</span>,<span class="keyword">new</span> Date().toString(),worker.getName(),msg));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p><em>参与交互的对象类</em></p>
@@ -441,7 +441,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.github.io/posts/d036071c/" title="中介者模式" target="_blank" rel="external">https://gentryhuang.github.io/posts/d036071c/</a>
+      <a href="gentryhuang.com/posts/d036071c/" title="中介者模式" target="_blank" rel="external">gentryhuang.com/posts/d036071c/</a>
     </li>
     
     <li class="post-copyright-license">

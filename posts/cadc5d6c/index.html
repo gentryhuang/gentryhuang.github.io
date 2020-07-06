@@ -21,24 +21,24 @@
   <meta name="description" content="定义统一建模语言（缩写UML），非专利的第三代建模和规约语言 特点 UML是一种开放的方法 UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法 UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效  UML分类 结构式图形 强调的是系统式的建模，具体包含静态图（类图、对象图、包图）、实现图（组件图、">
 <meta property="og:type" content="article">
 <meta property="og:title" content="uml基础">
-<meta property="og:url" content="https://gentryhuang.github.io/posts/cadc5d6c/index.html">
+<meta property="og:url" content="gentryhuang.com/posts/cadc5d6c/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="定义统一建模语言（缩写UML），非专利的第三代建模和规约语言 特点 UML是一种开放的方法 UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法 UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效  UML分类 结构式图形 强调的是系统式的建模，具体包含静态图（类图、对象图、包图）、实现图（组件图、">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.github.io/posts/cadc5d6c/sx.png">
-<meta property="og:image" content="https://gentryhuang.github.io/posts/cadc5d6c/jh.png">
-<meta property="og:image" content="https://gentryhuang.github.io/posts/cadc5d6c/zh.png">
-<meta property="og:image" content="https://gentryhuang.github.io/posts/cadc5d6c/sxt.png">
-<meta property="og:image" content="https://gentryhuang.github.io/posts/cadc5d6c/umlxj.png">
-<meta property="og:image" content="https://gentryhuang.github.io/posts/cadc5d6c/umlqxj.png">
+<meta property="og:image" content="///sx.png">
+<meta property="og:image" content="///jh.png">
+<meta property="og:image" content="///zh.png">
+<meta property="og:image" content="///sxt.png">
+<meta property="og:image" content="///umlxj.png">
+<meta property="og:image" content="///umlqxj.png">
 <meta property="article:published_time" content="2018-05-09T16:00:00.000Z">
 <meta property="article:modified_time" content="2020-07-04T13:42:18.865Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="设计模式">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.github.io/posts/cadc5d6c/sx.png">
+<meta name="twitter:image" content="///sx.png">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.github.io/posts/cadc5d6c/index.html">
+  <link rel="canonical" href="gentryhuang.com/posts/cadc5d6c/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -438,13 +438,13 @@
 <li><p>uml箭头：从子类指向父类，定义子类时需要通过<em>extends</em>关键字指定父类，只有知道对方信息时才能指向对方方向</p>
 </li>
 <li><p>实线-继承 | 虚线-实现</p>
-<p><img src="/posts/cadc5d6c/sx.png" alt> ​</p>
+<p><img src="///sx.png" alt> ​</p>
 </li>
 <li><p>空心菱形-聚合</p>
-<p><img src="/posts/cadc5d6c/jh.png" alt></p>
+<p><img src="///jh.png" alt></p>
 </li>
 <li><p>实心菱形-组合</p>
-<p><img src="/posts/cadc5d6c/zh.png" alt></p>
+<p><img src="///zh.png" alt></p>
 <ol start="5">
 <li>组合关系中常见的数字表达</li>
 </ol>
@@ -459,17 +459,17 @@
 <p>对象（Actor）、生命线（lifeline）、控制焦点（Focus of control）、消息（Message）等</p>
 </li>
 <li><p>时序图示例</p>
-<p><img src="/posts/cadc5d6c/sxt.png" alt></p>
+<p><img src="///sxt.png" alt></p>
 <figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">竖线代表生命线</span><br><span class="line"></span><br><span class="line">对象：c：client ，s：server，d：device 代表实例</span><br><span class="line"></span><br><span class="line">消息：箭头代表的元素(open,work等)</span><br><span class="line"></span><br><span class="line">竖矩形代表实例处于某种活动中，</span><br><span class="line"></span><br><span class="line">实线实心箭头：代表方法调用，同步调用</span><br><span class="line"></span><br><span class="line">实线非实心箭头：代表异步调用</span><br><span class="line"></span><br><span class="line">虚线：代表返回</span><br></pre></td></tr></table></figure>
 
 </li>
 </ol>
 <h2 id="UML类图讲解"><a href="#UML类图讲解" class="headerlink" title="UML类图讲解"></a>UML类图讲解</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">+　　　　公共方法</span><br><span class="line"></span><br><span class="line">-　　　　private权限</span><br><span class="line"></span><br><span class="line">#　　　　protected权限 包内和包外继承的子类都能引用</span><br><span class="line"></span><br><span class="line">~　　　　default权限（包权限）只有包内能引用</span><br><span class="line"></span><br><span class="line">下划线　  静态 Static</span><br><span class="line"></span><br><span class="line">斜体　　  抽象类（或抽象方法）（包含抽象方法的必是抽象类）（类和至少一个方法都是斜体）</span><br><span class="line"></span><br><span class="line">方法　　  可以带参，可以不带参</span><br><span class="line"></span><br><span class="line">　　　　  返回值写到冒号后边，void不用加</span><br><span class="line"></span><br><span class="line">注意：下图类名应该为斜体，因为有抽象方法study（），所以GeelyClass为抽象类，应该为斜体。</span><br></pre></td></tr></table></figure>
 
-<p><img src="/posts/cadc5d6c/umlxj.png" alt></p>
+<p><img src="///umlxj.png" alt></p>
 <h2 id="UML整体讲解"><a href="#UML整体讲解" class="headerlink" title="UML整体讲解"></a>UML整体讲解</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">设计模式中的对象关系:</span><br><span class="line"></span><br><span class="line"> 依赖关系　　虚线箭头，箭头方向指向被依赖的部分</span><br><span class="line"> 组合关系　　实心菱形</span><br><span class="line"> 聚合关系　　空心菱形（想象成盘子，盛东西，盘子的多，另一方少）</span><br><span class="line"> 关联关系　　实线箭头，箭头指向被关联的部分  类与类的连接，（它使一个类知道另一个类的属性和方法，关联关  系一般用成员变量实现）</span><br><span class="line"> 继承　　　　空心三角形实线</span><br><span class="line"> 实现　　　　空心三角形虚线</span><br><span class="line">注意：</span><br><span class="line"> 实现接口有两种方式，一种是棒棒糖的形式，另一种是虚线空心三角形的方式</span><br></pre></td></tr></table></figure>
 
-<p><img src="/posts/cadc5d6c/umlqxj.png" alt></p>
+<p><img src="///umlqxj.png" alt></p>
 <h2 id="UML中部分对比"><a href="#UML中部分对比" class="headerlink" title="UML中部分对比"></a>UML中部分对比</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">1.1　　关联和依赖的对比</span><br><span class="line">关联是a类中存在b类对象，企鹅类中有气候类的属性</span><br><span class="line">依赖是a类成员方法中有b类的属性，动物新陈代谢方法中有水和空气的属性，只有调这个方法的时候，才可能临时用一下</span><br><span class="line">1.2　　组合和聚合的对比</span><br><span class="line">组合有相同的生命周期，鸟有翅膀，鸟死了，翅膀不复存在</span><br><span class="line">大雁群有大雁，一只大雁挂了，大雁群不会消失</span><br><span class="line">1.3　　继承和实现的对</span><br><span class="line">实线：继承</span><br><span class="line">虚线：实现</span><br></pre></td></tr></table></figure>
 
 
@@ -486,7 +486,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.github.io/posts/cadc5d6c/" title="uml基础" target="_blank" rel="external">https://gentryhuang.github.io/posts/cadc5d6c/</a>
+      <a href="gentryhuang.com/posts/cadc5d6c/" title="uml基础" target="_blank" rel="external">gentryhuang.com/posts/cadc5d6c/</a>
     </li>
     
     <li class="post-copyright-license">
