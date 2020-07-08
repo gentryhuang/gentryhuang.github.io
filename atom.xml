@@ -5,9 +5,9 @@
   <subtitle>blog</subtitle>
   <link href="/atom.xml" rel="self"/>
   
-  <link href="http://yoursite.com/"/>
+  <link href="https://gentryhuang.com/"/>
   <updated>2020-07-05T04:13:10.181Z</updated>
-  <id>http://yoursite.com/</id>
+  <id>https://gentryhuang.com/</id>
   
   <author>
     <name>gentryhuang</name>
@@ -18,8 +18,8 @@
   
   <entry>
     <title>命令模式</title>
-    <link href="http://yoursite.com/posts/78134e07/"/>
-    <id>http://yoursite.com/posts/78134e07/</id>
+    <link href="https://gentryhuang.com/posts/78134e07/"/>
+    <id>https://gentryhuang.com/posts/78134e07/</id>
     <published>2019-10-04T16:00:00.000Z</published>
     <updated>2020-07-05T04:13:10.181Z</updated>
     
@@ -35,17 +35,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>状态模式</title>
-    <link href="http://yoursite.com/posts/8acb1976/"/>
-    <id>http://yoursite.com/posts/8acb1976/</id>
+    <link href="https://gentryhuang.com/posts/8acb1976/"/>
+    <id>https://gentryhuang.com/posts/8acb1976/</id>
     <published>2019-10-04T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.956Z</updated>
     
@@ -62,17 +62,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>访问者模式</title>
-    <link href="http://yoursite.com/posts/64b51ed9/"/>
-    <id>http://yoursite.com/posts/64b51ed9/</id>
+    <link href="https://gentryhuang.com/posts/64b51ed9/"/>
+    <id>https://gentryhuang.com/posts/64b51ed9/</id>
     <published>2019-10-04T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.961Z</updated>
     
@@ -88,17 +88,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>中介者模式</title>
-    <link href="http://yoursite.com/posts/d036071c/"/>
-    <id>http://yoursite.com/posts/d036071c/</id>
+    <link href="https://gentryhuang.com/posts/d036071c/"/>
+    <id>https://gentryhuang.com/posts/d036071c/</id>
     <published>2019-10-03T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.952Z</updated>
     
@@ -114,17 +114,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>备忘录模式</title>
-    <link href="http://yoursite.com/posts/c3176455/"/>
-    <id>http://yoursite.com/posts/c3176455/</id>
+    <link href="https://gentryhuang.com/posts/c3176455/"/>
+    <id>https://gentryhuang.com/posts/c3176455/</id>
     <published>2019-10-03T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.954Z</updated>
     
@@ -141,17 +141,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>责任链模式</title>
-    <link href="http://yoursite.com/posts/6208627e/"/>
-    <id>http://yoursite.com/posts/6208627e/</id>
+    <link href="https://gentryhuang.com/posts/6208627e/"/>
+    <id>https://gentryhuang.com/posts/6208627e/</id>
     <published>2019-10-03T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.961Z</updated>
     
@@ -168,17 +168,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>代理模式</title>
-    <link href="http://yoursite.com/posts/7b510e10/"/>
-    <id>http://yoursite.com/posts/7b510e10/</id>
+    <link href="https://gentryhuang.com/posts/7b510e10/"/>
+    <id>https://gentryhuang.com/posts/7b510e10/</id>
     <published>2019-10-02T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.967Z</updated>
     
@@ -196,17 +196,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>观察者模式</title>
-    <link href="http://yoursite.com/posts/9a246216/"/>
-    <id>http://yoursite.com/posts/9a246216/</id>
+    <link href="https://gentryhuang.com/posts/9a246216/"/>
+    <id>https://gentryhuang.com/posts/9a246216/</id>
     <published>2019-10-01T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.959Z</updated>
     
@@ -222,17 +222,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>解释器模式</title>
-    <link href="http://yoursite.com/posts/30cf0cd2/"/>
-    <id>http://yoursite.com/posts/30cf0cd2/</id>
+    <link href="https://gentryhuang.com/posts/30cf0cd2/"/>
+    <id>https://gentryhuang.com/posts/30cf0cd2/</id>
     <published>2019-10-01T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.960Z</updated>
     
@@ -248,17 +248,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>单例模式</title>
-    <link href="http://yoursite.com/posts/f1601c3e/"/>
-    <id>http://yoursite.com/posts/f1601c3e/</id>
+    <link href="https://gentryhuang.com/posts/f1601c3e/"/>
+    <id>https://gentryhuang.com/posts/f1601c3e/</id>
     <published>2019-10-01T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.963Z</updated>
     
@@ -274,17 +274,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>策略模式</title>
-    <link href="http://yoursite.com/posts/72e3b671/"/>
-    <id>http://yoursite.com/posts/72e3b671/</id>
+    <link href="https://gentryhuang.com/posts/72e3b671/"/>
+    <id>https://gentryhuang.com/posts/72e3b671/</id>
     <published>2019-09-27T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.958Z</updated>
     
@@ -300,17 +300,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>模版方法模式</title>
-    <link href="http://yoursite.com/posts/5029c2a3/"/>
-    <id>http://yoursite.com/posts/5029c2a3/</id>
+    <link href="https://gentryhuang.com/posts/5029c2a3/"/>
+    <id>https://gentryhuang.com/posts/5029c2a3/</id>
     <published>2019-09-26T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.955Z</updated>
     
@@ -327,17 +327,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>迭代器模式</title>
-    <link href="http://yoursite.com/posts/9055d217/"/>
-    <id>http://yoursite.com/posts/9055d217/</id>
+    <link href="https://gentryhuang.com/posts/9055d217/"/>
+    <id>https://gentryhuang.com/posts/9055d217/</id>
     <published>2019-09-26T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.964Z</updated>
     
@@ -354,17 +354,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>组合模式</title>
-    <link href="http://yoursite.com/posts/df879792/"/>
-    <id>http://yoursite.com/posts/df879792/</id>
+    <link href="https://gentryhuang.com/posts/df879792/"/>
+    <id>https://gentryhuang.com/posts/df879792/</id>
     <published>2019-09-23T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.971Z</updated>
     
@@ -380,17 +380,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>享元模式</title>
-    <link href="http://yoursite.com/posts/e19da94a/"/>
-    <id>http://yoursite.com/posts/e19da94a/</id>
+    <link href="https://gentryhuang.com/posts/e19da94a/"/>
+    <id>https://gentryhuang.com/posts/e19da94a/</id>
     <published>2019-09-22T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.970Z</updated>
     
@@ -406,17 +406,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>桥接模式</title>
-    <link href="http://yoursite.com/posts/563268dc/"/>
-    <id>http://yoursite.com/posts/563268dc/</id>
+    <link href="https://gentryhuang.com/posts/563268dc/"/>
+    <id>https://gentryhuang.com/posts/563268dc/</id>
     <published>2019-09-20T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.966Z</updated>
     
@@ -432,17 +432,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>适配器模式</title>
-    <link href="http://yoursite.com/posts/f5c535ea/"/>
-    <id>http://yoursite.com/posts/f5c535ea/</id>
+    <link href="https://gentryhuang.com/posts/f5c535ea/"/>
+    <id>https://gentryhuang.com/posts/f5c535ea/</id>
     <published>2019-09-20T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.972Z</updated>
     
@@ -459,17 +459,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>装饰者模式</title>
-    <link href="http://yoursite.com/posts/a708a60d/"/>
-    <id>http://yoursite.com/posts/a708a60d/</id>
+    <link href="https://gentryhuang.com/posts/a708a60d/"/>
+    <id>https://gentryhuang.com/posts/a708a60d/</id>
     <published>2019-09-18T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.971Z</updated>
     
@@ -486,17 +486,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>外观模式</title>
-    <link href="http://yoursite.com/posts/f7de8aa8/"/>
-    <id>http://yoursite.com/posts/f7de8aa8/</id>
+    <link href="https://gentryhuang.com/posts/f7de8aa8/"/>
+    <id>https://gentryhuang.com/posts/f7de8aa8/</id>
     <published>2019-09-16T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.972Z</updated>
     
@@ -513,17 +513,17 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
   <entry>
     <title>原型模式</title>
-    <link href="http://yoursite.com/posts/91ad9ce3/"/>
-    <id>http://yoursite.com/posts/91ad9ce3/</id>
+    <link href="https://gentryhuang.com/posts/91ad9ce3/"/>
+    <id>https://gentryhuang.com/posts/91ad9ce3/</id>
     <published>2019-09-15T16:00:00.000Z</published>
     <updated>2020-07-04T16:28:45.962Z</updated>
     
@@ -540,10 +540,10 @@
     </summary>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
     
-      <category term="设计模式" scheme="http://yoursite.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
+      <category term="设计模式" scheme="https://gentryhuang.com/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/"/>
     
   </entry>
   
