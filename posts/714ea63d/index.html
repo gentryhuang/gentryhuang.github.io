@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>服务容器 | gentryhuang的博客</title>
+  <meta name="description" content="dubbo服务容器dubbo的服务容器只是一个简单的Main，类似SpringBoot,负责初始化和启动不同功能的  Container ，如果说dubbo的服务容器是一个简单的Main方法，那么承载不同功能的Container就是服务容器的具体实现，可以有不同的类型。uml关系图如下：  容器扩展点123456789101112131415161718&#x2F;** * Container. (SPI,">
+<meta property="og:type" content="article">
+<meta property="og:title" content="服务容器">
+<meta property="og:url" content="https://gentryhuang.com/posts/714ea63d/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="dubbo服务容器dubbo的服务容器只是一个简单的Main，类似SpringBoot,负责初始化和启动不同功能的  Container ，如果说dubbo的服务容器是一个简单的Main方法，那么承载不同功能的Container就是服务容器的具体实现，可以有不同的类型。uml关系图如下：  容器扩展点123456789101112131415161718&#x2F;** * Container. (SPI,">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/714ea63d/main-container.jpg">
+<meta property="article:published_time" content="2020-03-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-08-05T12:16:14.035Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="dubbo">
+<meta property="article:tag" content="spring">
+<meta property="article:tag" content="logback">
+<meta property="article:tag" content="log4j">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/714ea63d/main-container.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/714ea63d/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Redis%E5%8E%9F%E7%90%86/">Redis原理</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/rpc/">rpc</a><span class="category-list-count">7</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/dubbo/" rel="tag">dubbo</a><span class="tag-list-count">5</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/log4j/" rel="tag">log4j</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/logback/" rel="tag">logback</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/rpc/" rel="tag">rpc</a><span class="tag-list-count">6</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/spring/" rel="tag">spring</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.25px;">Redis数据结构</a> <a href="/tags/dubbo/" style="font-size: 13.5px;">dubbo</a> <a href="/tags/log4j/" style="font-size: 13px;">log4j</a> <a href="/tags/logback/" style="font-size: 13px;">logback</a> <a href="/tags/rpc/" style="font-size: 13.75px;">rpc</a> <a href="/tags/spring/" style="font-size: 13.25px;">spring</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 14px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">7</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis%E5%8E%9F%E7%90%86/">Redis原理</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-08T11:33:59.000Z" itemprop="datePublished">2020-07-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis%E5%8E%9F%E7%90%86/">Redis原理</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-08T11:00:50.000Z" itemprop="datePublished">2020-07-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/714ea63d/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/rpc/">rpc</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/714ea63d/" class="title">服务容器</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-03-19T16:00:00.000Z" itemprop="datePublished">2020-03-20</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/46f95e97/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/rpc/">rpc</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/46f95e97/" class="title">url统一模型</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-03-06T16:00:00.000Z" itemprop="datePublished">2020-03-07</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/7202a9c0/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/rpc/">rpc</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/7202a9c0/" class="title">dubbo第三例</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-03-05T16:00:00.000Z" itemprop="datePublished">2020-03-06</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#dubbo服务容器"><span class="toc-number">1.</span> <span class="toc-text">dubbo服务容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#容器扩展点"><span class="toc-number">1.1.</span> <span class="toc-text">容器扩展点</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#启动器Main"><span class="toc-number">1.2.</span> <span class="toc-text">启动器Main</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SpringContainer"><span class="toc-number">1.3.</span> <span class="toc-text">SpringContainer</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#LogbackContainer"><span class="toc-number">1.4.</span> <span class="toc-text">LogbackContainer</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Log4jContainer"><span class="toc-number">1.5.</span> <span class="toc-text">Log4jContainer</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#容器启动"><span class="toc-number">1.6.</span> <span class="toc-text">容器启动</span></a></li></ol></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/服务容器" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      服务容器
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/714ea63d/" class="article-date">
+	  <time datetime="2020-03-19T16:00:00.000Z" itemprop="datePublished">2020-03-20</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/rpc/">rpc</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/dubbo/" rel="tag">dubbo</a>, <a class="article-tag-link" href="/tags/log4j/" rel="tag">log4j</a>, <a class="article-tag-link" href="/tags/logback/" rel="tag">logback</a>, <a class="article-tag-link" href="/tags/spring/" rel="tag">spring</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/714ea63d/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.9k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 9(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h3 id="dubbo服务容器"><a href="#dubbo服务容器" class="headerlink" title="dubbo服务容器"></a>dubbo服务容器</h3><p>dubbo的服务容器只是一个简单的Main，类似SpringBoot,负责初始化和启动不同功能的 <font color="#c7254e"> Container </font>，如果说dubbo的服务容器是一个简单的Main方法，那么承载不同功能的Container就是服务容器的具体实现，可以有不同的类型。uml关系图如下：</p>
+<p><img src="/posts/714ea63d/main-container.jpg" alt></p>
+<h4 id="容器扩展点"><a href="#容器扩展点" class="headerlink" title="容器扩展点"></a>容器扩展点</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Container. (SPI, Singleton, ThreadSafe)</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * 服务容器接口，Dubbo的扩展点，默认为 spring</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@SPI</span>(<span class="string">"spring"</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Container</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * start. 启动容器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">start</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * stop. 体制容器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">stop</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="启动器Main"><a href="#启动器Main" class="headerlink" title="启动器Main"></a>启动器Main</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Main</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(Main<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Container的配置项，如 dubbo.container=spring,log4j</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String CONTAINER_KEY = <span class="string">"dubbo.container"</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Dubbo 优雅停机配置项，如 dubbo.shutdown.hook=true</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String SHUTDOWN_HOOK_KEY = <span class="string">"dubbo.shutdown.hook"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Container扩展点的加载器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ExtensionLoader&lt;Container&gt; loader = ExtensionLoader.getExtensionLoader(Container<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 锁</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ReentrantLock LOCK = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 锁的条件</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Condition STOP = LOCK.newCondition();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> args 启动参数，可以在启动时指定要加载的容器，如 java com.alibaba.dubbo.container.Main spring log4j</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 如果 main 方法的参数没有传入值，则从配置中加载。如果获取不到就使用Container 默认扩展 spring</span></span><br><span class="line">            <span class="keyword">if</span> (args == <span class="keyword">null</span> || args.length == <span class="number">0</span>) &#123;</span><br><span class="line">                String config = ConfigUtils.getProperty(CONTAINER_KEY, loader.getDefaultExtensionName());</span><br><span class="line">                args = Constants.COMMA_SPLIT_PATTERN.split(config);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">final</span> List&lt;Container&gt; containers = <span class="keyword">new</span> ArrayList&lt;Container&gt;();</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; args.length; i++) &#123;</span><br><span class="line">                <span class="comment">// 使用Dubbo SPI 加载 Container ,并把加载的Container 放入到List中</span></span><br><span class="line">                containers.add(loader.getExtension(args[i]));</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">            logger.info(<span class="string">"Use container type("</span> + Arrays.toString(args) + <span class="string">") to run dubbo serivce."</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 当配置JVM启动参数带有 -Ddubbo.shutdown.hook=true时，添加关闭的ShutdownHook</span></span><br><span class="line">            <span class="keyword">if</span> (<span class="string">"true"</span>.equals(System.getProperty(SHUTDOWN_HOOK_KEY))) &#123;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 优雅停机</span></span><br><span class="line">                Runtime.getRuntime().addShutdownHook(<span class="keyword">new</span> Thread(<span class="string">"dubbo-container-shutdown-hook"</span>) &#123;</span><br><span class="line">                    <span class="meta">@Override</span></span><br><span class="line">                    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                        <span class="keyword">for</span> (Container container : containers) &#123;</span><br><span class="line">                            <span class="keyword">try</span> &#123;</span><br><span class="line">                                <span class="comment">// 关闭容器</span></span><br><span class="line">                                container.stop();</span><br><span class="line">                                logger.info(<span class="string">"Dubbo "</span> + container.getClass().getSimpleName() + <span class="string">" stopped!"</span>);</span><br><span class="line">                            &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                                logger.error(t.getMessage(), t);</span><br><span class="line">                            &#125;</span><br><span class="line">                            <span class="keyword">try</span> &#123;</span><br><span class="line">                                <span class="comment">// 获得 ReentrantLock</span></span><br><span class="line">                                LOCK.lock();</span><br><span class="line">                                <span class="comment">// 唤醒 Main 主线程的等待</span></span><br><span class="line">                                STOP.signal();</span><br><span class="line">                            &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                                <span class="comment">// 释放 LOCK</span></span><br><span class="line">                                LOCK.unlock();</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 启动容器</span></span><br><span class="line">            <span class="keyword">for</span> (Container container : containers) &#123;</span><br><span class="line">                container.start();</span><br><span class="line">                logger.info(<span class="string">"Dubbo "</span> + container.getClass().getSimpleName() + <span class="string">" started!"</span>);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            System.out.println(<span class="keyword">new</span> SimpleDateFormat(<span class="string">"[yyyy-MM-dd HH:mm:ss]"</span>).format(<span class="keyword">new</span> Date()) + <span class="string">" Dubbo service server started!"</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 发生异常，打印错误日志，并JVM退出</span></span><br><span class="line">        &#125; <span class="keyword">catch</span> (RuntimeException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">            logger.error(e.getMessage(), e);</span><br><span class="line">            System.exit(<span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 获得 LOCK 锁</span></span><br><span class="line">            LOCK.lock();</span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * 释放锁，进入等待，直到被唤醒</span></span><br><span class="line"><span class="comment">             * 作用：线程不结束，不触发JVM退出，这样Dubbo就不会退出。如果不等待，main方法执行完成，就会触发JVM退出，导致Dubbo服务退出</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            STOP.await();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">            logger.warn(<span class="string">"Dubbo service server stopped, interrupted by other thread!"</span>, e);</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="comment">// 释放 LOCK</span></span><br><span class="line">            LOCK.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>说明</strong></p>
+<ul>
+<li>dubbo服务容器只是一个简单Main 方法，默认情况下只会加载一个简单的Spring容器，用于暴露服务。Dubbo服务容器的加载内容可以扩展，即可通过容器扩展点进行扩展，如：spring、logback等。</li>
+<li>dubbo服务容器是dubbo服务的启动器，它的本质是启动时加载dubbo的相关内容【通过spring配置，log4j配置等体现】然后启动Container。但是 实际生产中，一般不会直接使用dubbo的服务容器，更多主流的是使用Spring或者SpringBoot</li>
+</ul>
+<h4 id="SpringContainer"><a href="#SpringContainer" class="headerlink" title="SpringContainer"></a>SpringContainer</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * SpringContainer. (SPI, Singleton, ThreadSafe)</span></span><br><span class="line"><span class="comment"> * 实现Container接口，Spring容器实现类</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SpringContainer</span> <span class="keyword">implements</span> <span class="title">Container</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(SpringContainer<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Spring 配置属性</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String SPRING_CONFIG = <span class="string">"dubbo.spring.config"</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认配置文件地址</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String DEFAULT_SPRING_CONFIG = <span class="string">"classpath*:META-INF/spring/*.xml"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Spring 上下文 ，静态属性，全局唯一</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">static</span> ClassPathXmlApplicationContext context;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> ClassPathXmlApplicationContext <span class="title">getContext</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> context;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">start</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获得Spring 配置文件的地址【先优先从JVM参数中取，没有再从dubbo.properties文件中取】</span></span><br><span class="line">        String configPath = ConfigUtils.getProperty(SPRING_CONFIG);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果没有配置就使用默认路径下的配置文件</span></span><br><span class="line">        <span class="keyword">if</span> (configPath == <span class="keyword">null</span> || configPath.length() == <span class="number">0</span>) &#123;</span><br><span class="line">            configPath = DEFAULT_SPRING_CONFIG;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建Spring 上下文</span></span><br><span class="line">        context = <span class="keyword">new</span> ClassPathXmlApplicationContext(configPath.split(<span class="string">"[,\\s]+"</span>), <span class="keyword">false</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 添加监听器</span></span><br><span class="line">        context.addApplicationListener(<span class="keyword">new</span> DubboApplicationListener());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 监听容器关闭 [注意停机实现]</span></span><br><span class="line">        context.registerShutdownHook();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 刷新Spring容器</span></span><br><span class="line">        context.refresh();</span><br><span class="line">        <span class="comment">// 启动Spring容器，加载Dubbo的配置，从而启动Dubbo 服务</span></span><br><span class="line">        context.start();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">stop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (context != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="comment">// 停止上下文，会触发 ContextStoppedEvent 事件</span></span><br><span class="line">                context.stop();</span><br><span class="line">                <span class="comment">// 关闭上下文，会触发 ContextClosedEvent 事件</span></span><br><span class="line">                context.close();</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 置空，便于被回收</span></span><br><span class="line">                context = <span class="keyword">null</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">            logger.error(e.getMessage(), e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="LogbackContainer"><a href="#LogbackContainer" class="headerlink" title="LogbackContainer"></a>LogbackContainer</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * LogbackContainer. (SPI, Singleton, ThreadSafe)</span></span><br><span class="line"><span class="comment"> * 实现 Container 接口，Logback 容器实现类</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LogbackContainer</span> <span class="keyword">implements</span> <span class="title">Container</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 日志文件路径</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String LOGBACK_FILE = <span class="string">"dubbo.logback.file"</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 日志文件级别</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String LOGBACK_LEVEL = <span class="string">"dubbo.logback.level"</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 日志保留天数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String LOGBACK_MAX_HISTORY = <span class="string">"dubbo.logback.maxhistory"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认日志级别</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String DEFAULT_LOGBACK_LEVEL = <span class="string">"ERROR"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">start</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 获得 logback 配置的日志文件路径</span></span><br><span class="line">        String file = ConfigUtils.getProperty(LOGBACK_FILE);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (file != <span class="keyword">null</span> &amp;&amp; file.length() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// 获得日志级别</span></span><br><span class="line">            String level = ConfigUtils.getProperty(LOGBACK_LEVEL);</span><br><span class="line">            <span class="keyword">if</span> (level == <span class="keyword">null</span> || level.length() == <span class="number">0</span>) &#123;</span><br><span class="line">                level = DEFAULT_LOGBACK_LEVEL;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 获得日志保留天数，如果是0则永久保留</span></span><br><span class="line">            <span class="keyword">int</span> maxHistory = StringUtils.parseInteger(ConfigUtils.getProperty(LOGBACK_MAX_HISTORY));</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 初始化 logback</span></span><br><span class="line">            doInitializer(file, level, maxHistory);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 停止为空，因为不需要关闭</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">stop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 初始化 logback</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> file       日志文件路径</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> level      日志级别</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> maxHistory 日志保留天数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doInitializer</span><span class="params">(String file, String level, <span class="keyword">int</span> maxHistory)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 获取日志工厂</span></span><br><span class="line">        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 通过工厂获取Logger</span></span><br><span class="line">        Logger rootLogger = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME);</span><br><span class="line">        rootLogger.detachAndStopAllAppenders();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建日志追加器</span></span><br><span class="line">        RollingFileAppender&lt;ILoggingEvent&gt; fileAppender = <span class="keyword">new</span> RollingFileAppender&lt;ILoggingEvent&gt;();</span><br><span class="line">        fileAppender.setContext(loggerContext);</span><br><span class="line">        fileAppender.setName(<span class="string">"application"</span>);</span><br><span class="line">        fileAppender.setFile(file);</span><br><span class="line">        fileAppender.setAppend(<span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建滚动策略</span></span><br><span class="line">        TimeBasedRollingPolicy&lt;ILoggingEvent&gt; policy = <span class="keyword">new</span> TimeBasedRollingPolicy&lt;ILoggingEvent&gt;();</span><br><span class="line">        policy.setContext(loggerContext);</span><br><span class="line">        policy.setMaxHistory(maxHistory);</span><br><span class="line">        policy.setFileNamePattern(file + <span class="string">".%d&#123;yyyy-MM-dd&#125;"</span>);</span><br><span class="line">        policy.setParent(fileAppender);</span><br><span class="line">        policy.start();</span><br><span class="line">        fileAppender.setRollingPolicy(policy);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 格式</span></span><br><span class="line">        PatternLayoutEncoder encoder = <span class="keyword">new</span> PatternLayoutEncoder();</span><br><span class="line">        encoder.setContext(loggerContext);</span><br><span class="line">        encoder.setPattern(<span class="string">"%date [%thread] %-5level %logger (%file:%line\\) - %msg%n"</span>);</span><br><span class="line">        encoder.start();</span><br><span class="line">        fileAppender.setEncoder(encoder);</span><br><span class="line"></span><br><span class="line">        fileAppender.start();</span><br><span class="line"></span><br><span class="line">        rootLogger.addAppender(fileAppender);</span><br><span class="line">        rootLogger.setLevel(Level.toLevel(level));</span><br><span class="line">        rootLogger.setAdditive(<span class="keyword">false</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Log4jContainer"><a href="#Log4jContainer" class="headerlink" title="Log4jContainer"></a>Log4jContainer</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Log4jContainer. (SPI, Singleton, ThreadSafe)</span></span><br><span class="line"><span class="comment"> * 实现Container接口，Log4j容器实现类</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Log4jContainer</span> <span class="keyword">implements</span> <span class="title">Container</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 日志文件路径配置，如 dubbo.log4j.file=/opt/log/access.log</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String LOG4J_FILE = <span class="string">"dubbo.log4j.file"</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 日志级别 如： dubbo.log4j.level=WARN</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String LOG4J_LEVEL = <span class="string">"dubbo.log4j.level"</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 日志子路径配置</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String LOG4J_SUBDIRECTORY = <span class="string">"dubbo.log4j.subdirectory"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认日志级别</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String DEFAULT_LOG4J_LEVEL = <span class="string">"ERROR"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 自动配置log4j</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">start</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获得 log4j 配置的日志文件路径</span></span><br><span class="line">        String file = ConfigUtils.getProperty(LOG4J_FILE);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取日志级别</span></span><br><span class="line">        <span class="keyword">if</span> (file != <span class="keyword">null</span> &amp;&amp; file.length() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            String level = ConfigUtils.getProperty(LOG4J_LEVEL);</span><br><span class="line">            <span class="keyword">if</span> (level == <span class="keyword">null</span> || level.length() == <span class="number">0</span>) &#123;</span><br><span class="line">                level = DEFAULT_LOG4J_LEVEL;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 创建PropertyConfigurator所需的 Properties 对象，</span></span><br><span class="line">            Properties properties = <span class="keyword">new</span> Properties();</span><br><span class="line">            properties.setProperty(<span class="string">"log4j.rootLogger"</span>, level + <span class="string">",application"</span>);</span><br><span class="line">            properties.setProperty(<span class="string">"log4j.appender.application"</span>, <span class="string">"org.apache.log4j.DailyRollingFileAppender"</span>);</span><br><span class="line">            properties.setProperty(<span class="string">"log4j.appender.application.File"</span>, file);</span><br><span class="line">            properties.setProperty(<span class="string">"log4j.appender.application.Append"</span>, <span class="string">"true"</span>);</span><br><span class="line">            properties.setProperty(<span class="string">"log4j.appender.application.DatePattern"</span>, <span class="string">"'.'yyyy-MM-dd"</span>);</span><br><span class="line">            properties.setProperty(<span class="string">"log4j.appender.application.layout"</span>, <span class="string">"org.apache.log4j.PatternLayout"</span>);</span><br><span class="line">            properties.setProperty(<span class="string">"log4j.appender.application.layout.ConversionPattern"</span>, <span class="string">"%d [%t] %-5p %C&#123;6&#125; (%F:%L) - %m%n"</span>);</span><br><span class="line">            PropertyConfigurator.configure(properties);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获得日志子目录，用于多进程启动时，避免冲突</span></span><br><span class="line">        String subdirectory = ConfigUtils.getProperty(LOG4J_SUBDIRECTORY);</span><br><span class="line">        <span class="keyword">if</span> (subdirectory != <span class="keyword">null</span> &amp;&amp; subdirectory.length() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// 获取 Logger 列表</span></span><br><span class="line">            Enumeration&lt;org.apache.log4j.Logger&gt; ls = LogManager.getCurrentLoggers();</span><br><span class="line">            <span class="keyword">while</span> (ls.hasMoreElements()) &#123;</span><br><span class="line">                org.apache.log4j.Logger l = ls.nextElement();</span><br><span class="line">                <span class="keyword">if</span> (l != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    <span class="comment">// 拿到当前Logger 的追加器</span></span><br><span class="line">                    Enumeration&lt;Appender&gt; as = l.getAllAppenders();</span><br><span class="line">                    <span class="keyword">while</span> (as.hasMoreElements()) &#123;</span><br><span class="line">                        Appender a = as.nextElement();</span><br><span class="line">                        <span class="keyword">if</span> (a <span class="keyword">instanceof</span> FileAppender) &#123;</span><br><span class="line">                            FileAppender fa = (FileAppender) a;</span><br><span class="line">                            String f = fa.getFile();</span><br><span class="line">                            <span class="keyword">if</span> (f != <span class="keyword">null</span> &amp;&amp; f.length() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                                <span class="keyword">int</span> i = f.replace(<span class="string">'\\'</span>, <span class="string">'/'</span>).lastIndexOf(<span class="string">'/'</span>);</span><br><span class="line">                                String path;</span><br><span class="line">                                <span class="keyword">if</span> (i == -<span class="number">1</span>) &#123;</span><br><span class="line">                                    path = subdirectory;</span><br><span class="line">                                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                                    path = f.substring(<span class="number">0</span>, i);</span><br><span class="line">                                    <span class="keyword">if</span> (!path.endsWith(subdirectory)) &#123;</span><br><span class="line">                                        path = path + <span class="string">"/"</span> + subdirectory;</span><br><span class="line">                                    &#125;</span><br><span class="line">                                    f = f.substring(i + <span class="number">1</span>);</span><br><span class="line">                                &#125;</span><br><span class="line">                                <span class="comment">// 设置新的文件名</span></span><br><span class="line">                                fa.setFile(path + <span class="string">"/"</span> + f);</span><br><span class="line">                                <span class="comment">// 生效配置</span></span><br><span class="line">                                fa.activateOptions();</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 空方法，无需关闭</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">stop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="容器启动"><a href="#容器启动" class="headerlink" title="容器启动"></a>容器启动</h4><ul>
+<li><p>通过加载properties配置文件加载目标容器</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dubbo.container&#x3D;spring,logback,log4j</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>缺省只加载spring容器</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java org.apache.dubbo.container.Main</span><br></pre></td></tr></table></figure></li>
+<li><p>通过main方法参数传入要加载的容器</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java org.apache.dubbo.container.Main spring logback log4j</span><br></pre></td></tr></table></figure></li>
+<li><p>通过 JVM 启动参数传入要加载的容器</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java org.apache.dubbo.container.Main -Ddubbo.container&#x3D;spring,jetty,log4j</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+</li>
+</ul>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/714ea63d/" title="服务容器" target="_blank" rel="external">https://gentryhuang.com/posts/714ea63d/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>聚散流沙</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/aa1d8127/" title="简单动态字符串"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/46f95e97/" title="url统一模型"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2020 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
