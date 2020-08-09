@@ -25,14 +25,14 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言dubbo源码分析相关文章使用的dubbo版本为2.6.5，如使用其它版本会显示说明。参考文档以官方文档 为主【官网文档写的太好了】，参考书籍《深入理解Apache Dubbo与实战》。 框架设计由于dubbo官方文档写的非常好，这里会大量引用相关的图片及说明，点我 进入官方文档。 整体设计 图例说明：  图中左边淡蓝背景的为服务消费方使用的接口，右边淡绿色背景的为服务提供方使用的接口，位于中">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/e2577ca1/dubbo-frame.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-frame.jpg">
 <meta property="article:published_time" content="2020-03-08T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-08-09T08:53:02.437Z">
+<meta property="article:modified_time" content="2020-08-09T09:41:09.519Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="dubbo">
 <meta property="article:tag" content="rpc">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/e2577ca1/dubbo-frame.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-frame.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/e2577ca1/index.html">
   
@@ -461,7 +461,7 @@
       
         <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>dubbo源码分析相关文章使用的dubbo版本为2.6.5，如使用其它版本会显示说明。参考文档以<a href="http://dubbo.apache.org/zh-cn/index.html" target="_blank" rel="noopener">官方文档</a> 为主【官网文档写的太好了】，参考书籍《深入理解Apache Dubbo与实战》。</p>
 <h3 id="框架设计"><a href="#框架设计" class="headerlink" title="框架设计"></a>框架设计</h3><p>由于dubbo官方文档写的非常好，这里会大量引用相关的图片及说明，<a href="http://dubbo.apache.org/zh-cn/docs/dev/design.html" target="_blank" rel="noopener">点我</a> 进入官方文档。</p>
-<h4 id="整体设计"><a href="#整体设计" class="headerlink" title="整体设计"></a>整体设计</h4><p><img src="/posts/e2577ca1/dubbo-frame.jpg" alt></p>
+<h4 id="整体设计"><a href="#整体设计" class="headerlink" title="整体设计"></a>整体设计</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-frame.jpg" alt></p>
 <p><strong>图例说明：</strong></p>
 <ul>
 <li>图中左边淡蓝背景的为服务消费方使用的接口，右边淡绿色背景的为服务提供方使用的接口，位于中轴线上的为双方都用到的接口。</li>

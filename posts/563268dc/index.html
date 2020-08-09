@@ -25,13 +25,13 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="定义将抽象部分与它的具体实现部分分离开来，使它们都可以独立地变化（这在一定程度上实现解耦）。桥接模式将继承关系转化成关联关系，它降低了类与类之间的耦合度，减少了系统中类的数量，防止类爆炸。从它的命名可以看出，bridge是桥梁的意思， 将桥两边联系起来。目的就是把两个不同的类之间建立联系，而两个类之间建立联系的方式有很多，而桥接模式是通过组合的方式建立两个不同类之间的关系，而不是继承。这也符合合成">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/563268dc/bridge.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/structure/bridge.jpg">
 <meta property="article:published_time" content="2019-09-20T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-07-04T16:28:45.966Z">
+<meta property="article:modified_time" content="2020-08-09T09:35:41.268Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="设计模式">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/563268dc/bridge.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/structure/bridge.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/563268dc/index.html">
   
@@ -530,7 +530,7 @@
 </ul>
 </li>
 </ol>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p> <img src="/posts/563268dc/bridge.jpg" alt></p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p> <img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/structure/bridge.jpg" alt></p>
 <p>通过桥接模式，把实现部分Account（Account的具体实现类）和抽象部分Bank（Bank抽象类）进行了桥接，使用组合作为一根线连接它们。当然也有聚合的方式实现桥接。</p>
 <h2 id="桥接模式在JDK源码中的应用"><a href="#桥接模式在JDK源码中的应用" class="headerlink" title="桥接模式在JDK源码中的应用"></a>桥接模式在JDK源码中的应用</h2><h3 id="实现部分"><a href="#实现部分" class="headerlink" title="实现部分"></a>实现部分</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java.sql.Driver接口的实现： 如MySQL的Driver，Oracle的Driver</span><br></pre></td></tr></table></figure>
 
