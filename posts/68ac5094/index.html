@@ -25,14 +25,14 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述在Dubbo自适应扩展中，我们已经得到了自适应扩展类的字符串，需要通过编译才能得到真正的Class，本篇文章就来介绍将类的字符串编译成类的过程。 动态编译 dubbo 的动态编译的整体结构如上图所示。dubbo中的Compiler基于dubbo spi机制进行加载，目前支持jdk和javassist两种实现： 12&lt;dubbo:application compiler&#x3D;&quot;jdk&quot; &#x2F;&amp;g">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/68ac5094/dubbo-compiler.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-compiler.jpg">
 <meta property="article:published_time" content="2020-03-16T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-08-15T13:49:40.204Z">
+<meta property="article:modified_time" content="2020-08-20T16:37:12.228Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Javassist">
 <meta property="article:tag" content="JDK">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/68ac5094/dubbo-compiler.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-compiler.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/68ac5094/index.html">
   
@@ -460,7 +460,7 @@
     <div class="article-entry marked-body" itemprop="articleBody">
       
         <h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p>在<a href="https://gentryhuang.com/posts/3e0b5964/">Dubbo自适应扩展</a>中，我们已经得到了自适应扩展类的字符串，需要通过编译才能得到真正的Class，本篇文章就来介绍将类的字符串编译成类的过程。</p>
-<h3 id="动态编译"><a href="#动态编译" class="headerlink" title="动态编译"></a>动态编译</h3><p><img src="/posts/68ac5094/dubbo-compiler.jpg" alt></p>
+<h3 id="动态编译"><a href="#动态编译" class="headerlink" title="动态编译"></a>动态编译</h3><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-compiler.jpg" alt></p>
 <p>dubbo 的动态编译的整体结构如上图所示。dubbo中的Compiler基于dubbo spi机制进行加载，目前支持jdk和javassist两种实现：</p>
 <figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:application</span> <span class="attr">compiler</span>=<span class="string">"jdk"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:application</span> <span class="attr">compiler</span>=<span class="string">"javassist"</span> /&gt;</span></span><br></pre></td></tr></table></figure>
 
