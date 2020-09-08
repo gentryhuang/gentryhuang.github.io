@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - Zookeeper注册中心 | gentryhuang的博客</title>
+  <meta name="description" content="前言注册中心总览 中介绍了 Dubbo 的注册中心抽象层，包括注册中心及其工厂。本篇文章将介绍 Dubbo 的 Zookeeper 注册中心及其工厂。  UML 图中 ZookeeperRegistryFactory 中有个 ZookeeperTransporter 属性，该属性就是创建 Zookeeper 客户端的关键对象，下一篇文章会详细介绍 Dubbo 对 Zookeeper 客户端的封装。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - Zookeeper注册中心">
+<meta property="og:url" content="https://gentryhuang.com/posts/f70c2f2e/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言注册中心总览 中介绍了 Dubbo 的注册中心抽象层，包括注册中心及其工厂。本篇文章将介绍 Dubbo 的 Zookeeper 注册中心及其工厂。  UML 图中 ZookeeperRegistryFactory 中有个 ZookeeperTransporter 属性，该属性就是创建 Zookeeper 客户端的关键对象，下一篇文章会详细介绍 Dubbo 对 Zookeeper 客户端的封装。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/f70c2f2e/dubb-zookeeper.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/f70c2f2e/dubb-zookeeper-meta.jpg">
+<meta property="article:published_time" content="2020-04-16T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-09-08T16:01:59.021Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta property="article:tag" content="Zookeeper">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/f70c2f2e/dubb-zookeeper.png">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/f70c2f2e/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">18</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">14</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JDK/" rel="tag">JDK</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/Dubbo/" style="font-size: 13.8px;">Dubbo</a> <a href="/tags/JDK/" style="font-size: 13.4px;">JDK</a> <a href="/tags/Javassist/" style="font-size: 13px;">Javassist</a> <a href="/tags/RPC/" style="font-size: 13.6px;">RPC</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.2px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.4px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.4px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 14px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">13</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-08T11:33:59.000Z" itemprop="datePublished">2020-07-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-08T11:00:50.000Z" itemprop="datePublished">2020-07-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/ef4cfe7a/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/ef4cfe7a/" class="title">Dubbo源码分析 - 优雅停机</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-05-09T16:00:00.000Z" itemprop="datePublished">2020-05-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/f70c2f2e/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/f70c2f2e/" class="title">Dubbo源码分析 - Zookeeper注册中心</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-04-16T16:00:00.000Z" itemprop="datePublished">2020-04-17</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/dafcd048/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/dafcd048/" class="title">Dubbo源码分析 - 注册中心总览</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-04-12T16:00:00.000Z" itemprop="datePublished">2020-04-13</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Dubbo-中的-Zookeeper"><span class="toc-number">2.</span> <span class="toc-text">Dubbo 中的 Zookeeper</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ZookeeperRegistryFactory"><span class="toc-number">3.</span> <span class="toc-text">ZookeeperRegistryFactory</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ZookeeperRegistry"><span class="toc-number">4.</span> <span class="toc-text">ZookeeperRegistry</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#doRegister-注册"><span class="toc-number">4.1.</span> <span class="toc-text">doRegister 注册</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#doUnregister-取消注册"><span class="toc-number">4.2.</span> <span class="toc-text">doUnregister 取消注册</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#doSubscribe-订阅"><span class="toc-number">4.3.</span> <span class="toc-text">doSubscribe 订阅</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#doUnsubscribe-取消订阅"><span class="toc-number">4.4.</span> <span class="toc-text">doUnsubscribe 取消订阅</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#销毁方法"><span class="toc-number">4.5.</span> <span class="toc-text">销毁方法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">5.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/注册中心之Zookeeper" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - Zookeeper注册中心
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/f70c2f2e/" class="article-date">
+	  <time datetime="2020-04-16T16:00:00.000Z" itemprop="datePublished">2020-04-17</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/f70c2f2e/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 2k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 8(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p><a href="https://gentryhuang.com/posts/dafcd048/">注册中心总览</a> 中介绍了 Dubbo 的注册中心抽象层，包括注册中心及其工厂。本篇文章将介绍 Dubbo 的 Zookeeper 注册中心及其工厂。</p>
+<p><img src="/posts/f70c2f2e/dubb-zookeeper.png" alt></p>
+<p>UML 图中 <code>ZookeeperRegistryFactory</code> 中有个 <code>ZookeeperTransporter</code> 属性，该属性就是创建 Zookeeper 客户端的关键对象，下一篇文章会详细介绍 Dubbo 对 Zookeeper 客户端的封装。</p>
+<h2 id="Dubbo-中的-Zookeeper"><a href="#Dubbo-中的-Zookeeper" class="headerlink" title="Dubbo 中的 Zookeeper"></a>Dubbo 中的 Zookeeper</h2><p>Zookeeper 是 Apache Hadoop 的子项目，是一个树型的目录服务，支持变更推送，适合作为 Dubbo 服务的注册中心，工业强度较高，可用于生产环境，并推荐使用。下图是 Dubbo 使用 Zookeeper 作为注册中心的元数据信息：</p>
+<p><img src="/posts/f70c2f2e/dubb-zookeeper-meta.jpg" alt></p>
+<p><strong>节点路径说明</strong></p>
+<ul>
+<li>Root 层：Zookeeper的根目录，默认是 dubbo ，也可以进行设置</li>
+<li>Service 层：服务接口的全路径名</li>
+<li>Type 层：目录，对于 Dubbo 而言就是分类，目前 Dubbo 有 4 个分类，服务提供者列表（providers）、服务消费者列表（consumers）、路由规则列表（routers）和 配置规则列表(configurators)</li>
+<li>URL 层：可以是服务提供者 URL、服务消费者 URL、路由规则 URL、以及配置规则 URL，具体哪类，看在哪个 Type 层下</li>
+</ul>
+<p><strong>流程简单说明：</strong></p>
+<ul>
+<li>服务提供者启动时: 向 /dubbo/com.foo.BarService/providers 目录下写入自己的 URL 地址</li>
+<li>服务消费者启动时: 订阅 /dubbo/com.foo.BarService/providers 目录下的提供者 URL 地址。并向 /dubbo/com.foo.BarService/consumers 目录下写入自己的 URL 地址</li>
+<li>监控中心启动时: 订阅 /dubbo/com.foo.BarService 目录下的所有提供者和消费者 URL 地址</li>
+</ul>
+<p>注意，上面描述的并不是完整的流程，只是根据图进行简单说明，比如，服务提供者不仅写入了自己的 URL 地址，还订阅了 <strong>configurators</strong> 目录下的 URL 地址，消费者除了订阅 <strong>providers</strong> 目录下的 URL 地址，还订阅了 <strong>routers</strong> 和 <strong>configurators</strong> 目录下的 URL 地址。 </p>
+<p><strong>支持但不限于以下功能：</strong></p>
+<ul>
+<li>当提供者出现断电等异常停机时，注册中心能自动删除提供者信息</li>
+<li>当注册中心重启时，能自动恢复注册数据，以及订阅请求</li>
+<li>当会话过期时，能自动恢复注册数据，以及订阅请求</li>
+<li>当设置 &lt;dubbo:registry check=”false” /&gt; 时，记录失败注册和订阅请求，后台定时重试</li>
+<li>可通过 &lt;dubbo:registry username=”admin” password=”1234” /&gt; 设置 zookeeper 登录信息</li>
+<li>可通过 &lt;dubbo:registry group=”dubbo” /&gt; 设置 zookeeper 的根节点，不配置将使用默认的根节点。</li>
+<li>支持 * 号通配符 &lt;dubbo:reference group=”*” version=”*” /&gt;，可订阅服务的所有分组和所有版本的提供者</li>
+</ul>
+<h2 id="ZookeeperRegistryFactory"><a href="#ZookeeperRegistryFactory" class="headerlink" title="ZookeeperRegistryFactory"></a>ZookeeperRegistryFactory</h2><p>实现 AbstractRegistryFactory 抽象类，ZookeeperRegistry 的工厂。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZookeeperRegistryFactory</span> <span class="keyword">extends</span> <span class="title">AbstractRegistryFactory</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * zookeeperTransporter 由 SPI 在运行时注入，类型为 ZookeeperTransporter$Adaptive。 是Zookeeper的客户端工厂</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> ZookeeperTransporter zookeeperTransporter;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 设置Zookeeper客户端 工厂，该方法通过Dubbo IOC 注入</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> zookeeperTransporter</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setZookeeperTransporter</span><span class="params">(ZookeeperTransporter zookeeperTransporter)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.zookeeperTransporter = zookeeperTransporter;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Registry <span class="title">createRegistry</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 创建 ZookeeperRegistry</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> ZookeeperRegistry(url, zookeeperTransporter);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>ZookeeperRegistryFactory 就是用来创建 ZookeeperRegistry 对象的，而 ZookeeperRegistry 对象需要依赖创建 Zookeeper 客户端的 ZookeeperTransporter 对象，该对象是通过 Dubbo IOC 注入的，详细可参考 <a href="http://localhost:4000/posts/5d81f464/" target="_blank" rel="noopener"> Dubbo SPI</a> 。 下面我们来看看 ZookeeperRegistry 的实现。</p>
+<h2 id="ZookeeperRegistry"><a href="#ZookeeperRegistry" class="headerlink" title="ZookeeperRegistry"></a>ZookeeperRegistry</h2><p>该类继承抽象类 FailbackRegistry ，具有重试功能。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * ZookeeperRegistry</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZookeeperRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">static</span> Logger logger = LoggerFactory.getLogger(ZookeeperRegistry<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Zookeeper 默认端口</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">static</span> <span class="keyword">int</span> DEFAULT_ZOOKEEPER_PORT = <span class="number">2181</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Dubbo 元数据写入Zookeeper上的根节点，默认值是 dubbo </span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">static</span> String DEFAULT_ROOT = <span class="string">"dubbo"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Zookeeper 根节点</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> String root;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Service 接口全名集合。该属性适合用于监控中心，订阅整个Service层，因为Service层是动态的</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Set&lt;String&gt; anyServices = <span class="keyword">new</span> ConcurrentHashSet&lt;String&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 监听器集合，建立NotifyListener和ChildListener的映射关系，k1为订阅URL,k2为监听器,value为ChildListener【真正起作用的对象】</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ConcurrentMap&lt;URL, ConcurrentMap&lt;NotifyListener, ChildListener&gt;&gt; zkListeners = <span class="keyword">new</span> ConcurrentHashMap&lt;URL, ConcurrentMap&lt;NotifyListener, ChildListener&gt;&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Zookeeper 客户端</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ZookeeperClient zkClient;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">ZookeeperRegistry</span><span class="params">(URL url, ZookeeperTransporter zookeeperTransporter)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(url);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (url.isAnyHost()) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"registry address == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取组名，默认为 'dubbo'，url.parameters.group 参数值，即Zookeeper的根节点</span></span><br><span class="line">        String group = url.getParameter(Constants.GROUP_KEY, DEFAULT_ROOT);</span><br><span class="line">        <span class="keyword">if</span> (!group.startsWith(Constants.PATH_SEPARATOR)) &#123;</span><br><span class="line">            <span class="comment">// 订正路径： group = "/" + group;</span></span><br><span class="line">            group = Constants.PATH_SEPARATOR + group;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 确定根路径，以组名作为根路径</span></span><br><span class="line">        <span class="keyword">this</span>.root = group;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建 Zookeeper 客户端，默认为 CuratorZookeeperTransporter，由SPI确定具体的实例。创建好Zookeeper客户端，意味着注册中心的创建完成【Zookeeper服务端必需先启动，Dubbo应用作为Zookeeper的客户端进行连接，然后操作Zookeeper】</span></span><br><span class="line">        zkClient = zookeeperTransporter.connect(url);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 添加 StateListener 状态监听器，该监听器在重连时，调用恢复方法 recover()，重新发起注册和订阅【将之前已经注册和订阅的数据进行重试】</span></span><br><span class="line"><span class="comment">         * 注意：</span></span><br><span class="line"><span class="comment">         *  StateListener 不是真正意义上的监听器，这里就是创建了一个匿名对象，其中的 #stateChanged 方法触发需要主动调用该匿名对象的该方法 &#123;<span class="doctag">@link</span> AbstractZookeeperClient#stateChanged(int)&#125;</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        zkClient.addStateListener(<span class="keyword">new</span> StateListener() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">stateChanged</span><span class="params">(<span class="keyword">int</span> state)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">if</span> (state == RECONNECTED) &#123;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        recover();</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                        logger.error(e.getMessage(), e);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="doRegister-注册"><a href="#doRegister-注册" class="headerlink" title="doRegister 注册"></a>doRegister 注册</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * ZookeeperRegistry</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZookeeperRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 调用Zookeeper客户端创建服务节点</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doRegister</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * 1 通过 Zookeeper 客户端创建节点，节点路径由 toUrlPath 方法生成，路径格式如下: /$&#123;group&#125;/$&#123;serviceInterface&#125;/&#123;Type&#125;/$&#123;url&#125;</span></span><br><span class="line"><span class="comment">             * 比如： /dubbo/com.alibaba.dubbo.demo.DemoService/providers/dubbo%3A%2F%2F127.0.0.1......</span></span><br><span class="line"><span class="comment">             * 2 url.parameters.dynamic ,是否动态数据。若为false，该数据为持久数据，当注册方退出时，数据仍然保存在注册中心</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            zkClient.create(toUrlPath(url), url.getParameter(Constants.DYNAMIC_KEY, <span class="keyword">true</span>));</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Failed to register "</span> + url + <span class="string">" to zookeeper "</span> + getUrl() + <span class="string">", cause: "</span> + e.getMessage(), e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>该方法是实现了其父类 FailbackRegistry 的模版方法，使用 Zookeeper 客户端进行节点的创建。</p>
+<h3 id="doUnregister-取消注册"><a href="#doUnregister-取消注册" class="headerlink" title="doUnregister 取消注册"></a>doUnregister 取消注册</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * ZookeeperRegistry</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZookeeperRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">      * 取消注册，删除节点</span></span><br><span class="line"><span class="comment">      *</span></span><br><span class="line"><span class="comment">      * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="meta">@Override</span></span><br><span class="line">     <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doUnregister</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">         <span class="keyword">try</span> &#123;</span><br><span class="line">             zkClient.delete(toUrlPath(url));</span><br><span class="line">         &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">             <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Failed to unregister "</span> + url + <span class="string">" to zookeeper "</span> + getUrl() + <span class="string">", cause: "</span> + e.getMessage(), e);</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>该方法是实现了其父类 FailbackRegistry 的模版方法，使用 Zookeeper 客户端进行节点的删除。</p>
+<h3 id="doSubscribe-订阅"><a href="#doSubscribe-订阅" class="headerlink" title="doSubscribe 订阅"></a>doSubscribe 订阅</h3><p>该方法较为复杂，包含了 Dubbo 的订阅与通知，在服务暴露和引入结束，结合 Dubbo 的订阅与通知再来单独分析该方法。</p>
+<h3 id="doUnsubscribe-取消订阅"><a href="#doUnsubscribe-取消订阅" class="headerlink" title="doUnsubscribe 取消订阅"></a>doUnsubscribe 取消订阅</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * ZookeeperRegistry</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZookeeperRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 真正取消订阅的逻辑，删除对应的监听器</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> listener</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doUnsubscribe</span><span class="params">(URL url, NotifyListener listener)</span> </span>&#123;</span><br><span class="line">        ConcurrentMap&lt;NotifyListener, ChildListener&gt; listeners = zkListeners.get(url);</span><br><span class="line">        <span class="keyword">if</span> (listeners != <span class="keyword">null</span>) &#123;</span><br><span class="line">            ChildListener zkListener = listeners.get(listener);</span><br><span class="line">            <span class="keyword">if</span> (zkListener != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">if</span> (Constants.ANY_VALUE.equals(url.getServiceInterface())) &#123;</span><br><span class="line">                    String root = toRootPath();</span><br><span class="line">                    zkClient.removeChildListener(root, zkListener);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="keyword">for</span> (String path : toCategoriesPath(url)) &#123;</span><br><span class="line">                        zkClient.removeChildListener(path, zkListener);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>该方法是实现了其父类 FailbackRegistry 的模版方法，使用 Zookeeper 客户端删除订阅 URL 对应的监听器。</p>
+<h3 id="销毁方法"><a href="#销毁方法" class="headerlink" title="销毁方法"></a>销毁方法</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * ZookeeperRegistry</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ZookeeperRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br><span class="line"></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">     <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">         <span class="keyword">super</span>.destroy();</span><br><span class="line">         <span class="keyword">try</span> &#123;</span><br><span class="line">             <span class="comment">// 关闭 Zookeeper 客户端连接</span></span><br><span class="line">             zkClient.close();</span><br><span class="line">         &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">             logger.warn(<span class="string">"Failed to close zookeeper client "</span> + getUrl() + <span class="string">", cause: "</span> + e.getMessage(), e);</span><br><span class="line">         &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其他代码&#125;</span></span><br></pre></td></tr></table></figure>
+<p>重写了父类 FailbackRegistry 的销毁方法，使用 Zookeeper 客户端关闭会话，该方法会先调用父类的销毁方法。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>本篇文章主要介绍了 Dubbo 封装的 ZookeeperRegistry，该注册中心类将具体操作任务交给内部封装的 Zookeeper 客户端去完成，自己本身只是处理 Zookeeper 客户端操作前的逻辑，如调用父类方法、解析URL的所属类目等，其中创建 Zookeeper 客户端的直接入口就在该类的构造方法中。此外，该类中的一些方法没有分析到，它们和订阅与通知相关，会和订阅通知一起分析。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/f70c2f2e/" title="Dubbo源码分析 - Zookeeper注册中心" target="_blank" rel="external">https://gentryhuang.com/posts/f70c2f2e/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/ef4cfe7a/" title="Dubbo源码分析 - 优雅停机"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/dafcd048/" title="Dubbo源码分析 - 注册中心总览"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2020 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
