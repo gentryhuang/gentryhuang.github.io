@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - Redis注册中心 | gentryhuang的博客</title>
+  <meta name="description" content="前言在 注册中心总览 中介绍了 Dubbo 的注册中心抽象层，包括注册中心及其工厂。本篇文章将介绍 Dubbo 的 Redis 注册中心及其工厂。  UML 图中的 RedisRegistry 类中实现了 Redis 作为注册中心的逻辑，其中 Redis 的客户端使用的是 Jedis 。 Dubbo 中的 Redis 注册中心   Redis 注册中心也沿用了 Dubbo 抽象的 Root、Ser">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - Redis注册中心">
+<meta property="og:url" content="https://gentryhuang.com/posts/b2453481/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言在 注册中心总览 中介绍了 Dubbo 的注册中心抽象层，包括注册中心及其工厂。本篇文章将介绍 Dubbo 的 Redis 注册中心及其工厂。  UML 图中的 RedisRegistry 类中实现了 Redis 作为注册中心的逻辑，其中 Redis 的客户端使用的是 Jedis 。 Dubbo 中的 Redis 注册中心   Redis 注册中心也沿用了 Dubbo 抽象的 Root、Ser">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/b2453481/dubbo-redis-registry.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/b2453481/dubb-redis-meta.jpg">
+<meta property="article:published_time" content="2020-04-25T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-09-29T12:10:04.826Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="求职">
+<meta property="article:tag" content="技术">
+<meta property="article:tag" content="生活">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/b2453481/dubbo-redis-registry.png">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/b2453481/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">19</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">15</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JDK/" rel="tag">JDK</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/Dubbo/" style="font-size: 13.8px;">Dubbo</a> <a href="/tags/JDK/" style="font-size: 13.4px;">JDK</a> <a href="/tags/Javassist/" style="font-size: 13px;">Javassist</a> <a href="/tags/RPC/" style="font-size: 13.6px;">RPC</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.2px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.4px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.4px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 14px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">13</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-08T11:33:59.000Z" itemprop="datePublished">2020-07-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-08T11:00:50.000Z" itemprop="datePublished">2020-07-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/ef4cfe7a/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/ef4cfe7a/" class="title">Dubbo源码分析 - 优雅停机</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-05-09T16:00:00.000Z" itemprop="datePublished">2020-05-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/c2df2fc6/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/c2df2fc6/" class="title">Dubbo源码分析 - 本地服务导出</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-04-30T16:00:00.000Z" itemprop="datePublished">2020-05-01</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/b2453481/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                
+              </p>
+              <p class="item-title">
+                <a href="/posts/b2453481/" class="title">Dubbo源码分析 - Redis注册中心</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-04-25T16:00:00.000Z" itemprop="datePublished">2020-04-26</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Dubbo-中的-Redis-注册中心"><span class="toc-number">2.</span> <span class="toc-text">Dubbo 中的 Redis 注册中心</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#流程说明"><span class="toc-number">3.</span> <span class="toc-text">流程说明</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#服务提供者启动"><span class="toc-number">3.1.</span> <span class="toc-text">服务提供者启动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#服务消费者启动"><span class="toc-number">3.2.</span> <span class="toc-text">服务消费者启动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#监控中心启动"><span class="toc-number">3.3.</span> <span class="toc-text">监控中心启动</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码分析"><span class="toc-number">4.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#RedisRegistryFactory"><span class="toc-number">4.1.</span> <span class="toc-text">RedisRegistryFactory</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RedisRegistry"><span class="toc-number">4.2.</span> <span class="toc-text">RedisRegistry</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#属性"><span class="toc-number">4.2.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#构造方法"><span class="toc-number">4.2.2.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#注册"><span class="toc-number">4.2.3.</span> <span class="toc-text">注册</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#反注册"><span class="toc-number">4.2.4.</span> <span class="toc-text">反注册</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#订阅"><span class="toc-number">4.2.5.</span> <span class="toc-text">订阅</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Notifier-通知器"><span class="toc-number">4.2.6.</span> <span class="toc-text">Notifier 通知器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#通知"><span class="toc-number">4.2.7.</span> <span class="toc-text">通知</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#destroy"><span class="toc-number">4.2.8.</span> <span class="toc-text">destroy</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">5.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/注册中心之Redis" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - Redis注册中心
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/b2453481/" class="article-date">
+	  <time datetime="2020-04-25T16:00:00.000Z" itemprop="datePublished">2020-04-26</time>
+	</a>
+</span>
+        
+        
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/b2453481/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 8.1k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 35(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在 <a href="https://gentryhuang.com/posts/dafcd048/">注册中心总览</a> 中介绍了 Dubbo 的注册中心抽象层，包括注册中心及其工厂。本篇文章将介绍 Dubbo 的 Redis 注册中心及其工厂。<br><br></p>
+<p><img src="/posts/b2453481/dubbo-redis-registry.png" alt></p>
+<p>UML 图中的 RedisRegistry 类中实现了 Redis 作为注册中心的逻辑，其中 Redis 的客户端使用的是 Jedis 。</p>
+<h2 id="Dubbo-中的-Redis-注册中心"><a href="#Dubbo-中的-Redis-注册中心" class="headerlink" title="Dubbo 中的 Redis 注册中心"></a>Dubbo 中的 Redis 注册中心</h2><br>
+
+<p><img src="/posts/b2453481/dubb-redis-meta.jpg" alt></p>
+<p>Redis 注册中心也沿用了 Dubbo 抽象的 Root、Service、Type、URL 四层结构。在 Redis 中数据都是以键值对的形式保存的，并不能像 Zookeeper 一样直接实现树形目录结构。因此，Redis 使用了 <code>key/Map</code> 结构存储数据：</p>
+<blockquote>
+<p>主key：Root、Service、Type 组合成的值，即服务名和类型，对应图中 /dubbo/com.foo.BarService/providers<br>主key的值Map中的key：URL串，对应图中 dubbo://10.20.153.10:123/barService=13658…<br>主key的值Map中的value: 过期时间</p>
+</blockquote>
+<p>Zookeeper 是基于监听器来感知数据的变化，而 Redis 使用基于 Publish/Subscribe 事件通知数据变更：</p>
+<blockquote>
+<p>通过事件的值区分事件消息类型：register,unregister<br>普通消费者订阅指定的服务提供者的Key，只会收到指定服务的 register,unregister 事件<br>监控中心订阅 /dubbo/*，会收到所有服务的所有变更事件</p>
+</blockquote>
+<p>注意事项：</p>
+<ul>
+<li>当前 Dubbo 版本的 Redis注册中心只会发送两种事件，分别对应服务提供者、服务消费者、动态配置、路由配置的注册与反注册，发送这两个事件的通道Channel是由服务接口决定的。</li>
+<li>服务实例的启动或关闭，会写入或删除对应的数据，并通过通道发布对应的 <code>register</code>，<code>unregister</code> 事件消息，从而保证实时性。</li>
+<li>如果使用监控中心（会订阅/dubbo/*）,Redis 注册中心会定时调度触发清理逻辑，保证未正常关闭的服务实例的 URL 的删除，并发起对应的 <code>unregister</code> 事件消息，从而保证数据的最终一致性。</li>
+<li>不使用 Redis 的自动过期机制，而是通过监控中心实现过期机制，因为 Redis 的key自动过期不存在相应的事件消息通知。</li>
+</ul>
+<br>
+
+<p>选项</p>
+<ul>
+<li>可通过 &lt;dubbo:registry group=”dubbo” /&gt; 设置 redis 中 key 的前缀，缺省为 dubbo。</li>
+<li>可通过 &lt;dubbo:registry cluster=”replicate” /&gt; 设置 redis 集群策略，缺省为 failover。failover: 只写入和读取任意一台，失败时重试另一台，需要服务器端自行配置数据同步，replicate: 在客户端同时写入所有服务器，只读取单台，服务器端不需要同步，注册中心集群增大，性能压力也会更大。</li>
+</ul>
+<h2 id="流程说明"><a href="#流程说明" class="headerlink" title="流程说明"></a>流程说明</h2><p>订阅与通知是注册中心非常重要的功能，使用 Redis 作为注册中心，其订阅与通知实现方式与 Zookeeper 不同。Redis 订阅通知机制使用的是 <code>过期机制</code> 和 <code>Publish/Subscribe</code> 机制。</p>
+<h3 id="服务提供者启动"><a href="#服务提供者启动" class="headerlink" title="服务提供者启动"></a>服务提供者启动</h3><p>服务提供者启动时，首先会在 Redis 中创建约定的k-v键值对，然后在通道（Root + Service + Type）中发布一条 <code>register</code> 事件消息。接着服务提供者会订阅动态配置信息，也就是在订阅URL中设置 <code>category=configurators</code> 。但是需要说明的是，Redis 的订阅实现方式不同 Zookeeper ，Zookeeper 可以直接注册子节点监听器直接监听 <code>.../configurators</code> 下的子节点变化，并且首次订阅就可以返回全量数据。而 Redis 每次订阅并没有订阅详细的Channel，如 <code>/dubbo/com.foo.BarService/configurators</code>，而是统一订阅 <code>Root + Service + *</code>，如 <code>Channel:/dubbo/com.alibaba.dubbo.demo.DemoService/*</code> ,这样一来任何只要是 <code>Root + Service</code> 匹配到的通道有消息都可以被订阅通知对象感知到。除此以外，使用 Redis 作为注册中心进行首次订阅的时候，当前订阅URL的 <code>Root + Service</code> 没有对应的通知器时会为其创建通知器，这个通知器就是用来订阅通道的， 由于 Redis 没有像 Zookeeper 那样绑定监听器，因此首次订阅需要主动使用 Redis 客户端获取 <code>Root + Service</code> 下的所有分类即 <code>Type</code>，然后再根据每个具体的分类获取其对应的 <code>URL</code> 列表，最后就是 Dubbo 的通知逻辑了。</p>
+<h3 id="服务消费者启动"><a href="#服务消费者启动" class="headerlink" title="服务消费者启动"></a>服务消费者启动</h3><p>服务消费者启动的流程和服务提供者几乎一致，不同的是，在 Redis 中创建的k-v队是消费者的，消费者订阅的信息除了动态配置信息，还包括服务提供者信息和路由信息。</p>
+<h3 id="监控中心启动"><a href="#监控中心启动" class="headerlink" title="监控中心启动"></a>监控中心启动</h3><p>监控中心(dubbo-admin)启动的时候只会进行订阅，而且订阅的是所有服务信息，即订阅的通道为 <code>/dubbo/*</code>，也就是说它会订阅所有服务的 providers、consumers、configurators和routers。通过监控中心进行服务治理时，如 设置配置参数、设置路由规则、调整权重、设置黑白名单等才会涉及注册与反注册操作。当订阅的通道有数据变动时，就会触发回调操作。</p>
+<h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><h3 id="RedisRegistryFactory"><a href="#RedisRegistryFactory" class="headerlink" title="RedisRegistryFactory"></a>RedisRegistryFactory</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedisRegistryFactory</span> <span class="keyword">extends</span> <span class="title">AbstractRegistryFactory</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url 注册中心地址</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> Registry <span class="title">createRegistry</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 创建 RedisRegistry 对象</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> RedisRegistry(url);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>RedisRegistry 工厂比较简单，没有其它逻辑，仅仅创建了一个 RedisRegistry 对象。</p>
+<h3 id="RedisRegistry"><a href="#RedisRegistry" class="headerlink" title="RedisRegistry"></a>RedisRegistry</h3><h4 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedisRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(RedisRegistry<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认端口</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> DEFAULT_REDIS_PORT = <span class="number">6379</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认redis的key的根据节点</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">static</span> String DEFAULT_ROOT = <span class="string">"dubbo"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Redis Key 延时过期执行器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ScheduledExecutorService expireExecutor = Executors.newScheduledThreadPool(<span class="number">1</span>, <span class="keyword">new</span> NamedThreadFactory(<span class="string">"DubboRegistryExpireTimer"</span>, <span class="keyword">true</span>));</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Redis Key 延时过期任务的Future</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ScheduledFuture&lt;?&gt; expireFuture;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Redis 根节点</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> String root;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * JedisPool 集合</span></span><br><span class="line"><span class="comment">     * key: ip:port</span></span><br><span class="line"><span class="comment">     * value: JedisPool</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Map&lt;String, JedisPool&gt; jedisPools = <span class="keyword">new</span> ConcurrentHashMap&lt;String, JedisPool&gt;();</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 通知器集合，用于Redis Publish/Subscribe机制中的订阅，本质是调用 Jedis的psubscribe方法进行订阅通道</span></span><br><span class="line"><span class="comment">     * key: Root + Service,例如： /dubbo/com.alibaba.dubbo.demo.DemoService</span></span><br><span class="line"><span class="comment">     * value: 通知器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ConcurrentMap&lt;String, Notifier&gt; notifiers = <span class="keyword">new</span> ConcurrentHashMap&lt;String, Notifier&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 重连周期，单位：毫秒</span></span><br><span class="line"><span class="comment">     * 订阅发生Redis连接异常时，Notifier sleep，等待重连</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> reconnectPeriod;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 过期周期，单位：毫秒</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> expirePeriod;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 是否使用了监控中心，使用了监控中心该属性会被设置 true</span></span><br><span class="line"><span class="comment">     * 用于判断脏数据，脏数据由监控中心删除&#123;<span class="doctag">@link</span> #clean(Jedis)&#125;</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> admin = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 是否复制模式，缺省是failover</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">boolean</span> replicate;</span><br><span class="line"></span><br><span class="line">   <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedisRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line">  </span><br><span class="line"><span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="title">RedisRegistry</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(url);</span><br><span class="line">        <span class="keyword">if</span> (url.isAnyHost()) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"registry address == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 创建 GenericObjectPoolConfig 对象</span></span><br><span class="line">        GenericObjectPoolConfig config = <span class="keyword">new</span> GenericObjectPoolConfig();</span><br><span class="line">        <span class="comment">// 连接从pool中获取，使用前会被验证，通过ping命令检测</span></span><br><span class="line">        config.setTestOnBorrow(url.getParameter(<span class="string">"test.on.borrow"</span>, <span class="keyword">true</span>));</span><br><span class="line">        <span class="comment">// 连接在被归还给pool前，会验证连接的有效性，通过ping命令来检测</span></span><br><span class="line">        config.setTestOnReturn(url.getParameter(<span class="string">"test.on.return"</span>, <span class="keyword">false</span>));</span><br><span class="line">        <span class="comment">// 打开空闲连接存活和回收，周期性检测</span></span><br><span class="line">        config.setTestWhileIdle(url.getParameter(<span class="string">"test.while.idle"</span>, <span class="keyword">false</span>));</span><br><span class="line"></span><br><span class="line">        <span class="comment">// pool中最大的空闲连接数；达到后pool会开始回收空闲连接，直到空闲连接数达到Mindle个数。 主要避免空连接占用，资源浪费</span></span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(<span class="string">"max.idle"</span>, <span class="number">0</span>) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            config.setMaxIdle(url.getParameter(<span class="string">"max.idle"</span>, <span class="number">0</span>));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  pool中保持最小的空闲可用连接数，这部分不被回收。可防止流量增量时，连接创建不及时</span></span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(<span class="string">"min.idle"</span>, <span class="number">0</span>) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            config.setMinIdle(url.getParameter(<span class="string">"min.idle"</span>, <span class="number">0</span>));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// pool可分配的连接数</span></span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(<span class="string">"max.active"</span>, <span class="number">0</span>) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            config.setMaxTotal(url.getParameter(<span class="string">"max.active"</span>, <span class="number">0</span>));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 当前pool可并发的最大连接数</span></span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(<span class="string">"max.total"</span>, <span class="number">0</span>) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            config.setMaxTotal(url.getParameter(<span class="string">"max.total"</span>, <span class="number">0</span>));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取连接的最大等待时间</span></span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(<span class="string">"max.wait"</span>, url.getParameter(<span class="string">"timeout"</span>, <span class="number">0</span>)) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            config.setMaxWaitMillis(url.getParameter(<span class="string">"max.wait"</span>, url.getParameter(<span class="string">"timeout"</span>, <span class="number">0</span>)));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(<span class="string">"num.tests.per.eviction.run"</span>, <span class="number">0</span>) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            config.setNumTestsPerEvictionRun(url.getParameter(<span class="string">"num.tests.per.eviction.run"</span>, <span class="number">0</span>));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(<span class="string">"time.between.eviction.runs.millis"</span>, <span class="number">0</span>) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            config.setTimeBetweenEvictionRunsMillis(url.getParameter(<span class="string">"time.between.eviction.runs.millis"</span>, <span class="number">0</span>));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(<span class="string">"min.evictable.idle.time.millis"</span>, <span class="number">0</span>) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            config.setMinEvictableIdleTimeMillis(url.getParameter(<span class="string">"min.evictable.idle.time.millis"</span>, <span class="number">0</span>));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 是否复制模式</span></span><br><span class="line">        String cluster = url.getParameter(<span class="string">"cluster"</span>, <span class="string">"failover"</span>);</span><br><span class="line">        <span class="keyword">if</span> (!<span class="string">"failover"</span>.equals(cluster) &amp;&amp; !<span class="string">"replicate"</span>.equals(cluster)) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"Unsupported redis cluster: "</span> + cluster + <span class="string">". The redis cluster only supported failover or replicate."</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        replicate = <span class="string">"replicate"</span>.equals(cluster);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 解析</span></span><br><span class="line">        List&lt;String&gt; addresses = <span class="keyword">new</span> ArrayList&lt;String&gt;();</span><br><span class="line">        addresses.add(url.getAddress());</span><br><span class="line">        <span class="comment">// ULR中设置了从库地址</span></span><br><span class="line">        String[] backups = url.getParameter(Constants.BACKUP_KEY, <span class="keyword">new</span> String[<span class="number">0</span>]);</span><br><span class="line">        <span class="keyword">if</span> (backups != <span class="keyword">null</span> &amp;&amp; backups.length &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            addresses.addAll(Arrays.asList(backups));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建JedisPool对象</span></span><br><span class="line">        <span class="keyword">for</span> (String address : addresses) &#123;</span><br><span class="line">            <span class="keyword">int</span> i = address.indexOf(<span class="string">':'</span>);</span><br><span class="line">            String host;</span><br><span class="line">            <span class="keyword">int</span> port;</span><br><span class="line">            <span class="keyword">if</span> (i &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                host = address.substring(<span class="number">0</span>, i);</span><br><span class="line">                port = Integer.parseInt(address.substring(i + <span class="number">1</span>));</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                host = address;</span><br><span class="line">                port = DEFAULT_REDIS_PORT;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">this</span>.jedisPools.put(address, <span class="keyword">new</span> JedisPool(config, host, port,</span><br><span class="line">                    url.getParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT), StringUtils.isEmpty(url.getPassword()) ? <span class="keyword">null</span> : url.getPassword(),</span><br><span class="line">                    url.getParameter(<span class="string">"db.index"</span>, <span class="number">0</span>)));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 解析重连周期</span></span><br><span class="line">        <span class="keyword">this</span>.reconnectPeriod = url.getParameter(Constants.REGISTRY_RECONNECT_PERIOD_KEY, Constants.DEFAULT_REGISTRY_RECONNECT_PERIOD);</span><br><span class="line">        <span class="comment">// 获得Redis 根节点</span></span><br><span class="line">        String group = url.getParameter(Constants.GROUP_KEY, DEFAULT_ROOT);</span><br><span class="line">        <span class="keyword">if</span> (!group.startsWith(Constants.PATH_SEPARATOR)) &#123;</span><br><span class="line">            group = Constants.PATH_SEPARATOR + group;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (!group.endsWith(Constants.PATH_SEPARATOR)) &#123;</span><br><span class="line">            group = group + Constants.PATH_SEPARATOR;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">this</span>.root = group;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 解析会话过期时间</span></span><br><span class="line">        <span class="keyword">this</span>.expirePeriod = url.getParameter(Constants.SESSION_TIMEOUT_KEY, Constants.DEFAULT_SESSION_TIMEOUT);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建实现Redis Key 过期机制的任务</span></span><br><span class="line">        <span class="keyword">this</span>.expireFuture = expireExecutor.scheduleWithFixedDelay(<span class="keyword">new</span> Runnable() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">// 延时过期时间</span></span><br><span class="line">                    deferExpired();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable t) &#123; <span class="comment">// Defensive fault tolerance</span></span><br><span class="line">                    logger.error(<span class="string">"Unexpected exception occur at defer expire time, cause: "</span> + t.getMessage(), t);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, expirePeriod / <span class="number">2</span>, expirePeriod / <span class="number">2</span>, TimeUnit.MILLISECONDS);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>RedisRegistry 构造方法做了两件事，初始化 JedisPool 和 创建 Redis key的延迟过期的任务。初始化 JedisPool 没有什么好说的，主要是设置一些参数，下面我们来看 deferExpired 方法是怎么做到延时key过期的。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">  * 被Key过期机制执行器expireExecutor定时调用，用来延时过期时间.</span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line"> <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">deferExpired</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="keyword">for</span> (Map.Entry&lt;String, JedisPool&gt; entry : jedisPools.entrySet()) &#123;</span><br><span class="line">         JedisPool jedisPool = entry.getValue();</span><br><span class="line">         <span class="keyword">try</span> &#123;</span><br><span class="line">             Jedis jedis = jedisPool.getResource();</span><br><span class="line">             <span class="keyword">try</span> &#123;</span><br><span class="line">                 <span class="comment">// 循环已注册的URL集合</span></span><br><span class="line">                 <span class="keyword">for</span> (URL url : <span class="keyword">new</span> HashSet&lt;URL&gt;(getRegistered())) &#123;</span><br><span class="line">                     <span class="comment">// 是否是动态节点，只有动态节点需要延长过期时间</span></span><br><span class="line">                     <span class="keyword">if</span> (url.getParameter(Constants.DYNAMIC_KEY, <span class="keyword">true</span>)) &#123;</span><br><span class="line">                         <span class="comment">// 获得分类路径，如：/dubbo/com.foo.BarService/providers</span></span><br><span class="line">                         String key = toCategoryPath(url);</span><br><span class="line">                         <span class="comment">/**</span></span><br><span class="line"><span class="comment">                          * 1 写入Redis Map中，更新过期时间</span></span><br><span class="line"><span class="comment">                          * 2 注意，如果过期时间更新的时候返回值为1，说明key已经被删除了，这次算重新发布，因此需要在通道key 中发布 register 事件消息</span></span><br><span class="line"><span class="comment">                          */</span></span><br><span class="line">                         <span class="keyword">if</span> (jedis.hset(key, url.toFullString(), String.valueOf(System.currentTimeMillis() + expirePeriod)) == <span class="number">1</span>) &#123;</span><br><span class="line">                             <span class="comment">// 发布 register 事件</span></span><br><span class="line">                             jedis.publish(key, Constants.REGISTER);</span><br><span class="line">                         &#125;</span><br><span class="line">                     &#125;</span><br><span class="line">                 &#125;</span><br><span class="line"></span><br><span class="line">                 <span class="comment">// 如果是监控中心（admin = true），就负责删除过期脏数据。admin默认为false,可能修改的地方在 doSubscribe 方法中</span></span><br><span class="line">                 <span class="keyword">if</span> (admin) &#123;</span><br><span class="line">                     clean(jedis);</span><br><span class="line">                 &#125;</span><br><span class="line"></span><br><span class="line">                 <span class="comment">// 如果Redis集群策略为 failover，则操作一台Redis即可。</span></span><br><span class="line">                 <span class="keyword">if</span> (!replicate) &#123;</span><br><span class="line">                     <span class="keyword">break</span>;<span class="comment">//  If the server side has synchronized data, just write a single machine</span></span><br><span class="line">                 &#125;</span><br><span class="line">             &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                 jedis.close();</span><br><span class="line">             &#125;</span><br><span class="line">         &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">             logger.warn(<span class="string">"Failed to write provider heartbeat to redis registry. registry: "</span> + entry.getKey() + <span class="string">", cause: "</span> + t.getMessage(), t);</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>服务的 key 写入Redis 后，需要周期性地刷新key过期时间，RedisRegistry 构造方法中启动了一个定时调度线程池，不断调用该方法延续key的过期时间。前面也说明了，Redis 的key自动过期不存在相应的事件通知（订阅者无法感知到key已经不存在），如果提供者宕机而非主动下线，则会造成没有发布 <code>unregister</code> 事件，这时订阅方是不知道服务已经下线的，此外，Redis 的 publish/subscribe 并不是绝对可靠的，如果 Redis 的集群策略设置为 <code>failover</code> 模式，消费者订阅了从节点，某一时刻主节点还没有完成数据同步给从节点就宕机了，那么消费者也是不知道服务已经下线的。因此，如果使用 Redis 作为注册中心，会依赖服务治理中心，使用了服务治理中心，Redis 注册中心就会定时触发清理逻辑，下面我们来看下 Redis 注册中心清理脏数据的逻辑。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 监控中心负责清理过期脏数据</span></span><br><span class="line"><span class="comment">    *</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> jedis</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">clean</span><span class="params">(Jedis jedis)</span> </span>&#123;</span><br><span class="line">       <span class="comment">// 获得所有的 Root + Service + Type</span></span><br><span class="line">       Set&lt;String&gt; keys = jedis.keys(root + Constants.ANY_VALUE);</span><br><span class="line"></span><br><span class="line">       <span class="keyword">if</span> (keys != <span class="keyword">null</span> &amp;&amp; !keys.isEmpty()) &#123;</span><br><span class="line">           <span class="keyword">for</span> (String key : keys) &#123;</span><br><span class="line">               <span class="comment">// 获得分类下的Map,key-&gt;URL,value-&gt;过期时间</span></span><br><span class="line">               Map&lt;String, String&gt; values = jedis.hgetAll(key);</span><br><span class="line">               <span class="keyword">if</span> (values != <span class="keyword">null</span> &amp;&amp; values.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                   <span class="keyword">boolean</span> delete = <span class="keyword">false</span>;</span><br><span class="line">                   <span class="keyword">long</span> now = System.currentTimeMillis();</span><br><span class="line">                   <span class="keyword">for</span> (Map.Entry&lt;String, String&gt; entry : values.entrySet()) &#123;</span><br><span class="line">                       <span class="comment">// 获取URL</span></span><br><span class="line">                       URL url = URL.valueOf(entry.getKey());</span><br><span class="line">                       <span class="comment">// 动态节点</span></span><br><span class="line">                       <span class="keyword">if</span> (url.getParameter(Constants.DYNAMIC_KEY, <span class="keyword">true</span>)) &#123;</span><br><span class="line">                           <span class="comment">// 获取URL对应的过期时间</span></span><br><span class="line">                           <span class="keyword">long</span> expire = Long.parseLong(entry.getValue());</span><br><span class="line">                           <span class="comment">// 已经过期</span></span><br><span class="line">                           <span class="keyword">if</span> (expire &lt; now) &#123;</span><br><span class="line">                               jedis.hdel(key, entry.getKey());</span><br><span class="line">                               delete = <span class="keyword">true</span>;</span><br><span class="line">                               <span class="keyword">if</span> (logger.isWarnEnabled()) &#123;</span><br><span class="line">                                   logger.warn(<span class="string">"Delete expired key: "</span> + key + <span class="string">" -&gt; value: "</span> + entry.getKey() + <span class="string">", expire: "</span> + <span class="keyword">new</span> Date(expire) + <span class="string">", now: "</span> + <span class="keyword">new</span> Date(now));</span><br><span class="line">                               &#125;</span><br><span class="line">                           &#125;</span><br><span class="line">                       &#125;</span><br><span class="line">                   &#125;</span><br><span class="line"></span><br><span class="line">                   <span class="comment">// 若发生删除行为，说明存在URL过期了，需要向key通道发布 `unregister`事件</span></span><br><span class="line">                   <span class="keyword">if</span> (delete) &#123;</span><br><span class="line">                       jedis.publish(key, Constants.UNREGISTER);</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>clean 方法主要做了两件事，把过期的key删除并在通道key中发布 <code>unregister</code> 事件，保证了未正常下线的服务信息的删除，从而保证数据的最终一致性。但这里还有一个问题没有解决，如果 Redis 的集群策略设置为 <code>failover</code> 模式，消费者订阅了从节点，某一时刻提供者下线了，主节点还没有完成数据同步给从节点就宕机了，那么消费者也是不知道服务已经下线的，那这样情况怎么解决呢？问题先抛出来。</p>
+<h4 id="注册"><a href="#注册" class="headerlink" title="注册"></a>注册</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doRegister</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">       <span class="comment">// 获取分类路径 Root + Service + Type</span></span><br><span class="line">       String key = toCategoryPath(url);</span><br><span class="line">       <span class="comment">// 获得URL字符串作为Value</span></span><br><span class="line">       String value = url.toFullString();</span><br><span class="line">       <span class="comment">// 计算过期时间，这会作为Redis Map的值</span></span><br><span class="line">       String expire = String.valueOf(System.currentTimeMillis() + expirePeriod);</span><br><span class="line">       <span class="keyword">boolean</span> success = <span class="keyword">false</span>;</span><br><span class="line">       RpcException exception = <span class="keyword">null</span>;</span><br><span class="line">       <span class="comment">// 向Redis注册</span></span><br><span class="line">       <span class="keyword">for</span> (Map.Entry&lt;String, JedisPool&gt; entry : jedisPools.entrySet()) &#123;</span><br><span class="line">           JedisPool jedisPool = entry.getValue();</span><br><span class="line">           <span class="keyword">try</span> &#123;</span><br><span class="line">               Jedis jedis = jedisPool.getResource();</span><br><span class="line">               <span class="keyword">try</span> &#123;</span><br><span class="line">                   <span class="comment">// 写入Redis hash 中，注意，过期时间是作为Map的值。</span></span><br><span class="line">                   jedis.hset(key, value, expire);</span><br><span class="line">                   <span class="comment">// 发布Redis 注册事件。 key为通道， Constants.REGISTER-&gt;register为事件消息，订阅该通道的就会实时从Redis读取最新消息</span></span><br><span class="line">                   jedis.publish(key, Constants.REGISTER);</span><br><span class="line">                   success = <span class="keyword">true</span>;</span><br><span class="line">                   <span class="comment">// 如果非replicate模式，只需要写入单台机器，结束循环。否则，就继续循环，向所有的Redis写入</span></span><br><span class="line">                   <span class="keyword">if</span> (!replicate) &#123;</span><br><span class="line">                       <span class="keyword">break</span>;</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                   jedis.close();</span><br><span class="line">               &#125;</span><br><span class="line">           &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">               exception = <span class="keyword">new</span> RpcException(<span class="string">"Failed to register service to redis registry. registry: "</span> + entry.getKey() + <span class="string">", service: "</span> + url + <span class="string">", cause: "</span> + t.getMessage(), t);</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="comment">// 处理异常</span></span><br><span class="line">       <span class="keyword">if</span> (exception != <span class="keyword">null</span>) &#123;</span><br><span class="line">           <span class="keyword">if</span> (success) &#123;</span><br><span class="line">               logger.warn(exception.getMessage(), exception);</span><br><span class="line">           &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">               <span class="keyword">throw</span> exception;</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>注册方法主要做了两件事，把信息写到 Redis 中，然后发布注册事件。这里注册不仅是服务提供者和消费者，还可能是动态配置，路由规则等。</p>
+<h4 id="反注册"><a href="#反注册" class="headerlink" title="反注册"></a>反注册</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doUnregister</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">     <span class="comment">// 获取分类路径 Root + Service + Type</span></span><br><span class="line">    String key = toCategoryPath(url);</span><br><span class="line">    <span class="comment">// 获得URL字符串作为Value</span></span><br><span class="line">    String value = url.toFullString();</span><br><span class="line">    RpcException exception = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">boolean</span> success = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (Map.Entry&lt;String, JedisPool&gt; entry : jedisPools.entrySet()) &#123;</span><br><span class="line">        JedisPool jedisPool = entry.getValue();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Jedis jedis = jedisPool.getResource();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 删除 Redis Map 建</span></span><br><span class="line">                jedis.hdel(key, value);</span><br><span class="line">                <span class="comment">// 发布Redis 取消注册事件 key为通道 ， Constants.UNREGISTER-&gt;unregister 为事件消息</span></span><br><span class="line">                jedis.publish(key, Constants.UNREGISTER);</span><br><span class="line">                success = <span class="keyword">true</span>;</span><br><span class="line">                <span class="comment">// 如果非replicate模式，只需操作单台机器，因此结束循环。否则，就继续循环，向所有的Redis写入</span></span><br><span class="line">                <span class="keyword">if</span> (!replicate) &#123;</span><br><span class="line">                    <span class="keyword">break</span>; <span class="comment">//  If the server side has synchronized data, just write a single machine</span></span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                jedis.close();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">            exception = <span class="keyword">new</span> RpcException(<span class="string">"Failed to unregister service to redis registry. registry: "</span> + entry.getKey() + <span class="string">", service: "</span> + url + <span class="string">", cause: "</span> + t.getMessage(), t);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (exception != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (success) &#123;</span><br><span class="line">            logger.warn(exception.getMessage(), exception);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">throw</span> exception;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>反注册主要也做了两件事，从Redis 中删除数据，然后发布 unregister 为事件。当服务消费者或服务提供者关闭时，会调用该方法，取消注册，因为正常情况下，无需使用监控中心做脏数据删除的工作。同样，这里反注册不仅是服务提供者和消费者，还可能是动态配置，路由规则等。</p>
+<h4 id="订阅"><a href="#订阅" class="headerlink" title="订阅"></a>订阅</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doSubscribe</span><span class="params">(<span class="keyword">final</span> URL url, <span class="keyword">final</span> NotifyListener listener)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 获得服务路径 Root + Service 如： /dubbo/com.alibaba.dubbo.demo.DemoService</span></span><br><span class="line">    String service = toServicePath(url);</span><br><span class="line">    <span class="comment">// 获得服务路径对应的通知器 Notifier 对象,不存在对应的通知器，则创建Notifier对象</span></span><br><span class="line">    Notifier notifier = notifiers.get(service);</span><br><span class="line">    <span class="keyword">if</span> (notifier == <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         *  创建服务路径对应的通知器Notifier对象，即基于 Root + Service 开启订阅线程，如果服务很多，就意味着有很多此类线程，创建线程是消耗资源的，而且还是那种阻塞不释放的。</span></span><br><span class="line"><span class="comment">         *  说明：</span></span><br><span class="line"><span class="comment">         *  zk是直接调用客户端API绑定监听器实现订阅，redis是使用多个独立的订阅线程，使用pub/sub机制进行处理，因为redis的pub/sub是基于channel进行的长连接通信，因此每个服务只能使用单独的线程。</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        Notifier newNotifier = <span class="keyword">new</span> Notifier(service);</span><br><span class="line">        notifiers.putIfAbsent(service, newNotifier);</span><br><span class="line">        notifier = notifiers.get(service);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 保证并发的情况下，有且仅有一个启动</span></span><br><span class="line">        <span class="keyword">if</span> (notifier == newNotifier) &#123;</span><br><span class="line">            <span class="comment">// 启动线程（订阅了通道，有消息发布就会被通知订阅对象收到，然后进行后续的通知处理），需要注意：Jedis的订阅是阻塞的，因此需要开启线程，不然主线程会阻塞。</span></span><br><span class="line">            notifier.start();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">boolean</span> success = <span class="keyword">false</span>;</span><br><span class="line">    RpcException exception = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 循环 jedisPools,仅从一个Redis获取数据，然后进行通知，直到成功</span></span><br><span class="line">    <span class="keyword">for</span> (Map.Entry&lt;String, JedisPool&gt; entry : jedisPools.entrySet()) &#123;</span><br><span class="line">        JedisPool jedisPool = entry.getValue();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Jedis jedis = jedisPool.getResource();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 处理 Root + * 的订阅，一般是监听中心的订阅</span></span><br><span class="line">                <span class="keyword">if</span> (service.endsWith(Constants.ANY_VALUE)) &#123;</span><br><span class="line">                    <span class="comment">// 标记admin = true,监控中心才会清理脏数据</span></span><br><span class="line">                    admin = <span class="keyword">true</span>;</span><br><span class="line">                    <span class="comment">// 调用Jedis#keys(pattern)方法根据`/dubbo/*` 通配符获得分类层集合。始终记住 Redis 作为注册中心时，key是分类，如： /dubbo/com.alibaba.dubbo.demo.DemoService/providers</span></span><br><span class="line">                    Set&lt;String&gt; keys = jedis.keys(service);</span><br><span class="line">                    <span class="keyword">if</span> (keys != <span class="keyword">null</span> &amp;&amp; !keys.isEmpty()) &#123;</span><br><span class="line">                        <span class="comment">// key: Root + Service  value: Root + Service + Type</span></span><br><span class="line">                        Map&lt;String, Set&lt;String&gt;&gt; serviceKeys = <span class="keyword">new</span> HashMap&lt;String, Set&lt;String&gt;&gt;();</span><br><span class="line">                        <span class="keyword">for</span> (String key : keys) &#123;</span><br><span class="line">                            <span class="comment">// 获取Root + Service，如：/dubbo/com.alibaba.dubbo.demo.DemoService</span></span><br><span class="line">                            String serviceKey = toServicePath(key);</span><br><span class="line">                            Set&lt;String&gt; sk = serviceKeys.get(serviceKey);</span><br><span class="line">                            <span class="keyword">if</span> (sk == <span class="keyword">null</span>) &#123;</span><br><span class="line">                                sk = <span class="keyword">new</span> HashSet&lt;String&gt;();</span><br><span class="line">                                serviceKeys.put(serviceKey, sk);</span><br><span class="line">                            &#125;</span><br><span class="line">                            sk.add(key);</span><br><span class="line">                        &#125;</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// 循环serviceKeys</span></span><br><span class="line">                        <span class="keyword">for</span> (Set&lt;String&gt; sk : serviceKeys.values()) &#123;</span><br><span class="line">                            <span class="comment">// 通知监听器</span></span><br><span class="line">                            doNotify(jedis, sk, url, Arrays.asList(listener));</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 处理指定 Root + Service 的订阅 </span></span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="comment">/**</span></span><br><span class="line"><span class="comment">                     * 1 调用Jedis#keys(pattern)方法，获得所有分类，例如：/dubbo/com.alibaba.dubbo.demo.DemoService/providers</span></span><br><span class="line"><span class="comment">                     * 2 通知监听器</span></span><br><span class="line"><span class="comment">                     */</span></span><br><span class="line">                    doNotify(jedis, jedis.keys(service + Constants.PATH_SEPARATOR + Constants.ANY_VALUE), url, Arrays.asList(listener));</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 标记成功</span></span><br><span class="line">                success = <span class="keyword">true</span>;</span><br><span class="line">                <span class="comment">// Just read one server's data</span></span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                jedis.close();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable t) &#123; <span class="comment">// Try the next server</span></span><br><span class="line">            exception = <span class="keyword">new</span> RpcException(<span class="string">"Failed to subscribe service from redis registry. registry: "</span> + entry.getKey() + <span class="string">", service: "</span> + url + <span class="string">", cause: "</span> + t.getMessage(), t);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 处理异常</span></span><br><span class="line">    <span class="keyword">if</span> (exception != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (success) &#123;</span><br><span class="line">            logger.warn(exception.getMessage(), exception);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">throw</span> exception;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>服务提供者、服务消费者、和服务治理中心都会使用注册中心的订阅功能。在订阅时，如果是首次订阅，则会先创建一个 Notifier 通知器，它是一个线程类，以异步方式进行通道的订阅。在启动通知器的同时，主线程会继续往下执行，全量拉取注册中心上和本次订阅相关的数据信息。后续注册中心上的信息变更则通过通知器订阅的通道来实现，发生变更订阅器会收到。此外，这里有两个分支，第一个是处理监控中心的订阅即 <code>Root + *</code>，第二个是处理指定<code>Root + Service + *</code> 的订阅，如果是监控中心的订阅会开启脏数据的清理任务。有了订阅，下面我们来看通知器的实现。</p>
+<h4 id="Notifier-通知器"><a href="#Notifier-通知器" class="headerlink" title="Notifier 通知器"></a>Notifier 通知器</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedisRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">   <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 通知器类，是一个线程对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">Notifier</span> <span class="keyword">extends</span> <span class="title">Thread</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 服务名 Root + Service</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">final</span> String service;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 需要忽略连接的次数</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">final</span> AtomicInteger connectSkip = <span class="keyword">new</span> AtomicInteger();</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 已经忽略连接的次数</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">final</span> AtomicInteger connectSkiped = <span class="keyword">new</span> AtomicInteger();</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 随机对象</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">final</span> Random random = <span class="keyword">new</span> Random();</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * Jedis</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">volatile</span> Jedis jedis;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 是否首次</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> first = <span class="keyword">true</span>;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 是否运行中</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> running = <span class="keyword">true</span>;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 连接次数随机数</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">int</span> connectRandom;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="title">Notifier</span><span class="params">(String service)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">super</span>.setDaemon(<span class="keyword">true</span>);</span><br><span class="line">            <span class="keyword">super</span>.setName(<span class="string">"DubboRedisSubscribe"</span>);</span><br><span class="line">            <span class="keyword">this</span>.service = service;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 重置忽略连接的信息</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">resetSkip</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="comment">// 重置需要忽略连接的次数</span></span><br><span class="line">            connectSkip.set(<span class="number">0</span>);</span><br><span class="line">            <span class="comment">// 重置已忽略次数和随机数</span></span><br><span class="line">            connectSkiped.set(<span class="number">0</span>);</span><br><span class="line">            connectRandom = <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 判断是否忽略本次对Redis的连接</span></span><br><span class="line"><span class="comment">         * 原则是：连接失败的次数越多，每一轮加大需要忽略的总次数</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">isSkip</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="comment">// 获得需要忽略的连接数，如果超过10，则加上一个10以内的随机数</span></span><br><span class="line">            <span class="keyword">int</span> skip = connectSkip.get(); <span class="comment">// Growth of skipping times</span></span><br><span class="line">            <span class="keyword">if</span> (skip &gt;= <span class="number">10</span>) &#123; <span class="comment">// If the number of skipping times increases by more than 10, take the random number</span></span><br><span class="line">                <span class="keyword">if</span> (connectRandom == <span class="number">0</span>) &#123;</span><br><span class="line">                    connectRandom = random.nextInt(<span class="number">10</span>);</span><br><span class="line">                &#125;</span><br><span class="line">                skip = <span class="number">10</span> + connectRandom;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 自增忽略次数，若忽略次数不够，则继续忽略</span></span><br><span class="line">            <span class="keyword">if</span> (connectSkiped.getAndIncrement() &lt; skip) &#123; <span class="comment">// Check the number of skipping times</span></span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 增加需要忽略的次数</span></span><br><span class="line">            connectSkip.incrementAndGet();</span><br><span class="line">            <span class="comment">// 重置已忽略次数和随机数</span></span><br><span class="line">            connectSkiped.set(<span class="number">0</span>);</span><br><span class="line">            connectRandom = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="comment">// 这里的循环处理是为了避免网络等异常的发生，便于重新尝试连接redis 订阅channel</span></span><br><span class="line">            <span class="keyword">while</span> (running) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">// 是否跳过本次Redis连接 todo</span></span><br><span class="line">                    <span class="keyword">if</span> (!isSkip()) &#123;</span><br><span class="line">                        <span class="keyword">try</span> &#123;</span><br><span class="line">                            <span class="comment">// 循环连接池</span></span><br><span class="line">                            <span class="keyword">for</span> (Map.Entry&lt;String, JedisPool&gt; entry : jedisPools.entrySet()) &#123;</span><br><span class="line"></span><br><span class="line">                                JedisPool jedisPool = entry.getValue();</span><br><span class="line">                                <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">                                    jedis = jedisPool.getResource();</span><br><span class="line">                                    <span class="keyword">try</span> &#123;</span><br><span class="line">                                        <span class="comment">// 如果是监控中心的订阅</span></span><br><span class="line">                                        <span class="keyword">if</span> (service.endsWith(Constants.ANY_VALUE)) &#123;</span><br><span class="line">                                            <span class="keyword">if</span> (!first) &#123;</span><br><span class="line">                                                first = <span class="keyword">false</span>;</span><br><span class="line">                                                <span class="comment">// 获取分类集合</span></span><br><span class="line">                                                Set&lt;String&gt; keys = jedis.keys(service);</span><br><span class="line">                                                <span class="keyword">if</span> (keys != <span class="keyword">null</span> &amp;&amp; !keys.isEmpty()) &#123;</span><br><span class="line">                                                    <span class="keyword">for</span> (String s : keys) &#123;</span><br><span class="line">                                                        doNotify(jedis, s);</span><br><span class="line">                                                    &#125;</span><br><span class="line">                                                &#125;</span><br><span class="line"></span><br><span class="line">                                              <span class="comment">// 由于连接过程允许一定量的失败，调用该方法重置计数器</span></span><br><span class="line">                                                resetSkip();</span><br><span class="line">                                            &#125;</span><br><span class="line">                                          </span><br><span class="line">                                            <span class="comment">// 订阅给定模式的通道，当订阅的通道有发布消息时，NotifySub对象的回调方法就能接收到。需要注意的是，订阅方法是阻塞的。</span></span><br><span class="line">                                            jedis.psubscribe(<span class="keyword">new</span> NotifySub(jedisPool), service); <span class="comment">// blocking</span></span><br><span class="line"></span><br><span class="line">                                            <span class="comment">// 服务提供者或者消费者</span></span><br><span class="line">                                        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                                            <span class="keyword">if</span> (!first) &#123;</span><br><span class="line">                                                first = <span class="keyword">false</span>;</span><br><span class="line">                                                doNotify(jedis, service);</span><br><span class="line">                                                <span class="comment">// 由于连接过程允许一定量的失败，调用该方法重置计数器</span></span><br><span class="line">                                                resetSkip();</span><br><span class="line">                                            &#125;</span><br><span class="line"></span><br><span class="line">                                            jedis.psubscribe(<span class="keyword">new</span> NotifySub(jedisPool), service + Constants.PATH_SEPARATOR + Constants.ANY_VALUE); <span class="comment">// blocking</span></span><br><span class="line">                                        &#125;</span><br><span class="line">                                        <span class="keyword">break</span>;</span><br><span class="line">                                    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                                        jedis.close();</span><br><span class="line">                                    &#125;</span><br><span class="line"></span><br><span class="line">                                &#125; <span class="keyword">catch</span> (Throwable t) &#123; <span class="comment">// Retry another server</span></span><br><span class="line"></span><br><span class="line">                                    logger.warn(<span class="string">"Failed to subscribe service from redis registry. registry: "</span> + entry.getKey() + <span class="string">", cause: "</span> + t.getMessage(), t);</span><br><span class="line">                                    <span class="comment">// If you only have a single redis, you need to take a rest to avoid overtaking a lot of CPU resources</span></span><br><span class="line">                                    sleep(reconnectPeriod);</span><br><span class="line">                                &#125;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                            logger.error(t.getMessage(), t);</span><br><span class="line">                            sleep(reconnectPeriod);</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                    </span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                    logger.error(t.getMessage(), t);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 停止 Notifier，关闭redis订阅相关工作的关键。它是通过设置停止循环标识，以及关闭redis连接实现的。</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">shutdown</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 设置停止标识</span></span><br><span class="line">                running = <span class="keyword">false</span>;</span><br><span class="line">                <span class="comment">// 断开redis连接，它还会停止psubscribe的调用，从而间接中止订阅</span></span><br><span class="line">                jedis.disconnect();</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                logger.warn(t.getMessage(), t);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通知器是一个线程，它是 RedisRegistry的内部类，每一个服务（Root + Service）对应一个通知器，如果存在大量订阅请求并且订阅URL都不是同一个服务，那么就要创建大量的线程。不仅如此，由通知器类还可以发现其任务方法中调用了订阅方法 <code>jedis.psubscribe</code> ，这个方法是阻塞的。因此，使用 Redis 注册中心要考虑线程资源。目前为止，Redis 的发布我们已经知道了，主要在注册和反注册的方法中，如果使用了监控中心，还会在脏数据清理方法中。订阅接收对象依然没有出现，请注意，通知器并非是订阅器，但是通知器创建了订阅器 NotifySub，我们继续跟进该类。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedisRegistry</span> <span class="keyword">extends</span> <span class="title">FailbackRegistry</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line"> <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * RedisRegistry 的内部类，继承 redis.clients.jedis.JedisPubSub 抽象类，它是个通知订阅实现类</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">NotifySub</span> <span class="keyword">extends</span> <span class="title">JedisPubSub</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">final</span> JedisPool jedisPool;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="title">NotifySub</span><span class="params">(JedisPool jedisPool)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">this</span>.jedisPool = jedisPool;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 订阅后的通知回调方法</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@param</span> key 订阅的key，一般为类目，如：/dubbo/com.alibaba.dubbo.demo.DemoService/providers</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@param</span> msg 事件消息</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onMessage</span><span class="params">(String key, String msg)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                logger.info(<span class="string">"redis event: "</span> + key + <span class="string">" = "</span> + msg);</span><br><span class="line">            &#125;</span><br><span class="line">          </span><br><span class="line">            <span class="comment">// 收到register/unregister事件，调用#doNotify方法，组装目标URL然后通知监听器，从而实现实时更新</span></span><br><span class="line">            <span class="keyword">if</span> (msg.equals(Constants.REGISTER) || msg.equals(Constants.UNREGISTER)) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    Jedis jedis = jedisPool.getResource();</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// 进行通知，这里不是真正意义上的通知</span></span><br><span class="line">                        doNotify(jedis, key);</span><br><span class="line">                    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                        jedis.close();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable t) &#123; <span class="comment">// TODO Notification failure does not restore mechanism guarantee</span></span><br><span class="line">                    logger.error(t.getMessage(), t);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onPMessage</span><span class="params">(String pattern, String key, String msg)</span> </span>&#123;</span><br><span class="line">            onMessage(key, msg);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onSubscribe</span><span class="params">(String key, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onPSubscribe</span><span class="params">(String pattern, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onUnsubscribe</span><span class="params">(String key, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onPUnsubscribe</span><span class="params">(String pattern, <span class="keyword">int</span> num)</span> </span>&#123;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>NotifySub 继承 <code>redis.clients.jedis.JedisPubSub</code> 抽象类，这样它就具有了订阅的功能，它也是 RedisRegistry 的内部类。当 <code>jedis.psubscribe(JedisPubSub,channel)</code> 订阅了通道（支持通配符）后，一旦该通道有事件消息发布 NotifySub 的通知回调方法就会调用，就能拿到具体的通道和在通道中发布的事件消息。至此， Redis 注册中心的两大核心角色就有了，下面我们简单梳理下整个过程。</p>
+<ol>
+<li>服务提供者、消费者在启动过程会进行服务的注册和订阅</li>
+</ol>
+<blockquote>
+<p>1 注册的过程会先把服务信息写入到Redis中，并且通过分类路径 ‘Root + Service + Type’ 这个通道发布注册事件消息 register<br>2 订阅的过程会先创建一个通知器线程并启动，这个通知器线程会订阅服务路径 ‘Root + Service + *’ 这个通道，订阅后就坐等该通道的事件消息，NotifySub 对象就是用来接收通道消息的。然后会主动从Redis注册中心拉取 服务路径 ‘Root + Service + *’ 下的所有分类。</p>
+</blockquote>
+<ol start="2">
+<li>有服务下线会进行反注册</li>
+</ol>
+<blockquote>
+<p>1 反注册会先把服务信息从Redis中删除，并且通过分类路径 ‘Root + Service + Type’ 这个通道发布反注册事件消息 unregister<br>2 如果通知已经被订阅，那么NotifySub就会接收通道发来的 反注册事件消息 unregister</p>
+</blockquote>
+<ol start="3">
+<li>监控中心启动会订阅所有服务</li>
+</ol>
+<blockquote>
+<p>订阅的过程会先创建一个通知器线程并启动，这个通知器线程会订阅服务路径 ‘Root + *’ 这个通道，订阅后就坐等该通道的事件消息。然后会从Redis注册中心拉取所有数据并分类存储在缓存中</p>
+</blockquote>
+<ol start="4">
+<li>监控中心进行服务治理</li>
+</ol>
+<blockquote>
+<p>服务治理涉及到注册和反注册，如：创建提供者、设置动态配置、设置路由规则等，都会向对应的通道发送消息。这些都会触发 NotifySub 通知回调</p>
+</blockquote>
+<p>以上分析主要是针对 注册（反注册）和订阅的分析，我们还少了一步通知，前文订阅的过程会调用通知方法，下面我们就来分析 Redis 注册中心的通知是怎么做的。</p>
+<h4 id="通知"><a href="#通知" class="headerlink" title="通知"></a>通知</h4><p>需要说明的是，Zookeeper 由于可以注册监听器进而直接拿到订阅关注的全量数据，但是 Redis 订阅后得到的通知结果并不是订阅关注的数据而是大Key，需要多做一步查询大Key对应的目标URL集合，即 使用 doNotify 方法将 Redis 中的数据接入到应用中，然后回调监听器的方法完成通知。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> jedis</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> key   分类，NotifySub获取到的，例如： /dubbo/com.alibaba.dubbo.demo.DemoService/providers</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doNotify</span><span class="params">(Jedis jedis, String key)</span> </span>&#123;</span><br><span class="line">      <span class="comment">// 调用getSubscribed()方法，获得所有 订阅 URL 的监听器集合</span></span><br><span class="line">      <span class="keyword">for</span> (Map.Entry&lt;URL, Set&lt;NotifyListener&gt;&gt; entry : <span class="keyword">new</span> HashMap&lt;URL, Set&lt;NotifyListener&gt;&gt;(getSubscribed()).entrySet()) &#123;</span><br><span class="line">          doNotify(jedis, Arrays.asList(key), entry.getKey(), <span class="keyword">new</span> HashSet&lt;NotifyListener&gt;(entry.getValue()));</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> jedis     Jedis</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> keys      分类数组 ，如 /dubbo/com.alibaba.dubbo.demo.DemoService/providers （首次会拉取某个Service层下的所有分类）</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> url       订阅URL</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> listeners 订阅URL对应的监听器集合</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doNotify</span><span class="params">(Jedis jedis, Collection&lt;String&gt; keys, URL url, Collection&lt;NotifyListener&gt; listeners)</span> </span>&#123;</span><br><span class="line">      <span class="keyword">if</span> (keys == <span class="keyword">null</span> || keys.isEmpty() || listeners == <span class="keyword">null</span> || listeners.isEmpty()) &#123;</span><br><span class="line">          <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 当前时间</span></span><br><span class="line">      <span class="keyword">long</span> now = System.currentTimeMillis();</span><br><span class="line"></span><br><span class="line">       <span class="comment">// 目标URL集合</span></span><br><span class="line">      List&lt;URL&gt; result = <span class="keyword">new</span> ArrayList&lt;URL&gt;();</span><br><span class="line"></span><br><span class="line">      <span class="comment">/**</span></span><br><span class="line"><span class="comment">       * 获得订阅URL的分类，不同的角色关注不同的分类数据【zookeeper也是如此】</span></span><br><span class="line"><span class="comment">       * 1 服务提供者，关注configurators</span></span><br><span class="line"><span class="comment">       * 2 服务消费者，关注providers,configurators.routers</span></span><br><span class="line"><span class="comment">       * 3 监控中心关注所有</span></span><br><span class="line"><span class="comment">       */</span></span><br><span class="line">      List&lt;String&gt; categories = Arrays.asList(url.getParameter(Constants.CATEGORY_KEY, <span class="keyword">new</span> String[<span class="number">0</span>]));</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 订阅URL映射的服务接口名 ，Root + Service</span></span><br><span class="line">      String consumerService = url.getServiceInterface();</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 循环分类数组，如： /dubbo/com.alibaba.dubbo.demo.DemoService/providers</span></span><br><span class="line">      <span class="keyword">for</span> (String key : keys) &#123;</span><br><span class="line">          </span><br><span class="line">          <span class="keyword">if</span> (!Constants.ANY_VALUE.equals(consumerService)) &#123;</span><br><span class="line"></span><br><span class="line">              <span class="comment">// 获取分类对应的服务接口名 ，Root + Service</span></span><br><span class="line">              String prvoiderService = toServiceName(key);</span><br><span class="line"></span><br><span class="line">              <span class="comment">// 分离对应的服务接口名是否匹配订阅URL映射的服务接口名,不匹配直接返回，说明不是订阅URl关注的分类</span></span><br><span class="line">              <span class="keyword">if</span> (!prvoiderService.equals(consumerService)) &#123;</span><br><span class="line">                  <span class="keyword">continue</span>;</span><br><span class="line">              &#125;</span><br><span class="line"></span><br><span class="line">          &#125;</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 如果订阅URL不关注该分类，则直接返回</span></span><br><span class="line">          String category = toCategoryName(key);</span><br><span class="line">          <span class="keyword">if</span> (!categories.contains(Constants.ANY_VALUE) &amp;&amp; !categories.contains(category)) &#123;</span><br><span class="line">              <span class="keyword">continue</span>;</span><br><span class="line">          &#125;</span><br><span class="line">         </span><br><span class="line">          List&lt;URL&gt; urls = <span class="keyword">new</span> ArrayList&lt;URL&gt;();</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 获得分类下所有URL数组，如： /dubbo/com.alibaba.dubbo.demo.DemoService/providers 下的所有提供者URL及其过期时间</span></span><br><span class="line">          Map&lt;String, String&gt; values = jedis.hgetAll(key);</span><br><span class="line">          <span class="keyword">if</span> (values != <span class="keyword">null</span> &amp;&amp; values.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">              <span class="keyword">for</span> (Map.Entry&lt;String, String&gt; entry : values.entrySet()) &#123;</span><br><span class="line">                  URL u = URL.valueOf(entry.getKey());</span><br><span class="line">                  <span class="comment">// 过滤掉已过期的动态节点 [动态节点才可能会变化，把动态节点收集起来，去和原来的节点对比，看是否有变化，有变化就需要做些操作，如 服务重新暴露]</span></span><br><span class="line">                  <span class="keyword">if</span> (!u.getParameter(Constants.DYNAMIC_KEY, <span class="keyword">true</span>) || Long.parseLong(entry.getValue()) &gt;= now) &#123;</span><br><span class="line">                      <span class="keyword">if</span> (UrlUtils.isMatch(url, u)) &#123;</span><br><span class="line">                          urls.add(u);</span><br><span class="line">                      &#125;</span><br><span class="line">                  &#125;</span><br><span class="line">              &#125;</span><br><span class="line">          &#125;</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 若不存在匹配，则创建 `empty://` 的 URL</span></span><br><span class="line">          <span class="keyword">if</span> (urls.isEmpty()) &#123;</span><br><span class="line">              urls.add(url.setProtocol(Constants.EMPTY_PROTOCOL)</span><br><span class="line">                      .setAddress(Constants.ANYHOST_VALUE)</span><br><span class="line">                      .setPath(toServiceName(key))</span><br><span class="line">                      .addParameter(Constants.CATEGORY_KEY, category));</span><br><span class="line">          &#125;</span><br><span class="line"></span><br><span class="line">          result.addAll(urls);</span><br><span class="line"></span><br><span class="line">          <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">              logger.info(<span class="string">"redis notify: "</span> + key + <span class="string">" = "</span> + urls);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (result == <span class="keyword">null</span> || result.isEmpty()) &#123;</span><br><span class="line">          <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 回调父类的notify方法，进行通知，这里才是真正通知监听器的入口。接下来的流程和 Zookeeper 一致</span></span><br><span class="line">      <span class="keyword">for</span> (NotifyListener listener : listeners) &#123;</span><br><span class="line">          notify(url, listener, result);</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>该方法需要注意一个点，分类不一定能够匹配上订阅URL，因此需要过滤。造成原因就一个，Redis 是使用Root + Service 获取分类的，主动获取和订阅都是这样。该方法看着逻辑不少，不过主要做了三个工作：</p>
+<ol>
+<li>根据订阅URL选出匹配的分类，因为 Redis 是根据订阅URL的Root + Service 获取其下的所有分类，但是订阅URL中也许没有指定那么多，就是订阅URL的category参数的值。</li>
+<li>选出匹配的分类后，获取分类下的URL集合，然后筛选出没有过期的URL。如果没有预期的URL，就创建一个 empty://… </li>
+<li>回调NotifyListener，进行通知。如 服务重新暴露，服务目录更新等</li>
+</ol>
+<p>至此，Redis 注册中心的 注册（反注册）、订阅、通知分析完毕，值得一说的是 Redis 的取消订阅什么都没有做是个空方法，在ZookeeperRegistry的该方法中，是移除了对应的监听器，这里理论上 Redis 应该解除订阅，不过 Redis 把这个收尾操作放到了 destroy 方法中了，我们一起来看看这个收尾方法。</p>
+<h4 id="destroy"><a href="#destroy" class="headerlink" title="destroy"></a>destroy</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 父类关闭</span></span><br><span class="line">    <span class="keyword">super</span>.destroy();</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 取消定时任务，过期时间不会更新</span></span><br><span class="line">        expireFuture.cancel(<span class="keyword">true</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">        logger.warn(t.getMessage(), t);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 关闭通知器，依次调用 shutdown方法，停止订阅工作。</span></span><br><span class="line">        <span class="keyword">for</span> (Notifier notifier : notifiers.values()) &#123;</span><br><span class="line">            notifier.shutdown();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">        logger.warn(t.getMessage(), t);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 关闭连接池</span></span><br><span class="line">    <span class="keyword">for</span> (Map.Entry&lt;String, JedisPool&gt; entry : jedisPools.entrySet()) &#123;</span><br><span class="line">        JedisPool jedisPool = entry.getValue();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            jedisPool.destroy();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">            logger.warn(<span class="string">"Failed to destroy the redis registry client. registry: "</span> + entry.getKey() + <span class="string">", cause: "</span> + t.getMessage(), t);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 最后优雅关闭过期扫描定时任务线程池，即 shutdown()..awaitTermination()的应用。</span></span><br><span class="line">    ExecutorUtil.gracefulShutdown(expireExecutor, expirePeriod);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>销毁方法主要做了以下工作：</p>
+<ol>
+<li>调用父类FailbackRegistry的 destroy 方法</li>
+<li>取消延时key过期的任务</li>
+<li>关闭通知器线程，停止订阅工作</li>
+<li>关闭JedisPool，释放资源</li>
+</ol>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>Redis 作为注册中心与 Zookeeper 作为注册的前置操作都是一样的，其核心是基于 Redis 的 Publish/Subscribe 。和 Zookeeper 相比较，Redis 功能实现会相对繁琐一些，并且其可靠性依赖于 Redis 本身的可靠性。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/b2453481/" title="Dubbo源码分析 - Redis注册中心" target="_blank" rel="external">https://gentryhuang.com/posts/b2453481/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/c2df2fc6/" title="Dubbo源码分析 - 本地服务导出"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/817d6a19/" title="Dubbo源码分析 - Zookeeper客户端"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2020 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
