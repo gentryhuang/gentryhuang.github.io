@@ -25,16 +25,16 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言在 Dubbo源码分析 - Zookeeper注册中心 中介绍的是 Dubbo 的 Zookeeper 注册中心实现，但是并没有涉及到 Zookeeper 客户端的操作，下面我们介绍 Zookeeper 在 Dubbo 框架中具体实现。 概述 上图的 UML 描述了 Dubbo 封装的 Zookeeper 注册中心和 Zookeeper 相关实现的关系。 Dubbo 对 Zookeeper 客">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/817d6a19/dubbo-zookeeper-client.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/817d6a19/dubb-zookeeper-module.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-zookeeper-client.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubb-zookeeper-module.jpg">
 <meta property="article:published_time" content="2020-04-19T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-09-29T17:03:02.228Z">
+<meta property="article:modified_time" content="2020-09-30T03:30:01.891Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
 <meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/817d6a19/dubbo-zookeeper-client.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-zookeeper-client.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/817d6a19/index.html">
   
@@ -452,10 +452,10 @@
     <div class="article-entry marked-body" itemprop="articleBody">
       
         <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在 <a href="https://gentryhuang.com/posts/f70c2f2e/">Dubbo源码分析 - Zookeeper注册中心</a> 中介绍的是 Dubbo 的 Zookeeper 注册中心实现，但是并没有涉及到 Zookeeper 客户端的操作，下面我们介绍 Zookeeper 在 Dubbo 框架中具体实现。</p>
-<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p><img src="/posts/817d6a19/dubbo-zookeeper-client.png" alt></p>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-zookeeper-client.png" alt></p>
 <p>上图的 UML 描述了 Dubbo 封装的 Zookeeper 注册中心和 Zookeeper 相关实现的关系。</p>
 <p>Dubbo 对 Zookeeper 客户端的封装是在 dubbo-remoting-zookeeper 模块中，该模块对 Zookeeper 客户端接口进行了抽象。</p>
-<p><img src="/posts/817d6a19/dubb-zookeeper-module.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubb-zookeeper-module.jpg" alt></p>
 <p>目前支持 ZkClient 和 Curator 两种 Zookeeper 客户端实现：</p>
 <ul>
 <li><p>Curator 实现</p>

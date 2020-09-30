@@ -25,15 +25,15 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言注册中心总览 中介绍了 Dubbo 的注册中心抽象层，包括注册中心及其工厂。本篇文章将介绍 Dubbo 的 Zookeeper 注册中心及其工厂。  UML 图中 ZookeeperRegistryFactory 中有个 ZookeeperTransporter 属性，该属性就是创建 Zookeeper 客户端的关键对象，下一篇文章会详细介绍 Dubbo 对 Zookeeper 客户端的封装。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/f70c2f2e/dubb-zookeeper.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/f70c2f2e/dubb-zookeeper-meta.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubb-zookeeper.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubb-zookeeper-meta.jpg">
 <meta property="article:published_time" content="2020-04-16T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-09-29T16:58:31.353Z">
+<meta property="article:modified_time" content="2020-09-30T03:28:57.769Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="Zookeeper">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/f70c2f2e/dubb-zookeeper.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubb-zookeeper.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/f70c2f2e/index.html">
   
@@ -461,10 +461,10 @@
     <div class="article-entry marked-body" itemprop="articleBody">
       
         <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p><a href="https://gentryhuang.com/posts/dafcd048/">注册中心总览</a> 中介绍了 Dubbo 的注册中心抽象层，包括注册中心及其工厂。本篇文章将介绍 Dubbo 的 Zookeeper 注册中心及其工厂。</p>
-<p><img src="/posts/f70c2f2e/dubb-zookeeper.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubb-zookeeper.png" alt></p>
 <p>UML 图中 <code>ZookeeperRegistryFactory</code> 中有个 <code>ZookeeperTransporter</code> 属性，该属性就是创建 Zookeeper 客户端的关键对象，下一篇文章会详细介绍 Dubbo 对 Zookeeper 客户端的封装。</p>
 <h2 id="Dubbo-中的-Zookeeper-注册中心"><a href="#Dubbo-中的-Zookeeper-注册中心" class="headerlink" title="Dubbo 中的 Zookeeper 注册中心"></a>Dubbo 中的 Zookeeper 注册中心</h2><p>Zookeeper 是 Apache Hadoop 的子项目，是一个树型的目录服务，支持变更推送，适合作为 Dubbo 服务的注册中心，工业强度较高，可用于生产环境，并推荐使用。下图是 Dubbo 使用 Zookeeper 作为注册中心的元数据信息：</p>
-<p><img src="/posts/f70c2f2e/dubb-zookeeper-meta.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubb-zookeeper-meta.jpg" alt></p>
 <br>
 
 <p><strong>Dubbo 中的 Zookeeper 注册中心说明</strong></p>
