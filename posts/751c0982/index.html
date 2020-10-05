@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - 本地暴露 | gentryhuang的博客</title>
+  <meta name="description" content="前言有了前面一系列文章铺垫，再来看服务暴露与服务引用就简单很多了。本地暴露需要配置、SPI、动态代理等知识。 配置承载无论是服务暴露还是服务引用，Dubbo 框架都会根据配置覆盖策略对配置项进行聚合处理，配置覆盖策略参见官网 。其中，Dubbo 支持动态添加配置项即进行服务治理，不允许 Provider 端配置项透传到客户端的都会进行特殊处理.  服务暴露配置 仅本地暴露1&lt;dubbo:se">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - 本地暴露">
+<meta property="og:url" content="https://gentryhuang.com/posts/751c0982/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言有了前面一系列文章铺垫，再来看服务暴露与服务引用就简单很多了。本地暴露需要配置、SPI、动态代理等知识。 配置承载无论是服务暴露还是服务引用，Dubbo 框架都会根据配置覆盖策略对配置项进行聚合处理，配置覆盖策略参见官网 。其中，Dubbo 支持动态添加配置项即进行服务治理，不允许 Provider 端配置项透传到客户端的都会进行特殊处理.  服务暴露配置 仅本地暴露1&lt;dubbo:se">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-05-03T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-10-05T15:57:35.107Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/751c0982/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">24</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">20</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JDK/" rel="tag">JDK</a><span class="tag-list-count">5</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">9</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/Dubbo/" style="font-size: 13.83px;">Dubbo</a> <a href="/tags/JDK/" style="font-size: 13.5px;">JDK</a> <a href="/tags/Javassist/" style="font-size: 13.33px;">Javassist</a> <a href="/tags/RPC/" style="font-size: 13.67px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.17px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.33px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 14px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">13</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-08T11:33:59.000Z" itemprop="datePublished">2020-07-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-08T11:00:50.000Z" itemprop="datePublished">2020-07-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/ef4cfe7a/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/ef4cfe7a/" class="title">Dubbo源码分析 - 优雅停机</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-05-09T16:00:00.000Z" itemprop="datePublished">2020-05-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/751c0982/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/751c0982/" class="title">Dubbo源码分析 - 本地暴露</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-05-03T16:00:00.000Z" itemprop="datePublished">2020-05-04</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/1663a5dc/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/1663a5dc/" class="title">Dubbo源码分析 - 动态代理本地存根</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-05-01T16:00:00.000Z" itemprop="datePublished">2020-05-02</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#配置承载"><span class="toc-number">2.</span> <span class="toc-text">配置承载</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露配置"><span class="toc-number">3.</span> <span class="toc-text">服务暴露配置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露机制"><span class="toc-number">4.</span> <span class="toc-text">服务暴露机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露方式"><span class="toc-number">5.</span> <span class="toc-text">服务暴露方式</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Spring支持的-Dubbo-IOC"><span class="toc-number">5.1.</span> <span class="toc-text">Spring支持的 Dubbo IOC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#延迟暴露"><span class="toc-number">5.2.</span> <span class="toc-text">延迟暴露</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#立即暴露"><span class="toc-number">5.3.</span> <span class="toc-text">立即暴露</span></a></li></ol></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/本地导出" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - 本地暴露
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/751c0982/" class="article-date">
+	  <time datetime="2020-05-03T16:00:00.000Z" itemprop="datePublished">2020-05-04</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/751c0982/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.7k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 8(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>有了前面一系列文章铺垫，再来看服务暴露与服务引用就简单很多了。本地暴露需要配置、SPI、动态代理等知识。</p>
+<h2 id="配置承载"><a href="#配置承载" class="headerlink" title="配置承载"></a>配置承载</h2><p>无论是服务暴露还是服务引用，Dubbo 框架都会根据配置覆盖策略对配置项进行聚合处理，配置覆盖策略参见<a href="http://dubbo.apache.org/zh-cn/docs/user/configuration/xml.html" target="_blank" rel="noopener">官网</a> 。其中，Dubbo 支持动态添加配置项即进行服务治理，不允许 Provider 端配置项透传到客户端的都会进行特殊处理. </p>
+<h2 id="服务暴露配置"><a href="#服务暴露配置" class="headerlink" title="服务暴露配置"></a>服务暴露配置</h2><ul>
+<li>仅本地暴露<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">scope</span>=<span class="string">"local"</span> /&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>仅远程暴露<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">scope</span>=<span class="string">"remote"</span> /&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>本暴露和远程暴露<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">在不配置 scope 的情况下，默认两种方式都暴露</span><br></pre></td></tr></table></figure></li>
+<li>不暴露<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">scope</span>=<span class="string">"none"</span> /&gt;</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h2 id="服务暴露机制"><a href="#服务暴露机制" class="headerlink" title="服务暴露机制"></a>服务暴露机制</h2><p>Dubbo 服务暴露分为两部分，先将持有的服务信息（服务对象，服务接口，服务 URL信息）通过动态代理工厂转换成 Invoker ，再把 Invoker 通过具体的协议转成 Exporter 。Dubbo 框架在进行服务暴露时，无论是 API 配置、XML 配置还是注解配置，最终都会转成 ServiceBean，它继承自 ServiceConfig 。</p>
+<h2 id="服务暴露方式"><a href="#服务暴露方式" class="headerlink" title="服务暴露方式"></a>服务暴露方式</h2><p>Dubbo 支持两种服务暴露方式，分为延迟暴露和立即暴露。延迟暴露的入口是 ServiceBean 的 afterPropertiesSet 方法，立即暴露的入口是 ServiceBean 的 onApplicationEvent 方法。</p>
+<h3 id="Spring支持的-Dubbo-IOC"><a href="#Spring支持的-Dubbo-IOC" class="headerlink" title="Spring支持的 Dubbo IOC"></a>Spring支持的 Dubbo IOC</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ServiceBean</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">ServiceConfig</span>&lt;<span class="title">T</span>&gt; <span class="keyword">implements</span> <span class="title">InitializingBean</span>, <span class="title">DisposableBean</span>,</span></span><br><span class="line"><span class="class">        <span class="title">ApplicationContextAware</span>, <span class="title">ApplicationListener</span>&lt;<span class="title">ContextRefreshedEvent</span>&gt;, <span class="title">BeanNameAware</span>,</span></span><br><span class="line"><span class="class">        <span class="title">ApplicationEventPublisherAware</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setApplicationContext</span><span class="params">(ApplicationContext applicationContext)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.applicationContext = applicationContext;</span><br><span class="line">        <span class="comment">// 为Spring拓展工厂注入上下文 ,用于Dubbo IOC</span></span><br><span class="line">        SpringExtensionFactory.addApplicationContext(applicationContext);</span><br><span class="line">        <span class="keyword">if</span> (applicationContext != <span class="keyword">null</span>) &#123;</span><br><span class="line">            SPRING_CONTEXT = applicationContext;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                Method method = applicationContext.getClass().getMethod(<span class="string">"addApplicationListener"</span>, <span class="keyword">new</span> Class&lt;?&gt;[]&#123;ApplicationListener<span class="class">.<span class="keyword">class</span>&#125;)</span>; <span class="comment">// backward compatibility to spring 2.0.1</span></span><br><span class="line">                method.invoke(applicationContext, <span class="keyword">new</span> Object[]&#123;<span class="keyword">this</span>&#125;);</span><br><span class="line">                <span class="comment">// 当前Spring容器是否支持上下文监听</span></span><br><span class="line">                supportedApplicationListener = <span class="keyword">true</span>;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                <span class="keyword">if</span> (applicationContext <span class="keyword">instanceof</span> AbstractApplicationContext) &#123;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        Method method = AbstractApplicationContext.class.getDeclaredMethod("addListener", new Class&lt;?&gt;[]&#123;ApplicationListener.class&#125;); // backward compatibility to spring 2.0.1</span><br><span class="line">                        <span class="keyword">if</span> (!method.isAccessible()) &#123;</span><br><span class="line">                            method.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">                        &#125;</span><br><span class="line">                        method.invoke(applicationContext, <span class="keyword">new</span> Object[]&#123;<span class="keyword">this</span>&#125;);</span><br><span class="line">                        supportedApplicationListener = <span class="keyword">true</span>;</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (Throwable t2) &#123;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ServiceBean#setApplicationContext 方法用于将 Spring 的上下文设置设置到 SpringExtensionFactory 中，这样 Dubbo IOC 就可以使用 Spring 管理的对象了。</p>
+<h3 id="延迟暴露"><a href="#延迟暴露" class="headerlink" title="延迟暴露"></a>延迟暴露</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ServiceBean</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">ServiceConfig</span>&lt;<span class="title">T</span>&gt; <span class="keyword">implements</span> <span class="title">InitializingBean</span>, <span class="title">DisposableBean</span>,</span></span><br><span class="line"><span class="class">        <span class="title">ApplicationContextAware</span>, <span class="title">ApplicationListener</span>&lt;<span class="title">ContextRefreshedEvent</span>&gt;, <span class="title">BeanNameAware</span>,</span></span><br><span class="line"><span class="class">        <span class="title">ApplicationEventPublisherAware</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务暴露的入口，非延迟暴露 。收到 Spring 容器的刷新事件执行</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> event</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onApplicationEvent</span><span class="params">(ContextRefreshedEvent event)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 是否有延迟导出 &amp;&amp; 是否已导出 &amp;&amp; 是不是已被取消导出 </span></span><br><span class="line">        <span class="keyword">if</span> (isDelay() &amp;&amp; !isExported() &amp;&amp; !isUnexported()) &#123;</span><br><span class="line">            <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                logger.info(<span class="string">"The service ready on spring started. service: "</span> + getInterface());</span><br><span class="line">            &#125;</span><br><span class="line">            export();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">isDelay</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 获取 delay</span></span><br><span class="line">        Integer delay = getDelay();</span><br><span class="line">        ProviderConfig provider = getProvider();</span><br><span class="line">        <span class="keyword">if</span> (delay == <span class="keyword">null</span> &amp;&amp; provider != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">// 如果前面获取的 delay 为空，这里继续获取</span></span><br><span class="line">            delay = provider.getDelay();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 1 判断 delay 是否为空，或者等于 -1，当 delay 为空，或者等于-1时，该方法返回 true，而不是 false</span></span><br><span class="line"><span class="comment">         * 2 supportedApplicationListener 变量用于表示当前的 Spring 容器是否支持 ApplicationListener，这个值初始为 false。</span></span><br><span class="line"><span class="comment">         * 在 Spring 容器将自己设置到 ServiceBean 中时，ServiceBean 的 setApplicationContext 方法会检测 Spring 容器是否支持 ApplicationListener,若支持，则将 supportedApplicationListener 置为 true</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">return</span> supportedApplicationListener &amp;&amp; (delay == <span class="keyword">null</span> || delay == -<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> Integer <span class="title">getDelay</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 配置项</span></span><br><span class="line">        <span class="keyword">return</span> delay;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意，这里的 isDelay 方法，当方法返回 true 时，表示无需延迟导出。返回 false 时，表示需要延迟导出，与字面意思是相反的。</p>
+<h3 id="立即暴露"><a href="#立即暴露" class="headerlink" title="立即暴露"></a>立即暴露</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ServiceBean</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">ServiceConfig</span>&lt;<span class="title">T</span>&gt; <span class="keyword">implements</span> <span class="title">InitializingBean</span>, <span class="title">DisposableBean</span>,</span></span><br><span class="line"><span class="class">        <span class="title">ApplicationContextAware</span>, <span class="title">ApplicationListener</span>&lt;<span class="title">ContextRefreshedEvent</span>&gt;, <span class="title">BeanNameAware</span>,</span></span><br><span class="line"><span class="class">        <span class="title">ApplicationEventPublisherAware</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"> <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务暴露的入口，延迟暴露</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Exception</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="meta">@SuppressWarnings</span>(&#123;<span class="string">"unchecked"</span>, <span class="string">"deprecation"</span>&#125;)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">afterPropertiesSet</span><span class="params">()</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (getProvider() == <span class="keyword">null</span>) &#123;</span><br><span class="line">            Map&lt;String, ProviderConfig&gt; providerConfigMap = applicationContext == <span class="keyword">null</span> ? <span class="keyword">null</span> : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProviderConfig<span class="class">.<span class="keyword">class</span>, <span class="title">false</span>, <span class="title">false</span>)</span>;</span><br><span class="line">            <span class="keyword">if</span> (providerConfigMap != <span class="keyword">null</span> &amp;&amp; providerConfigMap.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                Map&lt;String, ProtocolConfig&gt; protocolConfigMap = applicationContext == <span class="keyword">null</span> ? <span class="keyword">null</span> : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig<span class="class">.<span class="keyword">class</span>, <span class="title">false</span>, <span class="title">false</span>)</span>;</span><br><span class="line">                <span class="keyword">if</span> ((protocolConfigMap == <span class="keyword">null</span> || protocolConfigMap.size() == <span class="number">0</span>)</span><br><span class="line">                        &amp;&amp; providerConfigMap.size() &gt; <span class="number">1</span>) &#123; <span class="comment">// backward compatibility</span></span><br><span class="line">                    List&lt;ProviderConfig&gt; providerConfigs = <span class="keyword">new</span> ArrayList&lt;ProviderConfig&gt;();</span><br><span class="line">                    <span class="keyword">for</span> (ProviderConfig config : providerConfigMap.values()) &#123;</span><br><span class="line">                        <span class="keyword">if</span> (config.isDefault() != <span class="keyword">null</span> &amp;&amp; config.isDefault().booleanValue()) &#123;</span><br><span class="line">                            providerConfigs.add(config);</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">if</span> (!providerConfigs.isEmpty()) &#123;</span><br><span class="line">                        setProviders(providerConfigs);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    ProviderConfig providerConfig = <span class="keyword">null</span>;</span><br><span class="line">                    <span class="keyword">for</span> (ProviderConfig config : providerConfigMap.values()) &#123;</span><br><span class="line">                        <span class="keyword">if</span> (config.isDefault() == <span class="keyword">null</span> || config.isDefault().booleanValue()) &#123;</span><br><span class="line">                            <span class="keyword">if</span> (providerConfig != <span class="keyword">null</span>) &#123;</span><br><span class="line">                                <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"Duplicate provider configs: "</span> + providerConfig + <span class="string">" and "</span> + config);</span><br><span class="line">                            &#125;</span><br><span class="line">                            providerConfig = config;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">if</span> (providerConfig != <span class="keyword">null</span>) &#123;</span><br><span class="line">                        setProvider(providerConfig);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (getApplication() == <span class="keyword">null</span></span><br><span class="line">                &amp;&amp; (getProvider() == <span class="keyword">null</span> || getProvider().getApplication() == <span class="keyword">null</span>)) &#123;</span><br><span class="line">            Map&lt;String, ApplicationConfig&gt; applicationConfigMap = applicationContext == <span class="keyword">null</span> ? <span class="keyword">null</span> : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ApplicationConfig<span class="class">.<span class="keyword">class</span>, <span class="title">false</span>, <span class="title">false</span>)</span>;</span><br><span class="line">            <span class="keyword">if</span> (applicationConfigMap != <span class="keyword">null</span> &amp;&amp; applicationConfigMap.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                ApplicationConfig applicationConfig = <span class="keyword">null</span>;</span><br><span class="line">                <span class="keyword">for</span> (ApplicationConfig config : applicationConfigMap.values()) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (config.isDefault() == <span class="keyword">null</span> || config.isDefault().booleanValue()) &#123;</span><br><span class="line">                        <span class="keyword">if</span> (applicationConfig != <span class="keyword">null</span>) &#123;</span><br><span class="line">                            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"Duplicate application configs: "</span> + applicationConfig + <span class="string">" and "</span> + config);</span><br><span class="line">                        &#125;</span><br><span class="line">                        applicationConfig = config;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (applicationConfig != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    setApplication(applicationConfig);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (getModule() == <span class="keyword">null</span></span><br><span class="line">                &amp;&amp; (getProvider() == <span class="keyword">null</span> || getProvider().getModule() == <span class="keyword">null</span>)) &#123;</span><br><span class="line">            Map&lt;String, ModuleConfig&gt; moduleConfigMap = applicationContext == <span class="keyword">null</span> ? <span class="keyword">null</span> : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ModuleConfig<span class="class">.<span class="keyword">class</span>, <span class="title">false</span>, <span class="title">false</span>)</span>;</span><br><span class="line">            <span class="keyword">if</span> (moduleConfigMap != <span class="keyword">null</span> &amp;&amp; moduleConfigMap.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                ModuleConfig moduleConfig = <span class="keyword">null</span>;</span><br><span class="line">                <span class="keyword">for</span> (ModuleConfig config : moduleConfigMap.values()) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (config.isDefault() == <span class="keyword">null</span> || config.isDefault().booleanValue()) &#123;</span><br><span class="line">                        <span class="keyword">if</span> (moduleConfig != <span class="keyword">null</span>) &#123;</span><br><span class="line">                            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"Duplicate module configs: "</span> + moduleConfig + <span class="string">" and "</span> + config);</span><br><span class="line">                        &#125;</span><br><span class="line">                        moduleConfig = config;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (moduleConfig != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    setModule(moduleConfig);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> ((getRegistries() == <span class="keyword">null</span> || getRegistries().isEmpty())</span><br><span class="line">                &amp;&amp; (getProvider() == <span class="keyword">null</span> || getProvider().getRegistries() == <span class="keyword">null</span> || getProvider().getRegistries().isEmpty())</span><br><span class="line">                &amp;&amp; (getApplication() == <span class="keyword">null</span> || getApplication().getRegistries() == <span class="keyword">null</span> || getApplication().getRegistries().isEmpty())) &#123;</span><br><span class="line">            Map&lt;String, RegistryConfig&gt; registryConfigMap = applicationContext == <span class="keyword">null</span> ? <span class="keyword">null</span> : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, RegistryConfig<span class="class">.<span class="keyword">class</span>, <span class="title">false</span>, <span class="title">false</span>)</span>;</span><br><span class="line">            <span class="keyword">if</span> (registryConfigMap != <span class="keyword">null</span> &amp;&amp; registryConfigMap.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                List&lt;RegistryConfig&gt; registryConfigs = <span class="keyword">new</span> ArrayList&lt;RegistryConfig&gt;();</span><br><span class="line">                <span class="keyword">for</span> (RegistryConfig config : registryConfigMap.values()) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (config.isDefault() == <span class="keyword">null</span> || config.isDefault().booleanValue()) &#123;</span><br><span class="line">                        registryConfigs.add(config);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (registryConfigs != <span class="keyword">null</span> &amp;&amp; !registryConfigs.isEmpty()) &#123;</span><br><span class="line">                    <span class="keyword">super</span>.setRegistries(registryConfigs);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (getMonitor() == <span class="keyword">null</span></span><br><span class="line">                &amp;&amp; (getProvider() == <span class="keyword">null</span> || getProvider().getMonitor() == <span class="keyword">null</span>)</span><br><span class="line">                &amp;&amp; (getApplication() == <span class="keyword">null</span> || getApplication().getMonitor() == <span class="keyword">null</span>)) &#123;</span><br><span class="line">            Map&lt;String, MonitorConfig&gt; monitorConfigMap = applicationContext == <span class="keyword">null</span> ? <span class="keyword">null</span> : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, MonitorConfig<span class="class">.<span class="keyword">class</span>, <span class="title">false</span>, <span class="title">false</span>)</span>;</span><br><span class="line">            <span class="keyword">if</span> (monitorConfigMap != <span class="keyword">null</span> &amp;&amp; monitorConfigMap.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                MonitorConfig monitorConfig = <span class="keyword">null</span>;</span><br><span class="line">                <span class="keyword">for</span> (MonitorConfig config : monitorConfigMap.values()) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (config.isDefault() == <span class="keyword">null</span> || config.isDefault().booleanValue()) &#123;</span><br><span class="line">                        <span class="keyword">if</span> (monitorConfig != <span class="keyword">null</span>) &#123;</span><br><span class="line">                            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"Duplicate monitor configs: "</span> + monitorConfig + <span class="string">" and "</span> + config);</span><br><span class="line">                        &#125;</span><br><span class="line">                        monitorConfig = config;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (monitorConfig != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    setMonitor(monitorConfig);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> ((getProtocols() == <span class="keyword">null</span> || getProtocols().isEmpty())</span><br><span class="line">                &amp;&amp; (getProvider() == <span class="keyword">null</span> || getProvider().getProtocols() == <span class="keyword">null</span> || getProvider().getProtocols().isEmpty())) &#123;</span><br><span class="line">            Map&lt;String, ProtocolConfig&gt; protocolConfigMap = applicationContext == <span class="keyword">null</span> ? <span class="keyword">null</span> : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig<span class="class">.<span class="keyword">class</span>, <span class="title">false</span>, <span class="title">false</span>)</span>;</span><br><span class="line">            <span class="keyword">if</span> (protocolConfigMap != <span class="keyword">null</span> &amp;&amp; protocolConfigMap.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                List&lt;ProtocolConfig&gt; protocolConfigs = <span class="keyword">new</span> ArrayList&lt;ProtocolConfig&gt;();</span><br><span class="line">                <span class="keyword">for</span> (ProtocolConfig config : protocolConfigMap.values()) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (config.isDefault() == <span class="keyword">null</span> || config.isDefault().booleanValue()) &#123;</span><br><span class="line">                        protocolConfigs.add(config);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (protocolConfigs != <span class="keyword">null</span> &amp;&amp; !protocolConfigs.isEmpty()) &#123;</span><br><span class="line">                    <span class="keyword">super</span>.setProtocols(protocolConfigs);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (getPath() == <span class="keyword">null</span> || getPath().length() == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (beanName != <span class="keyword">null</span> &amp;&amp; beanName.length() &gt; <span class="number">0</span></span><br><span class="line">                    &amp;&amp; getInterface() != <span class="keyword">null</span> &amp;&amp; getInterface().length() &gt; <span class="number">0</span></span><br><span class="line">                    &amp;&amp; beanName.startsWith(getInterface())) &#123;</span><br><span class="line">                setPath(beanName);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 延迟导出</span></span><br><span class="line">        <span class="keyword">if</span> (!isDelay()) &#123;</span><br><span class="line">            export();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>ServiceBean#afterPropertiesSet 的方法不仅支持延迟暴露，还会在 Spring 生命周期内把 Dubbo 的核心配置承载对象设置到 ServiceBean 中（或其父类中）。ServiceBean 配置继承关系如下：</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="bullet">- </span>AbstractConfig</span><br><span class="line"><span class="bullet">  - </span>AbstractMethodConfig</span><br><span class="line"><span class="bullet">    - </span>AbstractInterfaceConfig</span><br><span class="line"><span class="bullet">      - </span>AbstractServiceConfig</span><br><span class="line"><span class="bullet">        - </span>ServiceConfig</span><br><span class="line"><span class="bullet">          - </span>ServiceBean</span><br></pre></td></tr></table></figure>
+
+<p>关于配置在之前的文章中应详细介绍，就不再介绍。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/751c0982/" title="Dubbo源码分析 - 本地暴露" target="_blank" rel="external">https://gentryhuang.com/posts/751c0982/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/ef4cfe7a/" title="Dubbo源码分析 - 优雅停机"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/1663a5dc/" title="Dubbo源码分析 - 动态代理本地存根"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2020 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
