@@ -25,11 +25,13 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言有了前面一系列文章铺垫，再来看服务暴露与服务引用就简单很多了。本地暴露需要配置、SPI、动态代理等知识。 配置承载无论是服务暴露还是服务引用，Dubbo 框架都会根据配置覆盖策略对配置项进行聚合处理，配置覆盖策略参见官网 。其中，Dubbo 支持动态添加配置项即进行服务治理，不允许 Provider 端配置项透传到客户端的都会进行特殊处理.  服务暴露配置 仅本地暴露1&lt;dubbo:se">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/751c0982/dubbo-export-local.jpg">
 <meta property="article:published_time" content="2020-05-03T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-10-05T15:57:35.107Z">
+<meta property="article:modified_time" content="2020-10-05T16:16:16.034Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/751c0982/dubbo-export-local.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/751c0982/index.html">
   
@@ -395,7 +397,7 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#配置承载"><span class="toc-number">2.</span> <span class="toc-text">配置承载</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露配置"><span class="toc-number">3.</span> <span class="toc-text">服务暴露配置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露机制"><span class="toc-number">4.</span> <span class="toc-text">服务暴露机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露方式"><span class="toc-number">5.</span> <span class="toc-text">服务暴露方式</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Spring支持的-Dubbo-IOC"><span class="toc-number">5.1.</span> <span class="toc-text">Spring支持的 Dubbo IOC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#延迟暴露"><span class="toc-number">5.2.</span> <span class="toc-text">延迟暴露</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#立即暴露"><span class="toc-number">5.3.</span> <span class="toc-text">立即暴露</span></a></li></ol></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#配置承载"><span class="toc-number">2.</span> <span class="toc-text">配置承载</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露配置"><span class="toc-number">3.</span> <span class="toc-text">服务暴露配置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露机制"><span class="toc-number">4.</span> <span class="toc-text">服务暴露机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露方式"><span class="toc-number">5.</span> <span class="toc-text">服务暴露方式</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Spring支持的-Dubbo-IOC"><span class="toc-number">5.1.</span> <span class="toc-text">Spring支持的 Dubbo IOC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#延迟暴露"><span class="toc-number">5.2.</span> <span class="toc-text">延迟暴露</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#立即暴露"><span class="toc-number">5.3.</span> <span class="toc-text">立即暴露</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露过程"><span class="toc-number">6.</span> <span class="toc-text">服务暴露过程</span></a></li></ol>
     </nav>
   </div>
 </aside>
@@ -478,7 +480,9 @@
 <p>ServiceBean#afterPropertiesSet 的方法不仅支持延迟暴露，还会在 Spring 生命周期内把 Dubbo 的核心配置承载对象设置到 ServiceBean 中（或其父类中）。ServiceBean 配置继承关系如下：</p>
 <figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="bullet">- </span>AbstractConfig</span><br><span class="line"><span class="bullet">  - </span>AbstractMethodConfig</span><br><span class="line"><span class="bullet">    - </span>AbstractInterfaceConfig</span><br><span class="line"><span class="bullet">      - </span>AbstractServiceConfig</span><br><span class="line"><span class="bullet">        - </span>ServiceConfig</span><br><span class="line"><span class="bullet">          - </span>ServiceBean</span><br></pre></td></tr></table></figure>
 
-<p>关于配置在之前的文章中应详细介绍，就不再介绍。</p>
+<p>关于配置在之前的文章中应详细介绍，可以参考 <a href="https://gentryhuang.com/posts/1d3295e6/">API和属性配置</a> 。</p>
+<h2 id="服务暴露过程"><a href="#服务暴露过程" class="headerlink" title="服务暴露过程"></a>服务暴露过程</h2><p><img src="/posts/751c0982/dubbo-export-local.jpg" alt></p>
+<p>配置加载及配置承载对象的初始对应的三种方式在前面的文章中已经详细分析过，可以参考 <a href="https://gentryhuang.com/posts/1d3295e6/">API和属性配置</a> 、<a href="https://gentryhuang.com/posts/a8d76a91/">XML配置</a> 、<a href="https://gentryhuang.com/posts/1a889dcd/">注解配置</a> 。<br>配置检查和初始化完成后，生成 URL，然后将服务导出到 JVM 中。</p>
 
       
     </div>
