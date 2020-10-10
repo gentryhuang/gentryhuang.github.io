@@ -33,7 +33,7 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/juc/juc-tool-cdl-6.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/juc/juc-tool-cdl-7.jpg">
 <meta property="article:published_time" content="2020-10-05T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-10-10T15:38:32.407Z">
+<meta property="article:modified_time" content="2020-10-10T16:11:59.476Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="JUC">
 <meta name="twitter:card" content="summary">
@@ -454,7 +454,7 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/37f29896/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 4.1k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 4.2k(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 16(分)</span>
@@ -553,6 +553,7 @@
 <li><p><strong>compareAndSetWaitStatus(h, 0, Node.PROPAGATE) 失败</strong><br>进入这个方法的前提是 ws == 0，即 head 的 waitStatus 为 0，此时如果 CAS 失败，只能说明其它的线程把该节点的 waitStatus 值修改了，此时能改 head 的状态值的很可能是节点入队引起的修改，因为新节点要把有效的前驱节点状态值设置为 -1 。在 CountDownLatch 中这种可能是不会发生，因为一旦唤醒条件成立，就不会再有节点需要阻塞了。</p>
 </li>
 </ul>
+<p>剩下的 t2 线程、t3 线程依次会被唤醒，需要注意的是 t3 线程被唤醒占领头节点后也会进入到 doReleaseShared 方法的循环中，此时它对应的节点既是 head 又是 tail，就直接退出循环，结束整个流程了。</p>
 
       
     </div>
