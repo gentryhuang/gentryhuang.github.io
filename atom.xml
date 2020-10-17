@@ -258,13 +258,13 @@
       <category term="RPC" scheme="https://gentryhuang.com/categories/RPC/"/>
     
     
-      <category term="RPC" scheme="https://gentryhuang.com/tags/RPC/"/>
-    
       <category term="Dubbo" scheme="https://gentryhuang.com/tags/Dubbo/"/>
     
       <category term="Javassist" scheme="https://gentryhuang.com/tags/Javassist/"/>
     
       <category term="JDK" scheme="https://gentryhuang.com/tags/JDK/"/>
+    
+      <category term="RPC" scheme="https://gentryhuang.com/tags/RPC/"/>
     
   </entry>
   
@@ -474,9 +474,9 @@
       <category term="RPC" scheme="https://gentryhuang.com/categories/RPC/"/>
     
     
-      <category term="RPC" scheme="https://gentryhuang.com/tags/RPC/"/>
-    
       <category term="Dubbo" scheme="https://gentryhuang.com/tags/Dubbo/"/>
+    
+      <category term="RPC" scheme="https://gentryhuang.com/tags/RPC/"/>
     
   </entry>
   

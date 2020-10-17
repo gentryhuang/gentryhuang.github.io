@@ -17,27 +17,31 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>uml基础 | gentryhuang的博客</title>
-  <meta name="description" content="定义统一建模语言（缩写UML），非专利的第三代建模和规约语言 特点 UML是一种开放的方法 UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法 UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效  UML分类 结构式图形 强调的是系统式的建模，具体包含静态图（类图、对象图、包图）、实现图（组件图、">
+  <title>Dubbo源码环境 | gentryhuang的博客</title>
+  <meta name="description" content="前言上一篇文章中对 Dubbo 的整个项目结构进行了说明，本篇文章我们来进行源码搭建及核心模块说明。 Dubbo 架构 节点角色说明以下说明中注册中心以 Zookeeper 为例，不同的注册中心的注册和订阅是不同的。  Registry 注册中心注册中心负责服务地址的注册与查找，服务提供者和消费者只在启动时与注册中心交互（以客户端形式），注册中心不转发请求，压力较小。注册中心通过长连接感知服务提供">
 <meta property="og:type" content="article">
-<meta property="og:title" content="uml基础">
-<meta property="og:url" content="https://gentryhuang.com/posts/cadc5d6c/index.html">
+<meta property="og:title" content="Dubbo源码环境">
+<meta property="og:url" content="https://gentryhuang.com/posts/ba7cbd3a/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="定义统一建模语言（缩写UML），非专利的第三代建模和规约语言 特点 UML是一种开放的方法 UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法 UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效  UML分类 结构式图形 强调的是系统式的建模，具体包含静态图（类图、对象图、包图）、实现图（组件图、">
+<meta property="og:description" content="前言上一篇文章中对 Dubbo 的整个项目结构进行了说明，本篇文章我们来进行源码搭建及核心模块说明。 Dubbo 架构 节点角色说明以下说明中注册中心以 Zookeeper 为例，不同的注册中心的注册和订阅是不同的。  Registry 注册中心注册中心负责服务地址的注册与查找，服务提供者和消费者只在启动时与注册中心交互（以客户端形式），注册中心不转发请求，压力较小。注册中心通过长连接感知服务提供">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sx.png">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/jh.png">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/zh.png">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sxt.png">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/umlqxj.png">
-<meta property="article:published_time" content="2019-08-27T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-08-09T09:14:31.577Z">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-architecture.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-common.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-remoting.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-rpc.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-cluster.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-registry.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-config.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-serialization.jpg">
+<meta property="article:published_time" content="2020-03-08T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-10-17T08:18:12.124Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="设计模式">
+<meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sx.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-architecture.jpg">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/posts/cadc5d6c/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/ba7cbd3a/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -401,21 +405,21 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#定义"><span class="toc-number">1.</span> <span class="toc-text">定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#特点"><span class="toc-number">2.</span> <span class="toc-text">特点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML分类"><span class="toc-number">3.</span> <span class="toc-text">UML分类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML类图"><span class="toc-number">4.</span> <span class="toc-text">UML类图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML记忆方式"><span class="toc-number">5.</span> <span class="toc-text">UML记忆方式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML时序图"><span class="toc-number">6.</span> <span class="toc-text">UML时序图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML类图讲解"><span class="toc-number">7.</span> <span class="toc-text">UML类图讲解</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML整体讲解"><span class="toc-number">8.</span> <span class="toc-text">UML整体讲解</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML中部分对比"><span class="toc-number">9.</span> <span class="toc-text">UML中部分对比</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Dubbo-架构"><span class="toc-number">2.</span> <span class="toc-text">Dubbo 架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#节点角色说明"><span class="toc-number">2.1.</span> <span class="toc-text">节点角色说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#调用关系"><span class="toc-number">2.2.</span> <span class="toc-text">调用关系</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#源码环境搭建"><span class="toc-number">2.3.</span> <span class="toc-text">源码环境搭建</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Dubbo-源码核心模块说明"><span class="toc-number">2.4.</span> <span class="toc-text">Dubbo 源码核心模块说明</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#dubbo-common-模块"><span class="toc-number">2.4.1.</span> <span class="toc-text">dubbo-common 模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#dubbo-remoting-模块"><span class="toc-number">2.4.2.</span> <span class="toc-text">dubbo-remoting 模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#dubbo-rpc-模块"><span class="toc-number">2.4.3.</span> <span class="toc-text">dubbo-rpc 模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#dubbo-cluster-模块"><span class="toc-number">2.4.4.</span> <span class="toc-text">dubbo-cluster 模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#dubbo-registry-模块"><span class="toc-number">2.4.5.</span> <span class="toc-text">dubbo-registry 模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#dubbo-config-模块"><span class="toc-number">2.4.6.</span> <span class="toc-text">dubbo-config 模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#dubbo-serialization-模块"><span class="toc-number">2.4.7.</span> <span class="toc-text">dubbo-serialization 模块</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">3.</span> <span class="toc-text">小结</span></a></li></ol>
     </nav>
   </div>
 </aside>
 
 <main class="main" role="main">
   <div class="content">
-  <article id="post-design_pattern/uml" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+  <article id="post-rpc/Dubbo源码环境搭建" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
     <div class="article-header">
       
         
   
     <h1 class="article-title" itemprop="name">
-      uml基础
+      Dubbo源码环境
     </h1>
   
 
@@ -423,20 +427,20 @@
       <div class="article-meta">
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
-	<a href="/posts/cadc5d6c/" class="article-date">
-	  <time datetime="2019-08-27T16:00:00.000Z" itemprop="datePublished">2019-08-28</time>
+	<a href="/posts/ba7cbd3a/" class="article-date">
+	  <time datetime="2020-03-08T16:00:00.000Z" itemprop="datePublished">2020-03-09</time>
 	</a>
 </span>
         
   <span class="article-category">
     <i class="icon icon-folder"></i>
-    <a class="article-category-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
   </span>
 
         
   <span class="article-tag">
     <i class="icon icon-tags"></i>
-	<a class="article-tag-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
   </span>
 
 
@@ -449,82 +453,66 @@
 	</span>
 
 
-        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/cadc5d6c/#comments" class="article-comment-link">评论</a></span>
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/ba7cbd3a/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.3k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.7k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 4(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 5(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><p>统一建模语言（缩写UML），非专利的第三代建模和规约语言</p>
-<h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><ol>
-<li>UML是一种开放的方法</li>
-<li>UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法</li>
-<li>UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效</li>
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>上一篇文章中对 Dubbo 的整个项目结构进行了说明，本篇文章我们来进行源码搭建及核心模块说明。</p>
+<h2 id="Dubbo-架构"><a href="#Dubbo-架构" class="headerlink" title="Dubbo 架构"></a>Dubbo 架构</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-architecture.jpg" alt></p>
+<h3 id="节点角色说明"><a href="#节点角色说明" class="headerlink" title="节点角色说明"></a>节点角色说明</h3><p>以下说明中注册中心以 Zookeeper 为例，不同的注册中心的注册和订阅是不同的。</p>
+<ul>
+<li><p>Registry 注册中心<br>注册中心负责服务地址的注册与查找，服务提供者和消费者只在启动时与注册中心交互（以客户端形式），注册中心不转发请求，压力较小。注册中心通过长连接感知服务提供者的存在，服务提供者宕机，注册中心将立即推送事件通知消费者。注册中心，服务提提供者，服务消费者三者之间均为长连接。</p>
+</li>
+<li><p>Provider 服务提供者<br>启动的时候向注册中心进行注册操作，将自己的服务地址和相关配置信息封装成 Dubbo URL 添加到注册中心中。服务提供者无状态，任意一台宕机后不影响使用，全部宕机后服务消费者应用将无法使用。</p>
+</li>
+<li><p>Consumer 服务消费者<br>启动的时候向注册中心进行注册和订阅操作，注册操作会将自己的服务地址和相关配置信息封装成 Dubbo URL 添加到注册中心中。订阅操作会从注册中心中获取服务提供者注册的URL，并在注册中心中添加相应的监听器。获取到服务提供者URL列表后，消费者会根据负载均衡算法从多个服务提供者中选择一个服务提供者并与其建立连接，最后对服务提供者发起远程调用。如果服务提供者 URL 发生变更，消费者将会通过之前订阅过程中在注册中心添加的监听器，获取到最新的服务提供者URL列表，然后更新服务目录。消费者与提供者建立的是长连接，且消费者会在本地缓存服务提供者列表，所以一旦连接建立，即使注册中心宕机，服务提供者和服务消费者仍能通过本地缓存通讯。</p>
+</li>
+<li><p>Monitor 监控中心</p>
+<p>统计服务的调用次数和调用时间。服务提供者和服务消费者在运行过程中，会在内存中统计调用次数和调用时间，定时发送统计数据到监控中心。监控中心在架构图中不是必要角色，监控中心宕机只会丢失监控数据而已，其它的没有影响。</p>
+</li>
+</ul>
+<h3 id="调用关系"><a href="#调用关系" class="headerlink" title="调用关系"></a>调用关系</h3><ol start="0">
+<li>服务容器负责启动，加载，运行服务提供者。</li>
+<li>服务提供者在启动时，向注册中心注册自己提供的服务。</li>
+<li>服务消费者在启动时，向注册中心注册自己的信息并订阅自己所需的服务。</li>
+<li>注册中心返回服务提供者地址列表给消费者，如果有变更，注册中心将基于长连接推送变更数据给消费者。</li>
+<li>服务消费者，从提供者地址列表中，基于软负载均衡算法，选一台提供者进行调用，如果调用失败，再选另一台调用。</li>
+<li>服务消费者和提供者，在内存中累计调用次数和调用时间，定时每分钟发送一次统计数据到监控中心。</li>
 </ol>
-<h2 id="UML分类"><a href="#UML分类" class="headerlink" title="UML分类"></a>UML分类</h2><ol>
-<li><p>结构式图形</p>
-<p>强调的是系统式的建模，具体包含静态图（<em>类图</em>、对象图、包图）、实现图（组件图、部署图）、剖面图以及复合结构图</p>
-</li>
-<li><p>行为式图形</p>
-<p> 强调系统模型中触发的事件，具体包含活动图、状态图以及用例图</p>
-</li>
-<li><p>交互式图形</p>
-<p>属于行为式图形子集合，强调系统模型中资源流程。具体包含通信图、交互概念图、<em>时序图</em>  以及时间图</p>
-<p>​</p>
-</li>
-</ol>
-<h2 id="UML类图"><a href="#UML类图" class="headerlink" title="UML类图"></a>UML类图</h2><p>用于表示类、接口、实例等之间相互的静态关系。虽然名字叫类图，但类图中并不只有类，还可能包括权限、属性、方法等</p>
-<h2 id="UML记忆方式"><a href="#UML记忆方式" class="headerlink" title="UML记忆方式"></a>UML记忆方式</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">1. uml箭头：从子类指向父类，只有知道对方信息时才能指向对方方向</span><br><span class="line">2. 空心三角箭头：继承或实现，实线-继承：积极的，强关联，关联，通常一个类中有一个类的对象做属性；虚线-实现：消极的，弱关联，依赖</span><br><span class="line">3. 空心菱形：聚合，（注：可以看作一个盘子，可以放很多相同的东西（箭头方向所指的类），聚在一起。是has a的关系）弱关联</span><br><span class="line">4. 实心菱形：组合，（注：代表器皿里有实体结构存在，组合起来成为一个。是contains-a的关系）强关联</span><br></pre></td></tr></table></figure>
-
-<ol>
-<li><p>uml箭头：从子类指向父类，定义子类时需要通过<em>extends</em>关键字指定父类，只有知道对方信息时才能指向对方方向</p>
-</li>
-<li><p>实线-继承 | 虚线-实现</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sx.png" alt> ​</p>
-</li>
-<li><p>空心菱形-聚合</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/jh.png" alt></p>
-</li>
-<li><p>实心菱形-组合</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/zh.png" alt></p>
-<ol start="5">
-<li>组合关系中常见的数字表达</li>
-</ol>
-</li>
-</ol>
-<figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">◆常见数字表达及含义，假设有A类和B类，数字标记在A类侧</span><br><span class="line">◆0..1：0或1个实例    在系统某一时刻，b的实例可以与0个或1个A实例相关</span><br><span class="line">◆0..*：0或多个实例　  在系统某一时刻，b的实例可以与0个或多个A实例相关</span><br><span class="line">◆1..1：1个实例.       b的实例可以和1个A实例相关</span><br><span class="line">◆1只能有一个实例.     b的实例可以和1个A实例相关</span><br><span class="line">◆1..*：至少有一个实例.　　b实例可以与一个或多个A实例相关</span><br></pre></td></tr></table></figure>
-
-<h2 id="UML时序图"><a href="#UML时序图" class="headerlink" title="UML时序图"></a>UML时序图</h2><ol>
-<li><p>是显示对象之间交互的图，这些对象是按照时间顺序排列的</p>
-</li>
-<li><p>时序图中 包含的建模元素</p>
-<p>对象（Actor）、生命线（lifeline）、控制焦点（Focus of control）、消息（Message）等</p>
-</li>
-<li><p>时序图示例</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sxt.png" alt></p>
-<figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">竖线代表生命线</span><br><span class="line"></span><br><span class="line">对象：c：client ，s：server，d：device 代表实例</span><br><span class="line"></span><br><span class="line">消息：箭头代表的元素(open,work等)</span><br><span class="line"></span><br><span class="line">竖矩形代表实例处于某种活动中，</span><br><span class="line"></span><br><span class="line">实线实心箭头：代表方法调用，同步调用</span><br><span class="line"></span><br><span class="line">实线非实心箭头：代表异步调用</span><br><span class="line"></span><br><span class="line">虚线：代表返回</span><br></pre></td></tr></table></figure>
+<h3 id="源码环境搭建"><a href="#源码环境搭建" class="headerlink" title="源码环境搭建"></a>源码环境搭建</h3><ul>
+<li>直接从官方仓库克隆源代码<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https:&#x2F;&#x2F;github.com&#x2F;apache&#x2F;dubbo.git</span><br></pre></td></tr></table></figure></li>
+<li>切换分支，使用 Dubbo 2.6.5 版本<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git checkout -b dubbo-2.6.5 dubbo-2.6.5</span><br></pre></td></tr></table></figure></li>
+<li>编译<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mvn clean install -Dmaven.test.skip&#x3D;true</span><br></pre></td></tr></table></figure>
 
 </li>
-</ol>
-<h2 id="UML类图讲解"><a href="#UML类图讲解" class="headerlink" title="UML类图讲解"></a>UML类图讲解</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">+　　　　公共方法</span><br><span class="line"></span><br><span class="line">-　　　　private权限</span><br><span class="line"></span><br><span class="line">#　　　　protected权限 包内和包外继承的子类都能引用</span><br><span class="line"></span><br><span class="line">~　　　　default权限（包权限）只有包内能引用</span><br><span class="line"></span><br><span class="line">下划线　  静态 Static</span><br><span class="line"></span><br><span class="line">斜体　　  抽象类（或抽象方法）（包含抽象方法的必是抽象类）（类和至少一个方法都是斜体）</span><br><span class="line"></span><br><span class="line">方法　　  可以带参，可以不带参</span><br><span class="line"></span><br><span class="line">　　　　  返回值写到冒号后边，void不用加</span><br></pre></td></tr></table></figure>
-
-<h2 id="UML整体讲解"><a href="#UML整体讲解" class="headerlink" title="UML整体讲解"></a>UML整体讲解</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">设计模式中的对象关系:</span><br><span class="line"></span><br><span class="line"> 依赖关系　　虚线箭头，箭头方向指向被依赖的部分</span><br><span class="line"> 组合关系　　实心菱形</span><br><span class="line"> 聚合关系　　空心菱形（想象成盘子，盛东西，盘子的多，另一方少）</span><br><span class="line"> 关联关系　　实线箭头，箭头指向被关联的部分  类与类的连接，（它使一个类知道另一个类的属性和方法，关联关  系一般用成员变量实现）</span><br><span class="line"> 继承　　　　空心三角形实线</span><br><span class="line"> 实现　　　　空心三角形虚线</span><br><span class="line">注意：</span><br><span class="line"> 实现接口有两种方式，一种是棒棒糖的形式，另一种是虚线空心三角形的方式</span><br></pre></td></tr></table></figure>
-
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/umlqxj.png" alt></p>
-<h2 id="UML中部分对比"><a href="#UML中部分对比" class="headerlink" title="UML中部分对比"></a>UML中部分对比</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">1.1　　关联和依赖的对比</span><br><span class="line">关联是a类中存在b类对象，企鹅类中有气候类的属性</span><br><span class="line">依赖是a类成员方法中有b类的属性，动物新陈代谢方法中有水和空气的属性，只有调这个方法的时候，才可能临时用一下</span><br><span class="line">1.2　　组合和聚合的对比</span><br><span class="line">组合有相同的生命周期，鸟有翅膀，鸟死了，翅膀不复存在</span><br><span class="line">大雁群有大雁，一只大雁挂了，大雁群不会消失</span><br><span class="line">1.3　　继承和实现的对</span><br><span class="line">实线：继承</span><br><span class="line">虚线：实现</span><br></pre></td></tr></table></figure>
-
-
-
-
-
-
+</ul>
+<h3 id="Dubbo-源码核心模块说明"><a href="#Dubbo-源码核心模块说明" class="headerlink" title="Dubbo 源码核心模块说明"></a>Dubbo 源码核心模块说明</h3><p>编译完成后我们可以看到项目结构如下图所示：</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source.jpg" alt></p>
+<p>下面我们简单介绍上图中的核心模块，每个模块的分析将在后面的文章中详细说明。</p>
+<h4 id="dubbo-common-模块"><a href="#dubbo-common-模块" class="headerlink" title="dubbo-common 模块"></a>dubbo-common 模块</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-common.jpg" alt></p>
+<p>Dubbo 的一个公共模块，里面包含了动态编译相关实现、Dubbo SPI的核心实现、日志框架集成，线程池相关的工具类等。</p>
+<h4 id="dubbo-remoting-模块"><a href="#dubbo-remoting-模块" class="headerlink" title="dubbo-remoting 模块"></a>dubbo-remoting 模块</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-remoting.jpg" alt></p>
+<p>Dubbo 的远程通信模块，其中的子模块依赖各种开源组件实现远程通信。dubbo-remoting-api 子模块中定义了远程通信的抽象概念，其它子模块依赖开源组件进行实现，如 dubbo-remoting-netty 子模块依赖 Netty 3 实现远程通信。</p>
+<h4 id="dubbo-rpc-模块"><a href="#dubbo-rpc-模块" class="headerlink" title="dubbo-rpc 模块"></a>dubbo-rpc 模块</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-rpc.jpg" alt></p>
+<p>Dubbo 的远程调用协议模块，其中抽象了各种协议，依赖于远程通信模块的远程调用功能。dubbo-rpc-api 子模块中定义了调用协议的抽象，其它子模块是针对具体协议的实现，如 dubbo-rpc-dubbo 子模块是对 Dubbo 协议的实现，依赖了 dubbo-remoting 模块中的 Netty 等子模块。注意，dubbo-rpc 模块的实现中只包含一对一的调用，不关心集群的内容。</p>
+<h4 id="dubbo-cluster-模块"><a href="#dubbo-cluster-模块" class="headerlink" title="dubbo-cluster 模块"></a>dubbo-cluster 模块</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-cluster.jpg" alt></p>
+<p>Dubbo 中负责管理集群的模块，提供了负载均衡、路由、容错等集群相关的功能。</p>
+<h4 id="dubbo-registry-模块"><a href="#dubbo-registry-模块" class="headerlink" title="dubbo-registry 模块"></a>dubbo-registry 模块</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-registry.jpg" alt></p>
+<p>Dubbo 中负责与多种注册中心交互的模块，提供注册中心的能力。dubbo-registry-api 子模块是对注册中心的抽象，其它子模块是针对具体注册中心的实现，如 dubbo-registry-zookeeper 子模块是 Dubbo 接入 Zookeeper 的具体实现。</p>
+<h4 id="dubbo-config-模块"><a href="#dubbo-config-模块" class="headerlink" title="dubbo-config 模块"></a>dubbo-config 模块</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-config.jpg" alt></p>
+<p>Dubbo 的配置信息是由该模块定义和解析的。dubbo-config-api 子模块负责处理 API 方式的相关配置，dubbo-config-spring 子模块负责处理与 Spring 集成方式的相关配置。有了配置模块，开发者只需要根据 Dubbo 的配置规则去实现功能即可，底层实现交给 Dubbo 的各个模块去完成。</p>
+<h4 id="dubbo-serialization-模块"><a href="#dubbo-serialization-模块" class="headerlink" title="dubbo-serialization 模块"></a>dubbo-serialization 模块</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-source-serialization.jpg" alt></p>
+<p>Dubbo 的序列化模块，是 Dubbo 设计的最后一层，负责管理整个框架网络传输时的序列化和反序列化工作。 dubbo-serialization-api 子模块是对序列化和反序列抽象定义，包含了很多的接口，其它子模块针对具体的序列化方式进行实现，如 dubbo-serialization-fastjson 子模块是对 fastjson 的具体实现。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>本篇文章简单介绍了 Dubbo 的核心架构及核心组件的功能，说明了搭建 Dubbo 源码环境步骤，最后介绍了 Dubbo 核心模块，为后续分析 Dubbo 源码做准备。</p>
 
       
     </div>
@@ -534,7 +522,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.com/posts/cadc5d6c/" title="uml基础" target="_blank" rel="external">https://gentryhuang.com/posts/cadc5d6c/</a>
+      <a href="https://gentryhuang.com/posts/ba7cbd3a/" title="Dubbo源码环境" target="_blank" rel="external">https://gentryhuang.com/posts/ba7cbd3a/</a>
     </li>
     
     <li class="post-copyright-license">
@@ -571,10 +559,6 @@
   </article>
   
     
-  <section id="comments">
-  	
-  </section>
-
 
   
 </div>
@@ -585,9 +569,13 @@
   <ul class="pager pull-left">
     
     <li class="prev">
-      <a href="/posts/90fd4bf3/" title="简单工厂"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+      <a href="/posts/46f95e97/" title="URL统一模型"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
     </li>
     
+    
+    <li class="next">
+      <a href="/posts/e2577ca1/" title="Dubbo项目结构总览"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
     
     
     <li class="toggle-toc">
@@ -691,8 +679,6 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 
 
 
-
-   
 
 
   <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
