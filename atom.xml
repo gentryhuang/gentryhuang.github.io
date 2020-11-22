@@ -159,9 +159,16 @@
     <link href="https://gentryhuang.com/posts/53cd7ee7/"/>
     <id>https://gentryhuang.com/posts/53cd7ee7/</id>
     <published>2020-05-22T16:00:00.000Z</published>
-    <updated>2020-11-22T06:55:23.670Z</updated>
+    <updated>2020-11-22T06:57:03.264Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport </p>]]></content>
     
     <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;前言&quot;&gt;&lt;a href=&quot;#前言&quot; class=&quot;headerlink&quot; title=&quot;前言&quot;&gt;&lt;/a&gt;前言&lt;/h2&gt;&lt;p&gt;在 &lt;a href=&quot;https://gentryhuang.com/posts/95ab077/&quot;&gt;远程通信模块总览&lt;/a&gt; 中对 Rem
+      
     
     </summary>
     
@@ -437,11 +444,11 @@
     
       <category term="Dubbo" scheme="https://gentryhuang.com/tags/Dubbo/"/>
     
+      <category term="RPC" scheme="https://gentryhuang.com/tags/RPC/"/>
+    
       <category term="Javassist" scheme="https://gentryhuang.com/tags/Javassist/"/>
     
       <category term="JDK" scheme="https://gentryhuang.com/tags/JDK/"/>
-    
-      <category term="RPC" scheme="https://gentryhuang.com/tags/RPC/"/>
     
   </entry>
   
