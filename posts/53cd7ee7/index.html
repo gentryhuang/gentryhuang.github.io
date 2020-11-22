@@ -18,15 +18,15 @@
   
   
   <title>Dubbo源码分析 - Transporter 层核心实现 | gentryhuang的博客</title>
-  <meta name="description" content="前言在 远程通信模块总览 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport ，该层包括 Remoting 层中的 transport 包相关抽象及实现，以及。。。 概述1 transport 包：对网络传输层的抽象，但它只负责抽象单向消息的传输，即请求消息由 Client 端发出，Server 端接收；响应消息由 Server 端发出，Client端接收">
+  <meta name="description" content="博客">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Dubbo源码分析 - Transporter 层核心实现">
 <meta property="og:url" content="https://gentryhuang.com/posts/53cd7ee7/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="前言在 远程通信模块总览 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport ，该层包括 Remoting 层中的 transport 包相关抽象及实现，以及。。。 概述1 transport 包：对网络传输层的抽象，但它只负责抽象单向消息的传输，即请求消息由 Client 端发出，Server 端接收；响应消息由 Server 端发出，Client端接收">
+<meta property="og:description" content="博客">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-05-22T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-11-21T13:27:42.668Z">
+<meta property="article:modified_time" content="2020-11-22T06:55:23.670Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
@@ -395,7 +395,7 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li></ol>
+      
     </nav>
   </div>
 </aside>
@@ -446,7 +446,7 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/53cd7ee7/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 520(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 0(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 1(分)</span>
@@ -456,11 +456,7 @@
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport ，该层包括 <strong>Remoting 层中的 transport 包</strong>相关抽象及实现，以及。。。</p>
-<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>1 transport 包：对网络传输层的抽象，但它只负责抽象单向消息的传输，即请求消息由 Client 端发出，Server 端接收；响应消息由 Server 端发出，Client端接收。有很多网络库可以实现网络传输的功能，例如 Netty、Grizzly 等， transport 包是在这些网络库上层的一层抽象。<br>2 Transporter 是在 Client 和 Server 之上封装的一层接口。针对每个支持的NIO库，都有一个 Transporter 接口实现，<br>   散落在各个 dubbo-remoting-* 实现模块中。如下：xxx。这些 Transporter 接口实现返回的 Client 和 Server 具体对应如下，是NIO库对应的 Server和Client实现。</p>
-<p>3    为什么要单独抽象出 Transporter层，而不是像简易版 RPC 框架那样，直接让上层使用 Netty ，或 Mina 呢？<br>   因为 Netty、Mina、Grizzly 这些 NIO 库对外接口和使用方式不一样，如果上层直接使用了 Netty 或 Mina，就依赖了具体的NIO库实现，而不是依赖一个<br>   有传输能力的抽象，后续要切换实现的话，就需要修改依赖和接入的相关代码，非常容易改出 Bug。这也不符合设计模式中的开放-封闭原则。<br>   有了 Transporter 层之后，我们可以通过 Dubbo SPI 动态切换具体的 Transporter 扩展实现，从而切换到不同的 Client 和 RemotingServer 实现，达到底层 NIO 库切换的目的，<br>   而且无须修改任何代码。即使有更先进的 NIO 库出现，我们也只需要开发相应的 dubbo-remoting-* 实现模块提供 Transporter、Client、RemotingServer 等核心接口的实现，即可接入，完全符合开放-封闭原则。</p>
-<p>4 Transporters，它不是一个接口，而是门面类，其中封装了 Transporter 对象的创建（通过 Dubbo SPI）以及 ChannelHandler 的处理</p>
-
+        
       
     </div>
     <div class="article-footer">
