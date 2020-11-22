@@ -17,19 +17,24 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>Dubbo源码分析 - Transporter 层核心实现 | gentryhuang的博客</title>
-  <meta name="description" content="前言在 远程通信模块总览 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport">
+  <title>Dubbo源码分析 - 网络传输层 | gentryhuang的博客</title>
+  <meta name="description" content="前言在 远程通信模块总览 中对 Remoting 层进行了总体说明，下面我们开始详细介绍 Remoting 层的 Transport 网络传输层。本文会从 Transporter 层的 Server、Client、Channel、ChannelHandler、Dispatcher 以及 Codec2 等核心接口出发，分别介绍这些核心接口的实现。 概述有很多网络库可以实现网络传输的功能，如 Nett">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Dubbo源码分析 - Transporter 层核心实现">
+<meta property="og:title" content="Dubbo源码分析 - 网络传输层">
 <meta property="og:url" content="https://gentryhuang.com/posts/53cd7ee7/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="前言在 远程通信模块总览 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport">
+<meta property="og:description" content="前言在 远程通信模块总览 中对 Remoting 层进行了总体说明，下面我们开始详细介绍 Remoting 层的 Transport 网络传输层。本文会从 Transporter 层的 Server、Client、Channel、ChannelHandler、Dispatcher 以及 Codec2 等核心接口出发，分别介绍这些核心接口的实现。 概述有很多网络库可以实现网络传输的功能，如 Nett">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/53cd7ee7/dubbo-remoting-transport-outline.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/53cd7ee7/dubbo-remoting-transport-api.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/53cd7ee7/dubbo-remoting-transport-server.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/53cd7ee7/dubbo-remoting-transport-client.jpg">
 <meta property="article:published_time" content="2020-05-22T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-11-22T06:57:03.264Z">
+<meta property="article:modified_time" content="2020-11-22T09:21:47.213Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/53cd7ee7/dubbo-remoting-transport-outline.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/53cd7ee7/index.html">
   
@@ -395,7 +400,7 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Transporter-接口"><span class="toc-number">3.</span> <span class="toc-text">Transporter 接口</span></a></li></ol>
     </nav>
   </div>
 </aside>
@@ -409,7 +414,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      Dubbo源码分析 - Transporter 层核心实现
+      Dubbo源码分析 - 网络传输层
     </h1>
   
 
@@ -446,17 +451,31 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/53cd7ee7/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 38(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 770(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 1(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 3(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport </p>
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中对 Remoting 层进行了总体说明，下面我们开始详细介绍 Remoting 层的 Transport 网络传输层。本文会从 Transporter 层的 Server、Client、Channel、ChannelHandler、Dispatcher 以及 Codec2 等核心接口出发，分别介绍这些核心接口的实现。</p>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>有很多网络库可以实现网络传输的功能，如 Netty、Mina、Grizzly等。但这些 NIO 库对外接口和使用方式不一样，如果使用方直接使用 Netty 或其它通信组件，那么就依赖了具体的NIO库实现，而不是依赖一个有传输能力的抽象，后续要切换其它NIO库实现的话就需要修改依赖和接入的相关代码，这既容易出错也不符合设计模式中的开放-封闭原则。因此，Dubbo Transporter 层就被抽象出来了，它屏蔽了不同的通信框架的异同，封装了统一的对外接口。有了 Transporter 层之后，我们可以通过 Dubbo SPI 动态切换具体的 Transporter 扩展实现，从而切换到不同的 Client 和 Server 实现，达到底层 NIO 库切换的目的。需要注意的是，Dubbo Transporter 层不等于 Transport 扩展接口及其实现，它是对网络传输层的抽象即在NIO库之上的抽象，以 Message 为中心，扩展接口为 Channel, Transporter, Client, Server, Codec, ChannelHandler, Dispatcher 等。</p>
+<p>Transport 抽象层代码结构如下：</p>
+<p><img src="/posts/53cd7ee7/dubbo-remoting-transport-outline.jpg" alt></p>
+<p>注意， Dubbo 接入具体 NIO 库的代码散落在 dubbo-remoting-* 实现模块中，会在后面的文章中介绍。</p>
+<h2 id="Transporter-接口"><a href="#Transporter-接口" class="headerlink" title="Transporter 接口"></a>Transporter 接口</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span>(<span class="string">"netty"</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Transporter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 创建一个服务器。根据 'server'，'transporter' 确定 Server 扩展实现</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url     服务器地址</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> handler 通道处理器</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> server 返回服务器</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RemotingException</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@see</span> com.alibaba.dubbo.remoting.Transporters#bind(URL, ChannelHandler...)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span>(&#123;Constants.SERVER_KEY, Constants.TRANSPORTER_KEY&#125;)</span><br><span class="line">    <span class="function">Server <span class="title">bind</span><span class="params">(URL url, ChannelHandler handler)</span> <span class="keyword">throws</span> RemotingException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 连接服务器，即创建一个客户端。根据 'client','transporter' 确定 Client 扩展实现</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url     服务器地址</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> handler 通道处理器</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> client 客户端</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RemotingException</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@see</span> com.alibaba.dubbo.remoting.Transporters#connect(URL, ChannelHandler...)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span>(&#123;Constants.CLIENT_KEY, Constants.TRANSPORTER_KEY&#125;)</span><br><span class="line">    <span class="function">Client <span class="title">connect</span><span class="params">(URL url, ChannelHandler handler)</span> <span class="keyword">throws</span> RemotingException</span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Transporter 是在 Client 和 Server 之上封装的统一的对外接口，针对每个支持的NIO库，都有一个 Transporter 接口实现，它们是 Dubbo 接入的具体NIO库的实现入口，在各个 dubbo-remoting-* 实现模块中。如，Dubbo 接入 Mina 网络通信库，就开发了对应的 <strong>dubbo-remoting-mina</strong> 实现模块，提供了 Transporter、Server、Client、Channel、ChannelHandler 等核心接口的实现。</p>
+<p><img src="/posts/53cd7ee7/dubbo-remoting-transport-api.jpg" alt></p>
+<p>这些 Transporter 接口实现返回的 Client 和 Server 具体对应如下，是Dubbo 接入的NIO库对应的 Server和Client实现。</p>
+<p><strong>Server 实现</strong></p>
+<p><img src="/posts/53cd7ee7/dubbo-remoting-transport-server.jpg" alt></p>
+<p><strong>Client 实现</strong></p>
+<p><img src="/posts/53cd7ee7/dubbo-remoting-transport-client.jpg" alt></p>
+<p>在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中已经介绍过 Transporter 接口以及该接口的门面类 Transporters ，这里不再重复介绍。关于通信具体实现模块会在后面的文章中介绍，它们也是 Transporter 层的一部分，本篇文章着重分析 Transport 层公用组件及抽象概念。</p>
 
       
     </div>
@@ -466,7 +485,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.com/posts/53cd7ee7/" title="Dubbo源码分析 - Transporter 层核心实现" target="_blank" rel="external">https://gentryhuang.com/posts/53cd7ee7/</a>
+      <a href="https://gentryhuang.com/posts/53cd7ee7/" title="Dubbo源码分析 - 网络传输层" target="_blank" rel="external">https://gentryhuang.com/posts/53cd7ee7/</a>
     </li>
     
     <li class="post-copyright-license">
