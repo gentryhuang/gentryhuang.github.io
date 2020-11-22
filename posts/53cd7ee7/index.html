@@ -17,21 +17,21 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>分类: RPC | gentryhuang的博客</title>
-  <meta name="description" content="博客">
-<meta property="og:type" content="website">
-<meta property="og:title" content="gentryhuang‘s blog">
-<meta property="og:url" content="https://gentryhuang.com/categories/RPC/index.html">
+  <title>Dubbo源码分析 - Transporter 层核心实现 | gentryhuang的博客</title>
+  <meta name="description" content="前言在 远程通信模块总览 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport ，该层包括 Remoting 层中的 transport 包相关抽象及实现，以及。。。 概述1 transport 包：对网络传输层的抽象，但它只负责抽象单向消息的传输，即请求消息由 Client 端发出，Server 端接收；响应消息由 Server 端发出，Client端接收">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - Transporter 层核心实现">
+<meta property="og:url" content="https://gentryhuang.com/posts/53cd7ee7/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="博客">
+<meta property="og:description" content="前言在 远程通信模块总览 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport ，该层包括 Remoting 层中的 transport 包相关抽象及实现，以及。。。 概述1 transport 包：对网络传输层的抽象，但它只负责抽象单向消息的传输，即请求消息由 Client 端发出，Server 端接收；响应消息由 Server 端发出，Client端接收">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-05-22T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-11-21T13:27:42.668Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="求职">
-<meta property="article:tag" content="技术">
-<meta property="article:tag" content="生活">
+<meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/categories/RPC/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/53cd7ee7/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -390,305 +390,162 @@
 </aside>
 
   
-  <main class="main" role="main">
-  <article class="content article article-categories article-type-list" itemscope="">
-    <header class="article-header">
-      <h1 itemprop="name" class="hidden-xs">分类: RPC</h1>
-      <p class="hidden-xs">共 32 篇文章</p>
-      <nav role="navigation" id="nav-main" class="okayNav">
-        <ul>
-          <li><a href="/categories">All</a></li>
-          
-          <li><a href="/categories/设计模式/">设计模式</a></li>
-          
-          <li><a href="/categories/RPC/">RPC</a></li>
-          
-          <li><a href="/categories/JDK/">JDK</a></li>
-          
-          <li><a href="/categories/Redis/">Redis</a></li>
-          
-        </ul>
-      </nav>
-    </header>
-    <!-- /header -->
-    <div class="article-body">
-      <div class="panel panel-default b-no">
-    <div class="panel-heading" role="tab">
-        <h4 class="panel-title">
-            <a data-toggle="collapse" href="#collapseRPC" aria-expanded="true">
-              <i class="icon icon-folder text-active"></i><i class="icon icon-folder-open text"></i>
-              RPC
-            </a>
-            <small class="text-muted">(Total 32 articles)</small>
-        </h4>
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/Transport层" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - Transporter 层核心实现
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/53cd7ee7/" class="article-date">
+	  <time datetime="2020-05-22T16:00:00.000Z" itemprop="datePublished">2020-05-23</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/53cd7ee7/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 520(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 1(分)</span>
+	
+
+      </div>
     </div>
-    <div id="collapseRPC" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingRPC">
-        <div class="panel-body">
-            <div class="collection">
-              
-                
-<a href="/posts/751c0982/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-08-04T16:00:00.000Z" itemprop="datePublished">2020-08-05</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 本地暴露
-</a>
-
-
-              
-                
-<a href="/posts/ef4cfe7a/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-25T16:00:00.000Z" itemprop="datePublished">2020-05-26</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 优雅停机
-</a>
-
-
-              
-                
-<a href="/posts/53cd7ee7/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-22T16:00:00.000Z" itemprop="datePublished">2020-05-23</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Transporter 层核心实现
-</a>
-
-
-              
-                
-<a href="/posts/e79185fb/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-17T16:00:00.000Z" itemprop="datePublished">2020-05-18</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Buffer缓冲区
-</a>
-
-
-              
-                
-<a href="/posts/95ab077/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-09T16:00:00.000Z" itemprop="datePublished">2020-05-10</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 远程通信模块总览
-</a>
-
-
-              
-                
-<a href="/posts/cfaae53/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-04T16:00:00.000Z" itemprop="datePublished">2020-05-05</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - FST序列化
-</a>
-
-
-              
-                
-<a href="/posts/4fd38523/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-03T16:00:00.000Z" itemprop="datePublished">2020-05-04</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Hessian序列化
-</a>
-
-
-              
-                
-<a href="/posts/5898e8ff/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-02T16:00:00.000Z" itemprop="datePublished">2020-05-03</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - JDK序列化
-</a>
-
-
-              
-                
-<a href="/posts/16132b67/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-02T16:00:00.000Z" itemprop="datePublished">2020-05-03</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 序列化总览
-</a>
-
-
-              
-                
-<a href="/posts/1663a5dc/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-01T16:00:00.000Z" itemprop="datePublished">2020-05-02</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 动态代理本地存根
-</a>
-
-
-              
-                
-<a href="/posts/faa2b4a3/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-30T16:00:00.000Z" itemprop="datePublished">2020-05-01</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - JDK动态代理
-</a>
-
-
-              
-                
-<a href="/posts/c2df2fc6/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-29T16:00:00.000Z" itemprop="datePublished">2020-04-30</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Javassist动态代理
-</a>
-
-
-              
-                
-<a href="/posts/1d1e42a8/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-27T16:00:00.000Z" itemprop="datePublished">2020-04-28</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 动态代理总览
-</a>
-
-
-              
-                
-<a href="/posts/b2453481/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-25T16:00:00.000Z" itemprop="datePublished">2020-04-26</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Redis注册中心
-</a>
-
-
-              
-                
-<a href="/posts/f70c2f2e/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-16T16:00:00.000Z" itemprop="datePublished">2020-04-17</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Zookeeper注册中心
-</a>
-
-
-              
-                
-<a href="/posts/dafcd048/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-12T16:00:00.000Z" itemprop="datePublished">2020-04-13</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 注册中心总览
-</a>
-
-
-              
-                
-<a href="/posts/714ea63d/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-09T16:00:00.000Z" itemprop="datePublished">2020-04-10</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 服务容器
-</a>
-
-
-              
-                
-<a href="/posts/1a889dcd/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-01T16:00:00.000Z" itemprop="datePublished">2020-04-02</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 注解配置
-</a>
-
-
-              
-                
-<a href="/posts/a8d76a91/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-28T16:00:00.000Z" itemprop="datePublished">2020-03-29</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - XML配置
-</a>
-
-
-              
-                
-<a href="/posts/1d3295e6/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-24T16:00:00.000Z" itemprop="datePublished">2020-03-25</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - API和属性配置
-</a>
-
-
-              
-                
-<a href="/posts/68ac5094/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-21T16:00:00.000Z" itemprop="datePublished">2020-03-22</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 动态编译
-</a>
-
-
-              
-                
-<a href="/posts/3e0b5964/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-17T16:00:00.000Z" itemprop="datePublished">2020-03-18</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 自适应扩展
-</a>
-
-
-              
-                
-<a href="/posts/5d81f464/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-12T16:00:00.000Z" itemprop="datePublished">2020-03-13</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Dubbo SPI
-</a>
-
-
-              
-                
-<a href="/posts/a9c33b8c/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-10T16:00:00.000Z" itemprop="datePublished">2020-03-11</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Java SPI
-</a>
-
-
-              
-                
-<a href="/posts/46f95e97/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-09T16:00:00.000Z" itemprop="datePublished">2020-03-10</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> URL统一模型
-</a>
-
-
-              
-                
-<a href="/posts/ba7cbd3a/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-08T16:00:00.000Z" itemprop="datePublished">2020-03-09</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码环境
-</a>
-
-
-              
-                
-<a href="/posts/e2577ca1/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-07T16:00:00.000Z" itemprop="datePublished">2020-03-08</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo项目结构总览
-</a>
-
-
-              
-                
-<a href="/posts/7202a9c0/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-05T16:00:00.000Z" itemprop="datePublished">2020-03-06</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo示例 - 注解配置
-</a>
-
-
-              
-                
-<a href="/posts/3f1c0a92/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-03T16:00:00.000Z" itemprop="datePublished">2020-03-04</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo示例 - XML配置
-</a>
-
-
-              
-                
-<a href="/posts/f0ae64a/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-02T16:00:00.000Z" itemprop="datePublished">2020-03-03</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo示例 - API配置
-</a>
-
-
-              
-                
-<a href="/posts/eee3e639/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-01T16:00:00.000Z" itemprop="datePublished">2020-03-02</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Spring自定义标签
-</a>
-
-
-              
-                
-<a href="/posts/626d9676/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-02-29T16:00:00.000Z" itemprop="datePublished">2020-03-01</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> 初识RPC
-</a>
-
-
-              
-            </div>
-        </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中对 Remoting 层进行了总体说明，下面我们开始详细介绍网络传输层 Transport ，该层包括 <strong>Remoting 层中的 transport 包</strong>相关抽象及实现，以及。。。</p>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>1 transport 包：对网络传输层的抽象，但它只负责抽象单向消息的传输，即请求消息由 Client 端发出，Server 端接收；响应消息由 Server 端发出，Client端接收。有很多网络库可以实现网络传输的功能，例如 Netty、Grizzly 等， transport 包是在这些网络库上层的一层抽象。<br>2 Transporter 是在 Client 和 Server 之上封装的一层接口。针对每个支持的NIO库，都有一个 Transporter 接口实现，<br>   散落在各个 dubbo-remoting-* 实现模块中。如下：xxx。这些 Transporter 接口实现返回的 Client 和 Server 具体对应如下，是NIO库对应的 Server和Client实现。</p>
+<p>3    为什么要单独抽象出 Transporter层，而不是像简易版 RPC 框架那样，直接让上层使用 Netty ，或 Mina 呢？<br>   因为 Netty、Mina、Grizzly 这些 NIO 库对外接口和使用方式不一样，如果上层直接使用了 Netty 或 Mina，就依赖了具体的NIO库实现，而不是依赖一个<br>   有传输能力的抽象，后续要切换实现的话，就需要修改依赖和接入的相关代码，非常容易改出 Bug。这也不符合设计模式中的开放-封闭原则。<br>   有了 Transporter 层之后，我们可以通过 Dubbo SPI 动态切换具体的 Transporter 扩展实现，从而切换到不同的 Client 和 RemotingServer 实现，达到底层 NIO 库切换的目的，<br>   而且无须修改任何代码。即使有更先进的 NIO 库出现，我们也只需要开发相应的 dubbo-remoting-* 实现模块提供 Transporter、Client、RemotingServer 等核心接口的实现，即可接入，完全符合开放-封闭原则。</p>
+<p>4 Transporters，它不是一个接口，而是门面类，其中封装了 Transporter 对象的创建（通过 Dubbo SPI）以及 ChannelHandler 的处理</p>
+
+      
     </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/53cd7ee7/" title="Dubbo源码分析 - Transporter 层核心实现" target="_blank" rel="external">https://gentryhuang.com/posts/53cd7ee7/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
 </div>
+
+
     </div>
   </article>
-   
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/ef4cfe7a/" title="Dubbo源码分析 - 优雅停机"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/e79185fb/" title="Dubbo源码分析 - Buffer缓冲区"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
 </main>
 
   
@@ -759,6 +616,12 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 <script src="/js/insight.js"></script>
 
 
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
 
 
