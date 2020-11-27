@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - Mina网络通信 | gentryhuang的博客</title>
+  <meta name="description" content="前言在 网络传输层 中对 Transport 通用层或者说是抽象层进行了详细分析。上一篇文章 Netty4网络通信 中我们详细分析了 Dubbo 接入 Netty4 实现的网络通信，本篇文章将分析 Dubbo 如何接入 Mina 库。 概述Dubbo 为了集成不同优秀开源的 NIO 库，专门实现了一个抽象层，对应的模块是 dubbo-remoting-api，在 远程通信模块总览 中介绍了该模块核">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - Mina网络通信">
+<meta property="og:url" content="https://gentryhuang.com/posts/543ee8c5/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言在 网络传输层 中对 Transport 通用层或者说是抽象层进行了详细分析。上一篇文章 Netty4网络通信 中我们详细分析了 Dubbo 接入 Netty4 实现的网络通信，本篇文章将分析 Dubbo 如何接入 Mina 库。 概述Dubbo 为了集成不同优秀开源的 NIO 库，专门实现了一个抽象层，对应的模块是 dubbo-remoting-api，在 远程通信模块总览 中介绍了该模块核">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-mina-uml.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-mina-codec.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-netty4-server-hierarchy.jpg">
+<meta property="article:published_time" content="2020-06-06T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-11-27T14:31:51.749Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-mina-uml.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/543ee8c5/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">34</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">30</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JDK/" rel="tag">JDK</a><span class="tag-list-count">6</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">9</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/Dubbo/" style="font-size: 13.83px;">Dubbo</a> <a href="/tags/JDK/" style="font-size: 13.5px;">JDK</a> <a href="/tags/JUC/" style="font-size: 13px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.33px;">Javassist</a> <a href="/tags/RPC/" style="font-size: 13.67px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.17px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.33px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 14px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-20T11:33:59.000Z" itemprop="datePublished">2020-10-20</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-18T11:00:50.000Z" itemprop="datePublished">2020-10-18</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/37f29896/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/37f29896/" class="title">并发 - Java并发工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-05T16:00:00.000Z" itemprop="datePublished">2020-10-06</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/751c0982/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/751c0982/" class="title">Dubbo源码分析 - 本地暴露</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-08-04T16:00:00.000Z" itemprop="datePublished">2020-08-05</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/ef4cfe7a/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/ef4cfe7a/" class="title">Dubbo源码分析 - 优雅停机</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-25T16:00:00.000Z" itemprop="datePublished">2020-07-26</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#MinaTransporter"><span class="toc-number">3.</span> <span class="toc-text">MinaTransporter</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#MinaServer"><span class="toc-number">4.</span> <span class="toc-text">MinaServer</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#属性"><span class="toc-number">4.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#启动服务方法-doOpen"><span class="toc-number">4.2.</span> <span class="toc-text">启动服务方法 doOpen</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#关闭服务-doClose"><span class="toc-number">4.3.</span> <span class="toc-text">关闭服务 doClose</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#获取客户端通道"><span class="toc-number">4.4.</span> <span class="toc-text">获取客户端通道</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#是否启动成功"><span class="toc-number">4.5.</span> <span class="toc-text">是否启动成功</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#MinaChannel"><span class="toc-number">5.</span> <span class="toc-text">MinaChannel</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#属性-1"><span class="toc-number">5.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#核心方法"><span class="toc-number">5.2.</span> <span class="toc-text">核心方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#创建-获取-MinaChannel"><span class="toc-number">5.2.1.</span> <span class="toc-text">创建&#x2F;获取 MinaChannel</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#发送消息"><span class="toc-number">5.2.2.</span> <span class="toc-text">发送消息</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#操作附加属性"><span class="toc-number">5.2.3.</span> <span class="toc-text">操作附加属性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#关闭连接"><span class="toc-number">5.2.4.</span> <span class="toc-text">关闭连接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#清理-MinaChannel"><span class="toc-number">5.2.5.</span> <span class="toc-text">清理 MinaChannel</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#获取地址"><span class="toc-number">5.2.6.</span> <span class="toc-text">获取地址</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#编解码"><span class="toc-number">6.</span> <span class="toc-text">编解码</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#属性-2"><span class="toc-number">6.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#编码器实现"><span class="toc-number">6.2.</span> <span class="toc-text">编码器实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#解码器实现"><span class="toc-number">6.3.</span> <span class="toc-text">解码器实现</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#MinaHandler"><span class="toc-number">7.</span> <span class="toc-text">MinaHandler</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#属性-3"><span class="toc-number">7.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#请求或事件处理方法"><span class="toc-number">7.2.</span> <span class="toc-text">请求或事件处理方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MinaServer-amp-MinaHandler"><span class="toc-number">7.3.</span> <span class="toc-text">MinaServer &amp; MinaHandler</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#MinaClient"><span class="toc-number">8.</span> <span class="toc-text">MinaClient</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#属性-4"><span class="toc-number">8.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#构造方法"><span class="toc-number">8.2.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#启动客户端-doOpen"><span class="toc-number">8.3.</span> <span class="toc-text">启动客户端 doOpen</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#连接服务器-doConnect"><span class="toc-number">8.4.</span> <span class="toc-text">连接服务器 doConnect</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#断开连接-doDisConnect"><span class="toc-number">8.5.</span> <span class="toc-text">断开连接 doDisConnect</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#获取连接到服务的通道-getChannel"><span class="toc-number">8.6.</span> <span class="toc-text">获取连接到服务的通道 getChannel</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">9.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/Mina网络通信" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - Mina网络通信
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/543ee8c5/" class="article-date">
+	  <time datetime="2020-06-06T16:00:00.000Z" itemprop="datePublished">2020-06-07</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/543ee8c5/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 4k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 18(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在 <a href="https://gentryhuang.com/posts/53cd7ee7/">网络传输层</a> 中对 Transport 通用层或者说是抽象层进行了详细分析。上一篇文章 <a href="https://gentryhuang.com/posts/4468445c/">Netty4网络通信</a> 中我们详细分析了 Dubbo 接入 Netty4 实现的网络通信，本篇文章将分析 Dubbo 如何接入 Mina 库。</p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Dubbo 为了集成不同优秀开源的 NIO 库，专门实现了一个抽象层，对应的模块是 <strong>dubbo-remoting-api</strong>，在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中介绍了该模块核心的接口和类。针对每一个 NIO 框架的接入，Dubbo 都构建一个单独的模块，该模块只需实现抽象模块 <strong>dubbo-remoting-api</strong> 即可，结合 Dubbo SPI 机制可以灵活切换到不同的 NIO 库。下面我们开始介绍实现层 <strong>dubbo-remoting-mina</strong> 模块，UML 图如下：</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-mina-uml.jpg" alt> </p>
+<p>通过上面的 UML 图可以很清晰看出各个类之间的关系，和 Netty4 实现通信几乎一致。下面我们依然根据 UML 图的依赖关系逐个分析。</p>
+<h1 id="MinaTransporter"><a href="#MinaTransporter" class="headerlink" title="MinaTransporter"></a>MinaTransporter</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MinaTransporter</span> <span class="keyword">implements</span> <span class="title">Transporter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String NAME = <span class="string">"mina"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 绑定一个服务器</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url     服务器地址</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> handler 通道处理器</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RemotingException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Server <span class="title">bind</span><span class="params">(URL url, ChannelHandler handler)</span> <span class="keyword">throws</span> RemotingException </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> MinaServer(url, handler);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 连接服务器，级创建一个客户端</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url     服务器地址</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> handler 通道处理器</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RemotingException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Client <span class="title">connect</span><span class="params">(URL url, ChannelHandler handler)</span> <span class="keyword">throws</span> RemotingException </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> MinaClient(url, handler);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>MinaTransporter 实现了 Transporter 扩展接口，关于 Transporter 扩展接口已经在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中进行了介绍，默认扩展实现是 netty 即 Netty3 实现。bind() 和 connect() 方法分别用于创建 MinaServer 和 MinaClient 对象。一般 Transport 扩展实现会由 Transport 的门面 Transports 统一向上层提供，这个上层就是 Exchange 信息交互层。下面我们继续分析 MinaTransporter 创建的服务器和客户端。</p>
+<h1 id="MinaServer"><a href="#MinaServer" class="headerlink" title="MinaServer"></a>MinaServer</h1><h2 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MinaServer</span> <span class="keyword">extends</span> <span class="title">AbstractServer</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(MinaServer<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 用于同客户端建立连接</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> SocketAcceptor acceptor;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MinaServer</span><span class="params">(URL url, ChannelHandler handler)</span> <span class="keyword">throws</span> RemotingException </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(url, ChannelHandlers.wrap(handler, ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME)));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>MinaServer 继承了 AbstractServer 抽象服务类，是 Mina 服务实现类。MinaServer 通过层层继承拥有了很多类的职能，如 端点（Endpoint）、通道处理（ChannelHandler）、(服务端)Server ，其中间接关联了 ChannelHandler（AbstractPeer中的属性）和 Codec2（AbstractEndpoint中的）对象 。剩下的不再说明，和 Netty4 实现一致。</p>
+<h2 id="启动服务方法-doOpen"><a href="#启动服务方法-doOpen" class="headerlink" title="启动服务方法 doOpen"></a>启动服务方法 doOpen</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"> <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doOpen</span><span class="params">()</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">     <span class="comment">// set thread pool.</span></span><br><span class="line">     acceptor = <span class="keyword">new</span> SocketAcceptor(getUrl().getPositiveParameter(Constants.IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),</span><br><span class="line">             Executors.newCachedThreadPool(<span class="keyword">new</span> NamedThreadFactory(<span class="string">"MinaServerWorker"</span>,</span><br><span class="line">                     <span class="keyword">true</span>)));</span><br><span class="line">     <span class="comment">// 配置项</span></span><br><span class="line">     SocketAcceptorConfig cfg = acceptor.getDefaultConfig();</span><br><span class="line">     cfg.setThreadModel(ThreadModel.MANUAL);</span><br><span class="line">     <span class="comment">//编写过滤器链，通过过滤器执行编解码器</span></span><br><span class="line">     acceptor.getFilterChain().addLast(<span class="string">"codec"</span>, <span class="keyword">new</span> ProtocolCodecFilter(<span class="keyword">new</span> MinaCodecAdapter(getCodec(), getUrl(), <span class="keyword">this</span>)));</span><br><span class="line">     <span class="comment">// 绑定端口，并设置 handler</span></span><br><span class="line">     acceptor.bind(getBindAddress(), <span class="keyword">new</span> MinaHandler(getUrl(), <span class="keyword">this</span>));</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>启动服务的方法是父类的一个模版方法，代码实现是 Mina 的标准化流程。简单概括下：</p>
+<ol>
+<li>创建 SocketAcceptor 对象，URL 对象从父类 AbstractPeer 中获取。</li>
+<li>设置 Mina 服务的配置项。</li>
+<li>设置 Mina 的过滤器，在 Mina 中编解码器是通过过滤器职能实现的，Mina 的过滤器对 Codec2 实现进行了封装。</li>
+<li>设置处理，绑定端口，启动服务</li>
+</ol>
+<p>除了标准化流程不同外，其它方面都和 NettyServer 一致，都需要把 Codec2 编解码器和通道处理器 ChannelHandler 关联到服务上。</p>
+<h2 id="关闭服务-doClose"><a href="#关闭服务-doClose" class="headerlink" title="关闭服务 doClose"></a>关闭服务 doClose</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">   <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doClose</span><span class="params">()</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">           <span class="keyword">if</span> (acceptor != <span class="keyword">null</span>) &#123;</span><br><span class="line">               <span class="comment">// 解绑端口，关闭服务</span></span><br><span class="line">               acceptor.unbind(getBindAddress());</span><br><span class="line">           &#125;</span><br><span class="line">       &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">           logger.warn(e.getMessage(), e);</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>NettyServer 关闭时需要考虑到多个对象，如服务 Channel、客户端连接到服务的Channel、以及循环线程组。 MinaServer 只需要考虑关闭 SocketAcceptor 对象即可。</p>
+<h2 id="获取客户端通道"><a href="#获取客户端通道" class="headerlink" title="获取客户端通道"></a>获取客户端通道</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"> <span class="function"><span class="keyword">public</span> Collection&lt;Channel&gt; <span class="title">getChannels</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="comment">// 获取Mina 连接集合</span></span><br><span class="line">     Set&lt;IoSession&gt; sessions = acceptor.getManagedSessions(getBindAddress());</span><br><span class="line">     Collection&lt;Channel&gt; channels = <span class="keyword">new</span> HashSet&lt;Channel&gt;();</span><br><span class="line">     <span class="keyword">for</span> (IoSession session : sessions) &#123;</span><br><span class="line">         <span class="comment">// 连接处于连接状态</span></span><br><span class="line">         <span class="keyword">if</span> (session.isConnected()) &#123;</span><br><span class="line">             <span class="comment">// 获取Mina 连接对应的 Dubbo MinaChannel</span></span><br><span class="line">             channels.add(MinaChannel.getOrAddChannel(session, getUrl(), <span class="keyword">this</span>));</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="keyword">return</span> channels;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>和 NettyServer 类似，都需要获取处于连接状态的通道，最终映射到 Dubbo 层面的通道 MinaChannel。</p>
+<h2 id="是否启动成功"><a href="#是否启动成功" class="headerlink" title="是否启动成功"></a>是否启动成功</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 服务是否启动</span></span><br><span class="line"><span class="comment">   *</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">isBound</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="keyword">return</span> acceptor.isManaged(getBindAddress());</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>调用 Mina API 判断服务是否开启，和 NettyServer 类似。</p>
+<h1 id="MinaChannel"><a href="#MinaChannel" class="headerlink" title="MinaChannel"></a>MinaChannel</h1><p>MinaChannel 继承了 AbstractChannel 抽象类，是对 org.apache.mina.common.IoSession 的装饰，使用了装饰者模式，与 IoSession 是一对一的关系，这一点和 NettyChannel 一致。</p>
+<h2 id="属性-1"><a href="#属性-1" class="headerlink" title="属性"></a>属性</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">MinaChannel</span> <span class="keyword">extends</span> <span class="title">AbstractChannel</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(MinaChannel<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * IoSession 存储数据的key，value 是 MinaChannel 对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    private static final String CHANNEL_KEY = MinaChannel.class.getName() + ".CHANNEL";</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 对底层连接的封装（服务器与客户端的特定连接）</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> IoSession session;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 私有构造方法</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">MinaChannel</span><span class="params">(IoSession session, URL url, ChannelHandler handler)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(url, handler);</span><br><span class="line">        <span class="keyword">if</span> (session == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"mina session == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">this</span>.session = session;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>MinaChannel 和 NettyChannel 有所不同，MinaChannel 内部装饰的 Mina 的连接 IoSession 直接存储数据，将对应的 MinaChannel 存储到 IoSession 中，而 NettyChannel 采用单独使用集合处理的方式。同样的，获取 MinaChannel 只能通过内部方法创建。</p>
+<h2 id="核心方法"><a href="#核心方法" class="headerlink" title="核心方法"></a>核心方法</h2><h3 id="创建-获取-MinaChannel"><a href="#创建-获取-MinaChannel" class="headerlink" title="创建/获取 MinaChannel"></a>创建/获取 MinaChannel</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> MinaChannel <span class="title">getOrAddChannel</span><span class="params">(IoSession session, URL url, ChannelHandler handler)</span> </span>&#123;</span><br><span class="line">     <span class="keyword">if</span> (session == <span class="keyword">null</span>) &#123;</span><br><span class="line">         <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="comment">// IoSession 中取出对应的 MinaChannel 对象</span></span><br><span class="line">     MinaChannel ret = (MinaChannel) session.getAttribute(CHANNEL_KEY);</span><br><span class="line">     <span class="keyword">if</span> (ret == <span class="keyword">null</span>) &#123;</span><br><span class="line">         <span class="comment">// 创建 MinaChannel 对象</span></span><br><span class="line">         ret = <span class="keyword">new</span> MinaChannel(session, url, handler);</span><br><span class="line">         <span class="comment">// 判断连接是处于连接中</span></span><br><span class="line">         <span class="keyword">if</span> (session.isConnected()) &#123;</span><br><span class="line">             MinaChannel old = (MinaChannel) session.setAttribute(CHANNEL_KEY, ret);</span><br><span class="line">             <span class="keyword">if</span> (old != <span class="keyword">null</span>) &#123;</span><br><span class="line">                 session.setAttribute(CHANNEL_KEY, old);</span><br><span class="line">                 ret = old;</span><br><span class="line">             &#125;</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="keyword">return</span> ret;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>和 NettyChannel 类似，都是使用NIO的连接作为映射的标识，getOrAddChannel() 方法不仅创建了 MinaChannel，也设置了 AbstractPeer 类中的 ChannelHandler 和 URL 属性的值，这意味着 AbstractPeer 当前子类对象关联了这两个属性的值。</p>
+<h3 id="发送消息"><a href="#发送消息" class="headerlink" title="发送消息"></a>发送消息</h3><p>该方法是 Endpoint 接口中的方法，并非 Channel 接口中的方法，Channel接口没有发送消息的方法。它会通过装饰的 Mina 框架的 IoSession 将数据发送到对端，并且支持等待发送完成。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">send</span><span class="params">(Object message, <span class="keyword">boolean</span> sent)</span> <span class="keyword">throws</span> RemotingException </span>&#123;</span><br><span class="line">     <span class="comment">// 检查连接是否可用</span></span><br><span class="line">     <span class="keyword">super</span>.send(message, sent);</span><br><span class="line"></span><br><span class="line">     <span class="keyword">boolean</span> success = <span class="keyword">true</span>;</span><br><span class="line">     <span class="keyword">int</span> timeout = <span class="number">0</span>;</span><br><span class="line">     <span class="keyword">try</span> &#123;</span><br><span class="line">         <span class="comment">// 通过 IoSession 发送消息到对端</span></span><br><span class="line">         WriteFuture future = session.write(message);</span><br><span class="line">         <span class="comment">// 支持等待消息发送成功或者超时</span></span><br><span class="line">         <span class="keyword">if</span> (sent) &#123;</span><br><span class="line">             timeout = getUrl().getPositiveParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);</span><br><span class="line">             success = future.join(timeout);</span><br><span class="line">         &#125;</span><br><span class="line">     &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">         <span class="keyword">throw</span> <span class="keyword">new</span> RemotingException(<span class="keyword">this</span>, <span class="string">"Failed to send message "</span> + message + <span class="string">" to "</span> + getRemoteAddress() + <span class="string">", cause: "</span> + e.getMessage(), e);</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="keyword">if</span> (!success) &#123;</span><br><span class="line">         <span class="keyword">throw</span> <span class="keyword">new</span> RemotingException(<span class="keyword">this</span>, <span class="string">"Failed to send message "</span> + message + <span class="string">" to "</span> + getRemoteAddress()</span><br><span class="line">                 + <span class="string">"in timeout("</span> + timeout + <span class="string">"ms) limit"</span>);</span><br><span class="line">     &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="操作附加属性"><a href="#操作附加属性" class="headerlink" title="操作附加属性"></a>操作附加属性</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasAttribute</span><span class="params">(String key)</span> </span>&#123;</span><br><span class="line">      <span class="keyword">return</span> session.containsAttribute(key);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> Object <span class="title">getAttribute</span><span class="params">(String key)</span> </span>&#123;</span><br><span class="line">      <span class="keyword">return</span> session.getAttribute(key);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setAttribute</span><span class="params">(String key, Object value)</span> </span>&#123;</span><br><span class="line">      session.setAttribute(key, value);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">removeAttribute</span><span class="params">(String key)</span> </span>&#123;</span><br><span class="line">      session.removeAttribute(key);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>MinaChannel 使用了 IoSession 直接操作附加属性，而 NettyChannel 维护了一个集合来存放附加属性。</p>
+<h3 id="关闭连接"><a href="#关闭连接" class="headerlink" title="关闭连接"></a>关闭连接</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">close</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="keyword">try</span> &#123;</span><br><span class="line">         <span class="comment">// 标记连接关闭</span></span><br><span class="line">         <span class="keyword">super</span>.close();</span><br><span class="line">     &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">         logger.warn(e.getMessage(), e);</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="keyword">try</span> &#123;</span><br><span class="line">         <span class="comment">// 移除处于断开连接的连接对应的 MinaChanenl</span></span><br><span class="line">         removeChannelIfDisconnected(session);</span><br><span class="line">     &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">         logger.warn(e.getMessage(), e);</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="keyword">try</span> &#123;</span><br><span class="line">         <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">             logger.info(<span class="string">"CLose mina channel "</span> + session);</span><br><span class="line">         &#125;</span><br><span class="line"></span><br><span class="line">         <span class="comment">// 关闭 Mina 连接</span></span><br><span class="line">         session.close();</span><br><span class="line">     &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">         logger.warn(e.getMessage(), e);</span><br><span class="line">     &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<p>和 NettyChannel 逻辑一致。</p>
+<h3 id="清理-MinaChannel"><a href="#清理-MinaChannel" class="headerlink" title="清理 MinaChannel"></a>清理 MinaChannel</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">removeChannelIfDisconnected</span><span class="params">(IoSession session)</span> </span>&#123;</span><br><span class="line">      <span class="keyword">if</span> (session != <span class="keyword">null</span> &amp;&amp; !session.isConnected()) &#123;</span><br><span class="line">          <span class="comment">// 直接使用 Mina API 移除</span></span><br><span class="line">          session.removeAttribute(CHANNEL_KEY);</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="获取地址"><a href="#获取地址" class="headerlink" title="获取地址"></a>获取地址</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"> <span class="function"><span class="keyword">public</span> InetSocketAddress <span class="title">getLocalAddress</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="keyword">return</span> (InetSocketAddress) session.getLocalAddress();</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"> <span class="meta">@Override</span></span><br><span class="line"> <span class="function"><span class="keyword">public</span> InetSocketAddress <span class="title">getRemoteAddress</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="keyword">return</span> (InetSocketAddress) session.getRemoteAddress();</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>和 NettyChannel 类似，都是使用各自NIO库API 获取对应的地址。</p>
+<h1 id="编解码"><a href="#编解码" class="headerlink" title="编解码"></a>编解码</h1><p>通过前文的 UML 关系图以及 MinaServer 启动服务方法，我们不难看出 MinaCodecAdapter 充当适配器角色，严格来说属于对象适配器模式，即 将 Dubbo 的 Codec2 编解码器适配成 Mina 层面的编码器和解码器，Mina 会把编解码工作委托给 Dubbo 的 Codec2 编解码器去处理。相关关系如下图所示：</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-mina-codec.jpg" alt></p>
+<p>在 <a href="https://gentryhuang.com/posts/53cd7ee7/">网络传输层</a> 中已经详细介绍过了 AbstractEndpoint 抽象类，该抽象类中的 codec 属性正是 Codec2 类型，该属性在 AbstractEndpoint 构造方法中被初始化，而 MinaServer 间接继承了 AbstractEndpoint 抽象类，在创建 MinaServer 对象时该编解码属性也进行了初始化。</p>
+<h2 id="属性-2"><a href="#属性-2" class="headerlink" title="属性"></a>属性</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">MinaCodecAdapter</span> <span class="keyword">implements</span> <span class="title">ProtocolCodecFactory</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Mina 编码器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ProtocolEncoder encoder = <span class="keyword">new</span> InternalEncoder();</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Mina 解码器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ProtocolDecoder decoder = <span class="keyword">new</span> InternalDecoder();</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 关联的 Dubbo Codec2</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Codec2 codec;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * url</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> URL url;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 关联的 ChannelHandler</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ChannelHandler handler;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> bufferSize;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MinaCodecAdapter</span><span class="params">(Codec2 codec, URL url, ChannelHandler handler)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.codec = codec;</span><br><span class="line">        <span class="keyword">this</span>.url = url;</span><br><span class="line">        <span class="keyword">this</span>.handler = handler;</span><br><span class="line">        <span class="keyword">int</span> b = url.getPositiveParameter(Constants.BUFFER_KEY, Constants.DEFAULT_BUFFER_SIZE);</span><br><span class="line">        <span class="keyword">this</span>.bufferSize = b &gt;= Constants.MIN_BUFFER_SIZE &amp;&amp; b &lt;= Constants.MAX_BUFFER_SIZE ? b : Constants.DEFAULT_BUFFER_SIZE;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> ProtocolEncoder <span class="title">getEncoder</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> encoder;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> ProtocolDecoder <span class="title">getDecoder</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> decoder;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>MinaCodecAdapter 和 NettyCodecAdapter 有一点差别，因为各自NIO库实现不同，MinaCodecAdapter 需要实现 Mina 的接口 ProtocolCodecFactory 。</p>
+<h2 id="编码器实现"><a href="#编码器实现" class="headerlink" title="编码器实现"></a>编码器实现</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 实现Mina的编码器接口 ProtocolEncoder</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">InternalEncoder</span> <span class="keyword">implements</span> <span class="title">ProtocolEncoder</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">       <span class="meta">@Override</span></span><br><span class="line">       <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">dispose</span><span class="params">(IoSession session)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">       &#125;</span><br><span class="line"></span><br><span class="line">       <span class="meta">@Override</span></span><br><span class="line">       <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">encode</span><span class="params">(IoSession session, Object msg, ProtocolEncoderOutput out)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">           ChannelBuffer buffer = ChannelBuffers.dynamicBuffer(<span class="number">1024</span>);</span><br><span class="line">           MinaChannel channel = MinaChannel.getOrAddChannel(session, url, handler);</span><br><span class="line">           <span class="keyword">try</span> &#123;</span><br><span class="line">               <span class="comment">// 编码委托给 Codec2 实现去完成</span></span><br><span class="line">               codec.encode(channel, buffer, msg);</span><br><span class="line">           &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">               MinaChannel.removeChannelIfDisconnected(session);</span><br><span class="line">           &#125;</span><br><span class="line">           out.write(ByteBuffer.wrap(buffer.toByteBuffer()));</span><br><span class="line">           out.flush();</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="解码器实现"><a href="#解码器实现" class="headerlink" title="解码器实现"></a>解码器实现</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">  * 实现Mina的解码器接口 ProtocolDecoder</span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line"> <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">InternalDecoder</span> <span class="keyword">implements</span> <span class="title">ProtocolDecoder</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">     <span class="keyword">private</span> ChannelBuffer buffer = ChannelBuffers.EMPTY_BUFFER;</span><br><span class="line"></span><br><span class="line">     <span class="meta">@Override</span></span><br><span class="line">     <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">decode</span><span class="params">(IoSession session, ByteBuffer in, ProtocolDecoderOutput out)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">         <span class="keyword">int</span> readable = in.limit();</span><br><span class="line">         <span class="keyword">if</span> (readable &lt;= <span class="number">0</span>) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">         ChannelBuffer frame;</span><br><span class="line"></span><br><span class="line">         <span class="keyword">if</span> (buffer.readable()) &#123;</span><br><span class="line">             <span class="keyword">if</span> (buffer <span class="keyword">instanceof</span> DynamicChannelBuffer) &#123;</span><br><span class="line">                 buffer.writeBytes(in.buf());</span><br><span class="line">                 frame = buffer;</span><br><span class="line">             &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                 <span class="keyword">int</span> size = buffer.readableBytes() + in.remaining();</span><br><span class="line">                 frame = ChannelBuffers.dynamicBuffer(size &gt; bufferSize ? size : bufferSize);</span><br><span class="line">                 frame.writeBytes(buffer, buffer.readableBytes());</span><br><span class="line">                 frame.writeBytes(in.buf());</span><br><span class="line">             &#125;</span><br><span class="line">         &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">             frame = ChannelBuffers.wrappedBuffer(in.buf());</span><br><span class="line">         &#125;</span><br><span class="line"></span><br><span class="line">         Channel channel = MinaChannel.getOrAddChannel(session, url, handler);</span><br><span class="line">         Object msg;</span><br><span class="line">         <span class="keyword">int</span> savedReadIndex;</span><br><span class="line"></span><br><span class="line">         <span class="keyword">try</span> &#123;</span><br><span class="line">             <span class="keyword">do</span> &#123;</span><br><span class="line">                 savedReadIndex = frame.readerIndex();</span><br><span class="line">                 <span class="keyword">try</span> &#123;</span><br><span class="line">                     <span class="comment">// 解码委托给 Codec2 实现</span></span><br><span class="line">                     msg = codec.decode(channel, frame);</span><br><span class="line">                 &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                     buffer = ChannelBuffers.EMPTY_BUFFER;</span><br><span class="line">                     <span class="keyword">throw</span> e;</span><br><span class="line">                 &#125;</span><br><span class="line">                 <span class="keyword">if</span> (msg == Codec2.DecodeResult.NEED_MORE_INPUT) &#123;</span><br><span class="line">                     frame.readerIndex(savedReadIndex);</span><br><span class="line">                     <span class="keyword">break</span>;</span><br><span class="line">                 &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                     <span class="keyword">if</span> (savedReadIndex == frame.readerIndex()) &#123;</span><br><span class="line">                         buffer = ChannelBuffers.EMPTY_BUFFER;</span><br><span class="line">                         <span class="keyword">throw</span> <span class="keyword">new</span> Exception(<span class="string">"Decode without read data."</span>);</span><br><span class="line">                     &#125;</span><br><span class="line">                     <span class="keyword">if</span> (msg != <span class="keyword">null</span>) &#123;</span><br><span class="line">                         out.write(msg);</span><br><span class="line">                     &#125;</span><br><span class="line">                 &#125;</span><br><span class="line">             &#125; <span class="keyword">while</span> (frame.readable());</span><br><span class="line">         &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">             <span class="keyword">if</span> (frame.readable()) &#123;</span><br><span class="line">                 frame.discardReadBytes();</span><br><span class="line">                 buffer = frame;</span><br><span class="line">             &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                 buffer = ChannelBuffers.EMPTY_BUFFER;</span><br><span class="line">             &#125;</span><br><span class="line">             MinaChannel.removeChannelIfDisconnected(session);</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="meta">@Override</span></span><br><span class="line">     <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">dispose</span><span class="params">(IoSession session)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="meta">@Override</span></span><br><span class="line">     <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">finishDecode</span><span class="params">(IoSession session, ProtocolDecoderOutput out)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">     &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="MinaHandler"><a href="#MinaHandler" class="headerlink" title="MinaHandler"></a>MinaHandler</h1><p>MinaHandler 继承了 org.apache.mina.common.IoHandlerAdapter ，这是 Mina 提供的处理请求或事件的处理类。</p>
+<h2 id="属性-3"><a href="#属性-3" class="headerlink" title="属性"></a>属性</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MinaHandler</span> <span class="keyword">extends</span> <span class="title">IoHandlerAdapter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> URL url;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  Dubbo ChannelHandler。MinaHandler 中几乎所有方法都会触发该对象。</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ChannelHandler handler;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MinaHandler</span><span class="params">(URL url, ChannelHandler handler)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (url == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"url == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (handler == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"handler == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">this</span>.url = url;</span><br><span class="line">        <span class="keyword">this</span>.handler = handler;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="请求或事件处理方法"><a href="#请求或事件处理方法" class="headerlink" title="请求或事件处理方法"></a>请求或事件处理方法</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//--------- MinaHandler 中以下所有方法都会触发装饰的 ChannelHandler 对象 ------------/</span></span><br><span class="line"></span><br><span class="line"> <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 连接服务</span></span><br><span class="line"><span class="comment">   *</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> session 客户端与服务器的通道</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@throws</span> Exception</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">sessionOpened</span><span class="params">(IoSession session)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">      MinaChannel channel = MinaChannel.getOrAddChannel(session, url, handler);</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">          handler.connected(channel);</span><br><span class="line">      &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">          MinaChannel.removeChannelIfDisconnected(session);</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 断开连接</span></span><br><span class="line"><span class="comment">   *</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> session 客户端与服务器的通道</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@throws</span> Exception</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">sessionClosed</span><span class="params">(IoSession session)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">      MinaChannel channel = MinaChannel.getOrAddChannel(session, url, handler);</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">          handler.disconnected(channel);</span><br><span class="line">      &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">          MinaChannel.removeChannelIfDisconnected(session);</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 接收消息</span></span><br><span class="line"><span class="comment">   *</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> session 客户端与服务器的通道</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> message 消息</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@throws</span> Exception</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">messageReceived</span><span class="params">(IoSession session, Object message)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">      MinaChannel channel = MinaChannel.getOrAddChannel(session, url, handler);</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">          handler.received(channel, message);</span><br><span class="line">      &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">          MinaChannel.removeChannelIfDisconnected(session);</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 发送消息</span></span><br><span class="line"><span class="comment">   *</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> session 客户端与服务器的通道</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> message 消息</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@throws</span> Exception</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">messageSent</span><span class="params">(IoSession session, Object message)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">      MinaChannel channel = MinaChannel.getOrAddChannel(session, url, handler);</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">          handler.sent(channel, message);</span><br><span class="line">      &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">          MinaChannel.removeChannelIfDisconnected(session);</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">   * 异常处理</span></span><br><span class="line"><span class="comment">   *</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> session 客户端与服务器的通道</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@param</span> cause</span></span><br><span class="line"><span class="comment">   * <span class="doctag">@throws</span> Exception</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">exceptionCaught</span><span class="params">(IoSession session, Throwable cause)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">      MinaChannel channel = MinaChannel.getOrAddChannel(session, url, handler);</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">          handler.caught(channel, cause);</span><br><span class="line">      &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">          MinaChannel.removeChannelIfDisconnected(session);</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="MinaServer-amp-MinaHandler"><a href="#MinaServer-amp-MinaHandler" class="headerlink" title="MinaServer &amp; MinaHandler"></a>MinaServer &amp; MinaHandler</h2><p>在 MinaServer 创建 MinaHandler 代码如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 绑定端口，并设置 handler</span></span><br><span class="line"><span class="comment">// MinaHandler 构造方法第二个参数是 MinaServer 本身</span></span><br><span class="line">acceptor.bind(getBindAddress(), <span class="keyword">new</span> MinaHandler(getUrl(), <span class="keyword">this</span>));</span><br></pre></td></tr></table></figure>
+
+<p>第一个参数是调用间接父类 AbstractPeer#getUrl() 方法获取上层传入的 URL对象。第二个参数正是 MinaServer 对象本身，通过之前的介绍，我们知道 MinaServer 继承关系，它的父类 AbstractPeer 实现了 ChannelHandler 接口，并且将所有方法都委托给了其装饰的 ChannelHandler 对象。因此，MinaHandler 中的通道方法都是交给 MinaServer 关联的 ChannelHandler 对象本身。</p>
+<h1 id="MinaClient"><a href="#MinaClient" class="headerlink" title="MinaClient"></a>MinaClient</h1><p>MinaClient 是基于 Mina 实现的客户端，下面我们对它的属性、构造方法以及基本方法进行详细说明。</p>
+<h2 id="属性-4"><a href="#属性-4" class="headerlink" title="属性"></a>属性</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MinaClient</span> <span class="keyword">extends</span> <span class="title">AbstractClient</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(MinaClient<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * SocketConnector 缓存</span></span><br><span class="line"><span class="comment">     * key: URL 串</span></span><br><span class="line"><span class="comment">     * value: SocketConnector 对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Map&lt;String, SocketConnector&gt; connectors = <span class="keyword">new</span> ConcurrentHashMap&lt;String, SocketConnector&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 缓存 key</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> String connectorKey;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 用于连接Mina服务</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> SocketConnector connector;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 对底层连接的封装（服务器与客户端的特定连接）</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> IoSession session;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">MinaClient</span><span class="params">(<span class="keyword">final</span> URL url, <span class="keyword">final</span> ChannelHandler handler)</span> <span class="keyword">throws</span> RemotingException </span>&#123;</span><br><span class="line">      <span class="comment">// wrapChannelHandler方法用于包装ChannelHandler，其中实现了 Dubbo 线程模型的功能。</span></span><br><span class="line">      <span class="keyword">super</span>(url, wrapChannelHandler(url, handler));</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>和 NettyClient 本质一摸一样，不再说明。</p>
+<h2 id="启动客户端-doOpen"><a href="#启动客户端-doOpen" class="headerlink" title="启动客户端 doOpen"></a>启动客户端 doOpen</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">   <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doOpen</span><span class="params">()</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">       <span class="comment">// URL 串</span></span><br><span class="line">       connectorKey = getUrl().toFullString();</span><br><span class="line">       SocketConnector c = connectors.get(connectorKey);</span><br><span class="line">       <span class="keyword">if</span> (c != <span class="keyword">null</span>) &#123;</span><br><span class="line">           connector = c;</span><br><span class="line">       &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">           <span class="comment">// set thread pool.</span></span><br><span class="line">           connector = <span class="keyword">new</span> SocketConnector(Constants.DEFAULT_IO_THREADS,</span><br><span class="line">                   Executors.newCachedThreadPool(<span class="keyword">new</span> NamedThreadFactory(<span class="string">"MinaClientWorker"</span>, <span class="keyword">true</span>)));</span><br><span class="line">           <span class="comment">// config</span></span><br><span class="line">           SocketConnectorConfig cfg = (SocketConnectorConfig) connector.getDefaultConfig();</span><br><span class="line">           cfg.setThreadModel(ThreadModel.MANUAL);</span><br><span class="line">           cfg.getSessionConfig().setTcpNoDelay(<span class="keyword">true</span>);</span><br><span class="line">           cfg.getSessionConfig().setKeepAlive(<span class="keyword">true</span>);</span><br><span class="line">           <span class="keyword">int</span> timeout = getConnectTimeout();</span><br><span class="line">           cfg.setConnectTimeout(timeout &lt; <span class="number">1000</span> ? <span class="number">1</span> : timeout / <span class="number">1000</span>);</span><br><span class="line">           <span class="comment">// set codec. 编解码器支持</span></span><br><span class="line">           connector.getFilterChain().addLast(<span class="string">"codec"</span>, <span class="keyword">new</span> ProtocolCodecFilter(<span class="keyword">new</span> MinaCodecAdapter(getCodec(), getUrl(), <span class="keyword">this</span>)));</span><br><span class="line">           connectors.put(connectorKey, connector);</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="连接服务器-doConnect"><a href="#连接服务器-doConnect" class="headerlink" title="连接服务器 doConnect"></a>连接服务器 doConnect</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"> <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doConnect</span><span class="params">()</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">     <span class="comment">// 根据服务地址连接服务</span></span><br><span class="line">     ConnectFuture future = connector.connect(getConnectAddress(), <span class="keyword">new</span> MinaHandler(getUrl(), <span class="keyword">this</span>));</span><br><span class="line">     <span class="keyword">long</span> start = System.currentTimeMillis();</span><br><span class="line">     <span class="keyword">final</span> AtomicReference&lt;Throwable&gt; exception = <span class="keyword">new</span> AtomicReference&lt;Throwable&gt;();</span><br><span class="line">     <span class="keyword">final</span> CountDownLatch finish = <span class="keyword">new</span> CountDownLatch(<span class="number">1</span>); <span class="comment">// resolve future.awaitUninterruptibly() dead lock</span></span><br><span class="line"></span><br><span class="line">     <span class="comment">// 添加监听器</span></span><br><span class="line">     future.addListener(<span class="keyword">new</span> IoFutureListener() &#123;</span><br><span class="line">         <span class="meta">@Override</span></span><br><span class="line">         <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">operationComplete</span><span class="params">(IoFuture future)</span> </span>&#123;</span><br><span class="line">             <span class="keyword">try</span> &#123;</span><br><span class="line">                 <span class="comment">// 服务准备好了</span></span><br><span class="line">                 <span class="keyword">if</span> (future.isReady()) &#123;</span><br><span class="line">                     <span class="comment">// 获取连接通道</span></span><br><span class="line">                     IoSession newSession = future.getSession();</span><br><span class="line">                     <span class="keyword">try</span> &#123;</span><br><span class="line">                         <span class="comment">// Close old channel 对旧的通道处理</span></span><br><span class="line">                         IoSession oldSession = MinaClient.<span class="keyword">this</span>.session; <span class="comment">// copy reference</span></span><br><span class="line">                         <span class="keyword">if</span> (oldSession != <span class="keyword">null</span>) &#123;</span><br><span class="line">                             <span class="keyword">try</span> &#123;</span><br><span class="line">                                 <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                                     logger.info(<span class="string">"Close old mina channel "</span> + oldSession + <span class="string">" on create new mina channel "</span> + newSession);</span><br><span class="line">                                 &#125;</span><br><span class="line">                                 oldSession.close();</span><br><span class="line">                             &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                                 MinaChannel.removeChannelIfDisconnected(oldSession);</span><br><span class="line">                             &#125;</span><br><span class="line">                         &#125;</span><br><span class="line">                     &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                         <span class="comment">// 如果关闭</span></span><br><span class="line">                         <span class="keyword">if</span> (MinaClient.<span class="keyword">this</span>.isClosed()) &#123;</span><br><span class="line">                             <span class="keyword">try</span> &#123;</span><br><span class="line">                                 <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                                     logger.info(<span class="string">"Close new mina channel "</span> + newSession + <span class="string">", because the client closed."</span>);</span><br><span class="line">                                 &#125;</span><br><span class="line">                                 newSession.close();</span><br><span class="line">                             &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                                 MinaClient.<span class="keyword">this</span>.session = <span class="keyword">null</span>;</span><br><span class="line">                                 MinaChannel.removeChannelIfDisconnected(newSession);</span><br><span class="line">                             &#125;</span><br><span class="line">                         &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                             MinaClient.<span class="keyword">this</span>.session = newSession;</span><br><span class="line">                         &#125;</span><br><span class="line">                     &#125;</span><br><span class="line">                 &#125;</span><br><span class="line">             &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                 exception.set(e);</span><br><span class="line">             &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                 finish.countDown();</span><br><span class="line">             &#125;</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;);</span><br><span class="line">     <span class="keyword">try</span> &#123;</span><br><span class="line">         finish.await(getConnectTimeout(), TimeUnit.MILLISECONDS);</span><br><span class="line">     &#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">         <span class="keyword">throw</span> <span class="keyword">new</span> RemotingException(<span class="keyword">this</span>, <span class="string">"client(url: "</span> + getUrl() + <span class="string">") failed to connect to server "</span> + getRemoteAddress() + <span class="string">" client-side timeout "</span></span><br><span class="line">                 + getConnectTimeout() + <span class="string">"ms (elapsed: "</span> + (System.currentTimeMillis() - start)</span><br><span class="line">                 + <span class="string">"ms) from netty client "</span> + NetUtils.getLocalHost() + <span class="string">" using dubbo version "</span></span><br><span class="line">                 + Version.getVersion() + <span class="string">", cause: "</span> + e.getMessage(), e);</span><br><span class="line">     &#125;</span><br><span class="line">     Throwable e = exception.get();</span><br><span class="line">     <span class="keyword">if</span> (e != <span class="keyword">null</span>) &#123;</span><br><span class="line">         <span class="keyword">throw</span> e;</span><br><span class="line">     &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>连接服务流程和 NettyClient 一致。</p>
+<h2 id="断开连接-doDisConnect"><a href="#断开连接-doDisConnect" class="headerlink" title="断开连接 doDisConnect"></a>断开连接 doDisConnect</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doDisConnect</span><span class="params">()</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">          <span class="comment">// 直接使用 Mina API 移除关闭的通道</span></span><br><span class="line">          MinaChannel.removeChannelIfDisconnected(session);</span><br><span class="line">      &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">          logger.warn(t.getMessage());</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>断开连接仅仅是在客户端连接服务的通道处于关闭状态时，把对应的通道缓存清除。</p>
+<h2 id="获取连接到服务的通道-getChannel"><a href="#获取连接到服务的通道-getChannel" class="headerlink" title="获取连接到服务的通道 getChannel"></a>获取连接到服务的通道 getChannel</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">protected</span> Channel <span class="title">getChannel</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      IoSession s = session;</span><br><span class="line">      <span class="keyword">if</span> (s == <span class="keyword">null</span> || !s.isConnected()) &#123;</span><br><span class="line">          <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> MinaChannel.getOrAddChannel(s, getUrl(), <span class="keyword">this</span>);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>获取连接到服务的通道是父类的模版方法，用于返回具体NIO的通道对应的 Dubbo 通道，这里是返回Mina的通道对应的Dubbo 层面的MinaChanel 。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>无论是 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> ，还是 <a href="https://gentryhuang.com/posts/53cd7ee7/">网络传输层</a> 都是为具体实现服务的，具体实现依赖上层抽象，在 Mina 这个 NIO 框架的实现角度来看依赖的上层（dubbo-remoting-api）是透明的即通用的逻辑模版。整个 Transport 层相关的核心继承关系如下图：</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-netty4-server-hierarchy.jpg" alt></p>
+<p>至此，Dubbo 接入 Mina 实现网络通信就介绍完了，其实这篇文章是对 <a href="https://gentryhuang.com/posts/4468445c/">Netty4网络通信</a> <strong>的删剪版</strong>，为什么接入Netty库和接入Mina库实现起来的差异如此之小，我们可以发现两者的流程基本一致，如果非要说区别那就是两者的 API 和实现机制不同。这得益于 Dubbo 的优秀设计，它把 NIO库的共性全都进行了抽象，进而屏蔽不同 NIO 库之间的差异，扩展性大大增强。包括没有介绍到的 <strong>dubbo-remoting-grizzly</strong> 模块，实现模式也是一样的。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/543ee8c5/" title="Dubbo源码分析 - Mina网络通信" target="_blank" rel="external">https://gentryhuang.com/posts/543ee8c5/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/ef4cfe7a/" title="Dubbo源码分析 - 优雅停机"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/4468445c/" title="Dubbo源码分析 - Netty4网络通信"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2020 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
