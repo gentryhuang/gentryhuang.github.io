@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - 线程池 | gentryhuang的博客</title>
+  <meta name="description" content="前言在 网络传输层 中我们介绍 WrappedChannelHandler 类的构造方法时，提到了线程池的创建的，本篇文章我们对线程池部分详细分析。 概述在 Dubbo 的线程模型中，Dubbo 提供了四种线程池的实现，具体如下：  fixed 固定大小线程池，启动时建立线程，不关闭，一直持有。(缺省) cached 缓存线程池，空闲一定时间自动删除，需要时重建。 limited 可伸缩线程池，但">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - 线程池">
+<meta property="og:url" content="https://gentryhuang.com/posts/f3cd85ef/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言在 网络传输层 中我们介绍 WrappedChannelHandler 类的构造方法时，提到了线程池的创建的，本篇文章我们对线程池部分详细分析。 概述在 Dubbo 的线程模型中，Dubbo 提供了四种线程池的实现，具体如下：  fixed 固定大小线程池，启动时建立线程，不关闭，一直持有。(缺省) cached 缓存线程池，空闲一定时间自动删除，需要时重建。 limited 可伸缩线程池，但">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-threadpool-model.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-threadpool-uml.jpg">
+<meta property="article:published_time" content="2020-06-12T14:42:08.000Z">
+<meta property="article:modified_time" content="2020-11-28T15:35:48.397Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-threadpool-model.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/f3cd85ef/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">35</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">31</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JDK/" rel="tag">JDK</a><span class="tag-list-count">6</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">9</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/Dubbo/" style="font-size: 13.83px;">Dubbo</a> <a href="/tags/JDK/" style="font-size: 13.5px;">JDK</a> <a href="/tags/JUC/" style="font-size: 13px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.33px;">Javassist</a> <a href="/tags/RPC/" style="font-size: 13.67px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.17px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.33px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 14px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-20T11:33:59.000Z" itemprop="datePublished">2020-10-20</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-18T11:00:50.000Z" itemprop="datePublished">2020-10-18</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/37f29896/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/37f29896/" class="title">并发 - Java并发工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-05T16:00:00.000Z" itemprop="datePublished">2020-10-06</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/751c0982/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/751c0982/" class="title">Dubbo源码分析 - 本地暴露</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-08-04T16:00:00.000Z" itemprop="datePublished">2020-08-05</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/ef4cfe7a/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/ef4cfe7a/" class="title">Dubbo源码分析 - 优雅停机</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-07-25T16:00:00.000Z" itemprop="datePublished">2020-07-26</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#ThreadPool"><span class="toc-number">3.</span> <span class="toc-text">ThreadPool</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#FixedThreadPool"><span class="toc-number">4.</span> <span class="toc-text">FixedThreadPool</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#CacheThreadPool"><span class="toc-number">5.</span> <span class="toc-text">CacheThreadPool</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#LimitedThreadPool"><span class="toc-number">6.</span> <span class="toc-text">LimitedThreadPool</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#EagerThreadPool"><span class="toc-number">7.</span> <span class="toc-text">EagerThreadPool</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#TaskQueue"><span class="toc-number">7.1.</span> <span class="toc-text">TaskQueue</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#EagerThreadPoolExecutor"><span class="toc-number">7.2.</span> <span class="toc-text">EagerThreadPoolExecutor</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#AbortPolicyWithReport"><span class="toc-number">8.</span> <span class="toc-text">AbortPolicyWithReport</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">9.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/threadpool" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - 线程池
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/f3cd85ef/" class="article-date">
+	  <time datetime="2020-06-12T14:42:08.000Z" itemprop="datePublished">2020-06-12</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/f3cd85ef/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.4k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 15(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在 <a href="https://gentryhuang.com/posts/53cd7ee7/#WrappedChannelHandler">网络传输层</a> 中我们介绍 <strong>WrappedChannelHandler</strong> 类的构造方法时，提到了线程池的创建的，本篇文章我们对线程池部分详细分析。</p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在 Dubbo 的线程模型中，Dubbo 提供了四种线程池的实现，具体如下：</p>
+<ul>
+<li>fixed 固定大小线程池，启动时建立线程，不关闭，一直持有。(缺省)</li>
+<li>cached 缓存线程池，空闲一定时间自动删除，需要时重建。</li>
+<li>limited 可伸缩线程池，但池中的线程数只会增长不会收缩。只增长不收缩的目的是为了避免收缩时突然来了大流量引起的性能问题。</li>
+<li>eager 优先创建Worker线程池。在任务数量大于corePoolSize但是小于maximumPoolSize时，优先创建Worker来处理任务。当任务数量大于maximumPoolSize时，将任务放入阻塞队列中。阻塞队列充满时抛出RejectedExecutionException。(相比于cached:cached在任务数量超过maximumPoolSize时直接抛出异常而不是将任务放入阻塞队列)</li>
+</ul>
+<p>一般情况下，Dubbo 线程池和 Dubbo 消息派发策略组合使用，即配置 Dubbo 中的线程模型，以应对不同的场景。如下面的配置案例：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:protocol</span> <span class="attr">name</span>=<span class="string">"dubbo"</span> <span class="attr">dispatcher</span>=<span class="string">"all"</span> <span class="attr">threadpool</span>=<span class="string">"fixed"</span> <span class="attr">threads</span>=<span class="string">"100"</span> /&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-threadpool-model.jpg" alt></p>
+<p>有关消息派发机制部分在 <a href="https://gentryhuang.com/posts/53cd7ee7/#WrappedChannelHandler">网络传输层</a> 中已经详细说明，这里不再介绍。线程池相关的接口和实现位于 <strong>dubbo-common</strong> 模块中，下面我们开始介绍 Dubbo 线程模型中的线程池部分。</p>
+<h1 id="ThreadPool"><a href="#ThreadPool" class="headerlink" title="ThreadPool"></a>ThreadPool</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span>(<span class="string">"fixed"</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ThreadPool</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 线程池执行器</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url URL contains thread parameter</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> thread pool</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span>(&#123;Constants.THREADPOOL_KEY&#125;)</span><br><span class="line">    <span class="function">Executor <span class="title">getExecutor</span><span class="params">(URL url)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ThreadPool 接口被 @SPI 注解修饰，是 Dubbo 的扩展点，默认扩展实现名为 <strong>fixed</strong> ，对应的扩展实现为 FixedThreadPool 。ThreadPool 接口中的 getExecutor() 方法被 @Adaptive 注解修饰，会动态生成自适应类即适配器类，该类会优先根据 <strong>url.threadpool</strong> 参数选择 ThreadPool 的扩展实现。线程池 SPI 配置如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">fixed&#x3D;com.alibaba.dubbo.common.threadpool.support.fixed.FixedThreadPool</span><br><span class="line">cached&#x3D;com.alibaba.dubbo.common.threadpool.support.cached.CachedThreadPool</span><br><span class="line">limited&#x3D;com.alibaba.dubbo.common.threadpool.support.limited.LimitedThreadPool</span><br><span class="line">eager&#x3D;com.alibaba.dubbo.common.threadpool.support.eager.EagerThreadPool</span><br></pre></td></tr></table></figure>
+
+<p>ThreadPool 继承关系 UML 如下图所示：</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-threadpool-uml.jpg" alt></p>
+<p>不同的 ThreadPool 扩展实现会根据 URL 参数创建不同特性的线程池。</p>
+<h1 id="FixedThreadPool"><a href="#FixedThreadPool" class="headerlink" title="FixedThreadPool"></a>FixedThreadPool</h1><p>固定大小线程池，启动时建立线程，不关闭，一直持有，是 Dubbo 默认的线程池。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FixedThreadPool</span> <span class="keyword">implements</span> <span class="title">ThreadPool</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Executor <span class="title">getExecutor</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 线程名，获取 url.threadname 的值，默认为 Dubbo</span></span><br><span class="line">        String name = url.getParameter(Constants.THREAD_NAME_KEY, Constants.DEFAULT_THREAD_NAME);</span><br><span class="line">        <span class="comment">// 线程数，获取 url.threads 的值，默认为 200</span></span><br><span class="line">        <span class="keyword">int</span> threads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);</span><br><span class="line">        <span class="comment">// 队列数，获取 url.queues 的值，默认为 0</span></span><br><span class="line">        <span class="keyword">int</span> queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建线程池执行器</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> ThreadPoolExecutor(</span><br><span class="line">                <span class="comment">/* 核心线程数*/</span></span><br><span class="line">                threads,</span><br><span class="line">                <span class="comment">/* 最大线程数 */</span></span><br><span class="line">                threads,</span><br><span class="line">                <span class="comment">/* 空闲线程存活时间 */</span></span><br><span class="line">                <span class="number">0</span>,</span><br><span class="line">                <span class="comment">/* 空闲存活时间单位 */</span></span><br><span class="line">                TimeUnit.MILLISECONDS,</span><br><span class="line">                <span class="comment">/* 阻塞队列,根据配置的队列数，选择对应的队列</span></span><br><span class="line"><span class="comment">                 * 1 queues == 0    -  SynchronousQueue</span></span><br><span class="line"><span class="comment">                 * 2 queues &lt; 0     -  LinkedBlockingQueue</span></span><br><span class="line"><span class="comment">                 * 3 queues &gt; 0     -  带队列数的LinkedBlockingQueue</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                queues == <span class="number">0</span> ? <span class="keyword">new</span> SynchronousQueue&lt;Runnable&gt;() : (queues &lt; <span class="number">0</span> ? <span class="keyword">new</span> LinkedBlockingQueue&lt;Runnable&gt;() : <span class="keyword">new</span> LinkedBlockingQueue&lt;Runnable&gt;(queues)),</span><br><span class="line">                <span class="comment">/* 线程工厂 */</span></span><br><span class="line">                <span class="keyword">new</span> NamedInternalThreadFactory(name, <span class="keyword">true</span>),</span><br><span class="line">                <span class="comment">/* 拒绝策略 */</span></span><br><span class="line">                <span class="keyword">new</span> AbortPolicyWithReport(name, url)</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">           <span class="comment">/**</span></span><br><span class="line"><span class="comment">            * 配置方式:使用 &lt;dubbo:parameter key="xxx" value="yyy" /&gt; 配置</span></span><br><span class="line"><span class="comment">            */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>FixedThreadPool 的核心线程数和最大线程数一致，且不会被回收。</p>
+<h1 id="CacheThreadPool"><a href="#CacheThreadPool" class="headerlink" title="CacheThreadPool"></a>CacheThreadPool</h1><p>缓存线程池，空闲一定时间自动删除，需要时重建。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CachedThreadPool</span> <span class="keyword">implements</span> <span class="title">ThreadPool</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Executor <span class="title">getExecutor</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 线程名，获取 url.threadname 的值，默认为 Dubbo</span></span><br><span class="line">        String name = url.getParameter(Constants.THREAD_NAME_KEY, Constants.DEFAULT_THREAD_NAME);</span><br><span class="line">        <span class="comment">// 核心线程数，获取 url.corethreads 的值，默认为 0</span></span><br><span class="line">        <span class="keyword">int</span> cores = url.getParameter(Constants.CORE_THREADS_KEY, Constants.DEFAULT_CORE_THREADS);</span><br><span class="line">        <span class="comment">// 最大线程数，获取 url.threads 的值，默认为 Integer 的最大值</span></span><br><span class="line">        <span class="keyword">int</span> threads = url.getParameter(Constants.THREADS_KEY, Integer.MAX_VALUE);</span><br><span class="line">        <span class="comment">// 队列数，获取 url.queues 的值，默认为 0</span></span><br><span class="line">        <span class="keyword">int</span> queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);</span><br><span class="line">        <span class="comment">// 线程存活时长，获取 url.alive 的值，默认为 60 * 1000</span></span><br><span class="line">        <span class="keyword">int</span> alive = url.getParameter(Constants.ALIVE_KEY, Constants.DEFAULT_ALIVE);</span><br><span class="line">        <span class="comment">// 创建执行器</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> ThreadPoolExecutor(</span><br><span class="line">                cores,</span><br><span class="line">                threads,</span><br><span class="line">                alive,</span><br><span class="line">                TimeUnit.MILLISECONDS,</span><br><span class="line">                <span class="comment">/* 阻塞队列,根据配置的队列数，选择对应的队列</span></span><br><span class="line"><span class="comment">                 * 1 queues == 0    -  SynchronousQueue</span></span><br><span class="line"><span class="comment">                 * 2 queues &lt; 0     -  LinkedBlockingQueue</span></span><br><span class="line"><span class="comment">                 * 3 queues &gt; 0     -  带队列数的LinkedBlockingQueue</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                queues == <span class="number">0</span> ? <span class="keyword">new</span> SynchronousQueue&lt;Runnable&gt;() : (queues &lt; <span class="number">0</span> ? <span class="keyword">new</span> LinkedBlockingQueue&lt;Runnable&gt;() : <span class="keyword">new</span> LinkedBlockingQueue&lt;Runnable&gt;(queues)),</span><br><span class="line">                <span class="comment">/* 线程工厂 */</span></span><br><span class="line">                <span class="keyword">new</span> NamedInternalThreadFactory(name, <span class="keyword">true</span>),</span><br><span class="line">                <span class="comment">/* 拒绝策略 */</span></span><br><span class="line">                <span class="keyword">new</span> AbortPolicyWithReport(name, url)</span><br><span class="line">        );</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 配置方式:使用 &lt;dubbo:parameter key="xxx" value="yyy" /&gt; 配置</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>CacheThreadPool 缓存线程池，可以指定核心线程数、最大线程数、缓冲队列长度空以及空闲时间，空闲一定时间非核心线程会被回收，需要时重建。</p>
+<h1 id="LimitedThreadPool"><a href="#LimitedThreadPool" class="headerlink" title="LimitedThreadPool"></a>LimitedThreadPool</h1><p>可伸缩线程池，但池中的线程数只会增长不会收缩。只增长不收缩的目的是为了避免收缩时突然来了大流量引起的性能问题。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LimitedThreadPool</span> <span class="keyword">implements</span> <span class="title">ThreadPool</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Executor <span class="title">getExecutor</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 线程名，获取 url.threadname 的值，默认为 Dubbo</span></span><br><span class="line">        String name = url.getParameter(Constants.THREAD_NAME_KEY, Constants.DEFAULT_THREAD_NAME);</span><br><span class="line">        <span class="comment">// 核心线程数，获取 url.corethreads 的值，默认为 0</span></span><br><span class="line">        <span class="keyword">int</span> cores = url.getParameter(Constants.CORE_THREADS_KEY, Constants.DEFAULT_CORE_THREADS);</span><br><span class="line">        <span class="comment">// 最大线程数，获取 url.threads 的值，默认为 200</span></span><br><span class="line">        <span class="keyword">int</span> threads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);</span><br><span class="line">        <span class="comment">// 队列数，获取 url.queues 的值，默认为 0</span></span><br><span class="line">        <span class="keyword">int</span> queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建执行器</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> ThreadPoolExecutor(</span><br><span class="line">                cores,</span><br><span class="line">                threads,</span><br><span class="line">                <span class="comment">/** 空闲时间无限大，即不会自动删除 */</span></span><br><span class="line">                Long.MAX_VALUE,</span><br><span class="line">                TimeUnit.MILLISECONDS,</span><br><span class="line">                <span class="comment">/* 阻塞队列,根据配置的队列数，选择对应的队列</span></span><br><span class="line"><span class="comment">                 * 1 queues == 0    -  SynchronousQueue</span></span><br><span class="line"><span class="comment">                 * 2 queues &lt; 0     -  LinkedBlockingQueue</span></span><br><span class="line"><span class="comment">                 * 3 queues &gt; 0     -  带队列数的LinkedBlockingQueue</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                queues == <span class="number">0</span> ? <span class="keyword">new</span> SynchronousQueue&lt;Runnable&gt;() :</span><br><span class="line">                        (queues &lt; <span class="number">0</span> ? <span class="keyword">new</span> LinkedBlockingQueue&lt;Runnable&gt;()</span><br><span class="line">                                : <span class="keyword">new</span> LinkedBlockingQueue&lt;Runnable&gt;(queues)),</span><br><span class="line">                <span class="comment">/* 线程工厂 */</span></span><br><span class="line">                <span class="keyword">new</span> NamedInternalThreadFactory(name, <span class="keyword">true</span>),</span><br><span class="line">                <span class="comment">/* 拒绝策略 */</span></span><br><span class="line">                <span class="keyword">new</span> AbortPolicyWithReport(name, url)</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 配置方式: 使用 &lt;dubbo:parameter /&gt; 配置</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>LimitedThreadPool 可伸缩线程池，可以指定核心线程数、最大线程数以及缓冲队列长度，LimitedThreadPool 创建的线程池的非核心线程不会被回收。</p>
+<p>以上三种类型的线程池都是基于 JDK ThreadPoolExecutor 线程池，在核心线程全部被占用的时候会先把任务放到缓冲队列中，当缓冲队列满了之后，才会尝试创建新线程来处理任务。EagerThreadPool 则有很大差异，具体我们接着分析。</p>
+<h1 id="EagerThreadPool"><a href="#EagerThreadPool" class="headerlink" title="EagerThreadPool"></a>EagerThreadPool</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">EagerThreadPool</span> <span class="keyword">implements</span> <span class="title">ThreadPool</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Executor <span class="title">getExecutor</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 线程名，获取 url.threadname 的值，默认为 Dubbo</span></span><br><span class="line">        String name = url.getParameter(Constants.THREAD_NAME_KEY, Constants.DEFAULT_THREAD_NAME);</span><br><span class="line">        <span class="comment">// 核心线程数，获取 url.corethreads 的值，默认为 0</span></span><br><span class="line">        <span class="keyword">int</span> cores = url.getParameter(Constants.CORE_THREADS_KEY, Constants.DEFAULT_CORE_THREADS);</span><br><span class="line">        <span class="comment">// 最大线程数，获取 url.threads 的值，默认为 Integer 的最大值</span></span><br><span class="line">        <span class="keyword">int</span> threads = url.getParameter(Constants.THREADS_KEY, Integer.MAX_VALUE);</span><br><span class="line">        <span class="comment">// 队列数，获取 url.queues 的值，默认为 0</span></span><br><span class="line">        <span class="keyword">int</span> queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);</span><br><span class="line">        <span class="comment">// 线程存活时长，获取 url.alive 的值，默认为 60 * 1000</span></span><br><span class="line">        <span class="keyword">int</span> alive = url.getParameter(Constants.ALIVE_KEY, Constants.DEFAULT_ALIVE);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建缓冲队列</span></span><br><span class="line">        TaskQueue&lt;Runnable&gt; taskQueue = <span class="keyword">new</span> TaskQueue&lt;Runnable&gt;(queues &lt;= <span class="number">0</span> ? <span class="number">1</span> : queues);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建 EagerThreadPoolExecutor 对象</span></span><br><span class="line">        EagerThreadPoolExecutor executor = <span class="keyword">new</span> EagerThreadPoolExecutor(</span><br><span class="line">                cores,</span><br><span class="line">                threads,</span><br><span class="line">                alive,</span><br><span class="line">                TimeUnit.MILLISECONDS,</span><br><span class="line">                <span class="comment">/* TaskQueue 队列*/</span></span><br><span class="line">                taskQueue,</span><br><span class="line">                <span class="keyword">new</span> NamedInternalThreadFactory(name, <span class="keyword">true</span>),</span><br><span class="line">                <span class="keyword">new</span> AbortPolicyWithReport(name, url));</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 将创建的 eager 线程池对象设置到 taskQueue 中</span></span><br><span class="line">        taskQueue.setExecutor(executor);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> executor;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 配置方式：使用 &lt;dubbo:parameter /&gt; 配置</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>EagerThreadPool 并没有直接使用 JDK ThreadPoolExecutor 线程池，而是使用了继承 ThreadPoolExecutor 的 EagerThreadPoolExecutor 线程池。而且使用的队列 TaskQueue ，继承了 LinkedBlockingQueue。EagerThreadPool 的不同就体现在这两个对象上。</p>
+<h2 id="TaskQueue"><a href="#TaskQueue" class="headerlink" title="TaskQueue"></a>TaskQueue</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * LinkedBlockingQueue 内部由单链表实现的阻塞队列，只能从head取元素，从tail添加元素。</span></span><br><span class="line"><span class="comment"> * 1 take() 取数据，当队列为空时阻塞</span></span><br><span class="line"><span class="comment"> * 2 poll() 取数据，弹出队列头部元素，队列为空时返回空</span></span><br><span class="line"><span class="comment"> * 3 offer() 添加数据，当队列满时返回 false</span></span><br><span class="line"><span class="comment"> * 4 put() 添加数据，当队列满时阻塞</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TaskQueue</span>&lt;<span class="title">R</span> <span class="keyword">extends</span> <span class="title">Runnable</span>&gt; <span class="keyword">extends</span> <span class="title">LinkedBlockingQueue</span>&lt;<span class="title">Runnable</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">2635853580887179627L</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * eager 线程池</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> EagerThreadPoolExecutor executor;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">TaskQueue</span><span class="params">(<span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(capacity);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setExecutor</span><span class="params">(EagerThreadPoolExecutor exec)</span> </span>&#123;</span><br><span class="line">        executor = exec;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 重写 LinkedBlockingQueue 的 offer() 方法。</span></span><br><span class="line"><span class="comment">     * 主要实现：</span></span><br><span class="line"><span class="comment">     * 1 在任务数量大于corePoolSize但是小于maximumPoolSize时，优先创建Worker来处理任务</span></span><br><span class="line"><span class="comment">     * 2 当任务数量大于maximumPoolSize时，将任务放入阻塞队列中。阻塞队列充满时抛出RejectedExecutionException</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> runnable</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">offer</span><span class="params">(Runnable runnable)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (executor == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RejectedExecutionException(<span class="string">"The task queue does not have executor!"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取当前线程池中的活跃线程数(注意非核心线程数可能被回收)</span></span><br><span class="line">        <span class="keyword">int</span> currentPoolThreadSize = executor.getPoolSize();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 当前有线程空闲，直接将任务提交到队列中，空闲线程会直接从中获取任务执行</span></span><br><span class="line">        <span class="keyword">if</span> (executor.getSubmittedTaskCount() &lt; currentPoolThreadSize) &#123;</span><br><span class="line">            <span class="comment">// 将任务入队</span></span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">super</span>.offer(runnable);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// return false to let executor create new worker.</span></span><br><span class="line">        <span class="comment">// 当前没有空闲线程，但活跃线程数小于最大线程数即还可以创建线程，则返回 false，让线程池创建新的线程来执行任务</span></span><br><span class="line">        <span class="keyword">if</span> (currentPoolThreadSize &lt; executor.getMaximumPoolSize()) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// currentPoolThreadSize &gt;= max</span></span><br><span class="line">        <span class="comment">// 当前活跃线程达到上线，则只能将任务放入缓冲队列</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">super</span>.offer(runnable);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 再次将任务加入队列</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> o task</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> offer success or not</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RejectedExecutionException if executor is terminated.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">retryOffer</span><span class="params">(Runnable o, <span class="keyword">long</span> timeout, TimeUnit unit)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (executor.isShutdown()) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RejectedExecutionException(<span class="string">"Executor is shutdown!"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">super</span>.offer(o, timeout, unit);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>TaskQueue 继承了 LinkedBlockingQueue 阻塞队列，它复写了 LinkedBlockingQueue 的 offer() 方法，会判断线程池 EagerThreadPoolExecutor 的 submittedTaskCount 值是否已经达到最大线程数，如果没有超过则返回 false，线程池会创建新线程来执行任务。这点非常重要，eager 线程池优先创建线程执行任务的逻辑判断就这这里。</p>
+<h2 id="EagerThreadPoolExecutor"><a href="#EagerThreadPoolExecutor" class="headerlink" title="EagerThreadPoolExecutor"></a>EagerThreadPoolExecutor</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">EagerThreadPoolExecutor</span> <span class="keyword">extends</span> <span class="title">ThreadPoolExecutor</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 记录当前在线程池中的任务总数（正在线程中执行的任务数+队列中等待的任务数）</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> AtomicInteger submittedTaskCount = <span class="keyword">new</span> AtomicInteger(<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">EagerThreadPoolExecutor</span><span class="params">(<span class="keyword">int</span> corePoolSize,</span></span></span><br><span class="line"><span class="function"><span class="params">                                   <span class="keyword">int</span> maximumPoolSize,</span></span></span><br><span class="line"><span class="function"><span class="params">                                   <span class="keyword">long</span> keepAliveTime,</span></span></span><br><span class="line"><span class="function"><span class="params">                                   TimeUnit unit,</span></span></span><br><span class="line"><span class="function"><span class="params">                                   TaskQueue&lt;Runnable&gt; workQueue,</span></span></span><br><span class="line"><span class="function"><span class="params">                                   ThreadFactory threadFactory,</span></span></span><br><span class="line"><span class="function"><span class="params">                                   RejectedExecutionHandler handler)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 返回当前线程池的任务总数</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> current tasks which are executed</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getSubmittedTaskCount</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> submittedTaskCount.get();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 复写 ThreadPoolExecutor 的 afterExecute() 方法</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> r</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> t</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">afterExecute</span><span class="params">(Runnable r, Throwable t)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 任务执行结束，递减 submittedTaskCount</span></span><br><span class="line">        submittedTaskCount.decrementAndGet();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 复写 ThreadPoolExecutor 的 execute() 方法</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> command</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">execute</span><span class="params">(Runnable command)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (command == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 任务提交之前，递增submittedTaskCount</span></span><br><span class="line">        submittedTaskCount.incrementAndGet();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 提交任务 （ThreadPoolExecutor 底层会执行 TaskQueue 的 poll() 方法）</span></span><br><span class="line">            <span class="keyword">super</span>.execute(command);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 提交任务被拒绝</span></span><br><span class="line">        &#125; <span class="keyword">catch</span> (RejectedExecutionException rx) &#123;</span><br><span class="line">            <span class="comment">// 获取缓存队列</span></span><br><span class="line">            <span class="keyword">final</span> TaskQueue queue = (TaskQueue) <span class="keyword">super</span>.getQueue();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 尝试将被拒绝的任务再次放入队列中，如果再次入队被拒绝，则队列已满，无法执行任务。递减 submittedTaskCount</span></span><br><span class="line">                <span class="keyword">if</span> (!queue.retryOffer(command, <span class="number">0</span>, TimeUnit.MILLISECONDS)) &#123;</span><br><span class="line">                    submittedTaskCount.decrementAndGet();</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> RejectedExecutionException(<span class="string">"Queue capacity is full."</span>);</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 中断异常，递减 submittedTaskCount</span></span><br><span class="line">            &#125; <span class="keyword">catch</span> (InterruptedException x) &#123;</span><br><span class="line">                submittedTaskCount.decrementAndGet();</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> RejectedExecutionException(x);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 提交任务发生其它异常，递减 submittedTaskCount</span></span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">            <span class="comment">// decrease any way</span></span><br><span class="line">            submittedTaskCount.decrementAndGet();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当活跃线程数没有达到最大线程数时，EagerThreadPoolExecutor 会优先创建线程来执行任务，而不是放到缓冲队列中，当活跃线程数达到最大值时，EagerThreadPoolExecutor 会将任务放入缓冲队列中等待空闲线程执行，阻塞队列充满时抛出异常。</p>
+<h1 id="AbortPolicyWithReport"><a href="#AbortPolicyWithReport" class="headerlink" title="AbortPolicyWithReport"></a>AbortPolicyWithReport</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 拒绝策略实现类，继承了 ThreadPoolExecutor.AbortPolicy，这里打印JStack，分析线程状态</span></span><br><span class="line"><span class="comment"> * &lt;p&gt;</span></span><br><span class="line"><span class="comment"> * Abort Policy.</span></span><br><span class="line"><span class="comment"> * Log warn info when abort.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AbortPolicyWithReport</span> <span class="keyword">extends</span> <span class="title">ThreadPoolExecutor</span>.<span class="title">AbortPolicy</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(AbortPolicyWithReport<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 线程</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> String threadName;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * URL对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> URL url;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 最后打印时间</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">volatile</span> <span class="keyword">long</span> lastPrintTime = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 信号量</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Semaphore guard = <span class="keyword">new</span> Semaphore(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbortPolicyWithReport</span><span class="params">(String threadName, URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.threadName = threadName;</span><br><span class="line">        <span class="keyword">this</span>.url = url;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 复写了 rejectedExecution 方法</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> r</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> e</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">rejectedExecution</span><span class="params">(Runnable r, ThreadPoolExecutor e)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 打印告警日志</span></span><br><span class="line">        String msg = String.format(<span class="string">"Thread pool is EXHAUSTED!"</span> +</span><br><span class="line">                        <span class="string">" Thread Name: %s, Pool Size: %d (active: %d, core: %d, max: %d, largest: %d), Task: %d (completed: %d),"</span> +</span><br><span class="line">                        <span class="string">" Executor status:(isShutdown:%s, isTerminated:%s, isTerminating:%s), in %s://%s:%d!"</span>,</span><br><span class="line">                threadName, e.getPoolSize(), e.getActiveCount(), e.getCorePoolSize(), e.getMaximumPoolSize(), e.getLargestPoolSize(),</span><br><span class="line">                e.getTaskCount(), e.getCompletedTaskCount(), e.isShutdown(), e.isTerminated(), e.isTerminating(),</span><br><span class="line">                url.getProtocol(), url.getIp(), url.getPort());</span><br><span class="line">        logger.warn(msg);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 打印JStack，分析线程状态</span></span><br><span class="line">        dumpJStack();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 抛出 RejectedExecutionException 异常</span></span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> RejectedExecutionException(msg);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 打印JStack，用来分析线程状态</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">dumpJStack</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 当前时间</span></span><br><span class="line">        <span class="keyword">long</span> now = System.currentTimeMillis();</span><br><span class="line"></span><br><span class="line">        <span class="comment">//10分钟打印一次</span></span><br><span class="line">        <span class="keyword">if</span> (now - lastPrintTime &lt; <span class="number">10</span> * <span class="number">60</span> * <span class="number">1000</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获得信号量 ,用以保证同一时间有且仅有一个线程执行打印</span></span><br><span class="line">        <span class="keyword">if</span> (!guard.tryAcquire()) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建线程池，后台执行打印逻辑</span></span><br><span class="line">        Executors.newSingleThreadExecutor().execute(<span class="keyword">new</span> Runnable() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 获得系统</span></span><br><span class="line">                String dumpPath = url.getParameter(Constants.DUMP_DIRECTORY, System.getProperty(<span class="string">"user.home"</span>));</span><br><span class="line"></span><br><span class="line">                SimpleDateFormat sdf;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 获得路径</span></span><br><span class="line">                String OS = System.getProperty(<span class="string">"os.name"</span>).toLowerCase();</span><br><span class="line"></span><br><span class="line">                <span class="comment">// window system don't support ":" in file name</span></span><br><span class="line">                <span class="keyword">if</span> (OS.contains(<span class="string">"win"</span>)) &#123;</span><br><span class="line">                    sdf = <span class="keyword">new</span> SimpleDateFormat(<span class="string">"yyyy-MM-dd_HH-mm-ss"</span>);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    sdf = <span class="keyword">new</span> SimpleDateFormat(<span class="string">"yyyy-MM-dd_HH:mm:ss"</span>);</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                String dateStr = sdf.format(<span class="keyword">new</span> Date());</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 输出流</span></span><br><span class="line">                FileOutputStream jstackStream = <span class="keyword">null</span>;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    jstackStream = <span class="keyword">new</span> FileOutputStream(<span class="keyword">new</span> File(dumpPath, <span class="string">"Dubbo_JStack.log"</span> + <span class="string">"."</span> + dateStr));</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 打印JStack 信息</span></span><br><span class="line">                    JVMUtil.jstack(jstackStream);</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                    logger.error(<span class="string">"dump jstack error"</span>, t);</span><br><span class="line">                &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                    <span class="comment">// 释放信号量</span></span><br><span class="line">                    guard.release();</span><br><span class="line">                    <span class="keyword">if</span> (jstackStream != <span class="keyword">null</span>) &#123;</span><br><span class="line">                        <span class="keyword">try</span> &#123;</span><br><span class="line">                            jstackStream.flush();</span><br><span class="line">                            jstackStream.close();</span><br><span class="line">                        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 记录最后打印时间</span></span><br><span class="line">                lastPrintTime = System.currentTimeMillis();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章对 Dubbo 线程模型中的线程池部分进行了介绍，Dubbo 目前支持四种线程池，其中 eager 线程池比较特别，使用的缓冲队列 TaskQueue 重写了 LinkedBlockingQueue 的 offer() 方法，该方法的逻辑是判断线程池的中的任务（执行中的和队列中的）是否已经达到最大线程数，如果没有超过就使线程池创建新线程来执行任务。其它三个线程的是基于 JDK ThreadPoolExecutor 线程池，在核心线程全部被占用的时候会先把任务放到缓冲队列中，当缓冲队列满了之后，才会尝试创建新线程来处理任务。最后，介绍了这四个线程池使用的拒绝策略，用于打印JStack，分析线程状态。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/f3cd85ef/" title="Dubbo源码分析 - 线程池" target="_blank" rel="external">https://gentryhuang.com/posts/f3cd85ef/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/ef4cfe7a/" title="Dubbo源码分析 - 优雅停机"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/543ee8c5/" title="Dubbo源码分析 - Mina网络通信"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2020 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
