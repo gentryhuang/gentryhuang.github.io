@@ -36,7 +36,7 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-threadpool-model.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-codec-hierarchy.jpg">
 <meta property="article:published_time" content="2020-05-22T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-11-28T13:59:27.270Z">
+<meta property="article:modified_time" content="2020-11-28T15:46:47.568Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
@@ -588,7 +588,7 @@
 
 <p>MultiMessageHandler 是<strong>专门处理 MultiMessage 类型消息</strong>的 ChannelHandler 实现类。MultiMessage 是 Exchange 层的一种消息类型，它其中封装了多个消息。在 MultiMessageHandler 收到 MultiMessage 消息的时候，received() 方法会遍历其中的所有消息，并交给底层的 ChannelHandler 对象进行处理。</p>
 <p>至此，Transport 层的 AbstractChannelHandlerDelegate 继承体系分析完毕。下面我们继续看 ChannelHandlerDelegate 的另一条继承体系分支。</p>
-<h3 id="WrappedChannelHandler"><a href="#WrappedChannelHandler" class="headerlink" title="WrappedChannelHandler"></a>WrappedChannelHandler</h3><p>WrappedChannelHandler 也实现了 ChannelHandlerDelegate 接口，也是对其它 ChannelHandler 的装饰类。WrappedChannelHandler 在 ChannelHandler 接口方法实现上和 AbstractChannelHandlerDelegate 基本一致，那为什么又要搞一个新的继承体系而不是直接继承 AbstractChannelHandlerDelegate 呢？因为 <strong>WrappedChannelHandler 继承体系不仅是对其它 ChannelHandler 的装饰而且还决定了 Dubbo 的线程模型即消息派发机制</strong>，这和 Dubbo 中的线程池紧密联系，我们会单独分析 Dubbo ThreadPool，这里先不展开说明。WrappedChannelHandler 关联体系如下图所示：</p>
+<h3 id="WrappedChannelHandler"><a href="#WrappedChannelHandler" class="headerlink" title="WrappedChannelHandler"></a>WrappedChannelHandler</h3><p>WrappedChannelHandler 也实现了 ChannelHandlerDelegate 接口，也是对其它 ChannelHandler 的装饰类。WrappedChannelHandler 在 ChannelHandler 接口方法实现上和 AbstractChannelHandlerDelegate 基本一致，那为什么又要搞一个新的继承体系而不是直接继承 AbstractChannelHandlerDelegate 呢？因为 <strong>WrappedChannelHandler 继承体系不仅是对其它 ChannelHandler 的装饰而且还决定了 Dubbo 的线程模型</strong>，有关 Dubbo 中的线程池会单独分析，这里先不展开说明。WrappedChannelHandler 关联体系如下图所示：</p>
 <p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-transport-channelhandler-dispatcher.jpg" alt></p>
 <p>从上图可知，每个 WrappedChannelHandler 的子类都有一个对应的 Dispatcher 实现类，这些实现类就是用来创建 WrappedChannelHandler 的子类们。 Dispatcher 接口已经在 <a href="https://gentryhuang.com/posts/95ab077/">远程通信模块总览</a> 中已经介绍过，它主要支持了 Dubbo 的线程模型，通过它的实现类可以创建不同的 ChannelHandler 来决定消息是交给线程池处理还是IO线程处理。</p>
 <p>WrappedChannelHandler 实现了 ChannelHandlerDelegate 接口，其子类实现了消息派发功能，即决定了 Dubbo 以哪种线程模型处理收到的事件和消息。每个子类都由对应的Dispatcher 实现类创建。</p>
