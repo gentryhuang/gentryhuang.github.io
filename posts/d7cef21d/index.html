@@ -38,7 +38,7 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/threadpool-worker-process.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/threadpool-rejectedexecutionhandler.jpg">
 <meta property="article:published_time" content="2020-12-02T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-12-10T14:59:28.437Z">
+<meta property="article:modified_time" content="2020-12-16T09:17:35.585Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="JUC">
 <meta name="twitter:card" content="summary">
@@ -767,7 +767,7 @@
 <li>向空闲线程发送中断信号，期望中断任务的执行。</li>
 <li>符合终止线程池的条件时，会先将线程池状态置为 TIDYING 状态，设置成功后会执行 terminated() 钩子方法，最后将线程池状态设置为 TERMINATED 状态。</li>
 </ol>
-<p>线程池中虽然多处使用中断来期望中断任务的执行，但由于 Java 中不推荐强行停止线程的机制的限制，即使调用了 shutdownNow 方法，如果被中断的线程对于中断信号不敏感，那么依然有可能导致任务不会停止。</p>
+<p>线程池中虽然多处使用中断来期望中断任务的执行，但由于 <strong>Java 中不推荐强行停止线程的机制的限制，因为强制的让一个线程被动的退出是很不安全的，内部的数据不一致会对程序造成不可预知的后果</strong>。即使调用了 shutdownNow 方法，如果被中断的线程对于中断信号不敏感，那么依然有可能导致任务不会停止。</p>
 <h1 id="线程池配置"><a href="#线程池配置" class="headerlink" title="线程池配置"></a>线程池配置</h1><p>线程池太大或太小都会导致麻烦，选择一个合适的线程池大小是非常有必要的，通常我们需要根据任务执行的性质来确定的。</p>
 <ul>
 <li>CPU 密集型任务<br>如果任务主要进行大量复杂的计算，那么意味着 CPU 的处理能力是稀缺的资源，应当分配较少的线程，通常按照 CPU 核数 或者 CPU 核数 + 1 进行设置。 如果分配线程过多，反而可能导致大量的上下文切换开销。</li>
