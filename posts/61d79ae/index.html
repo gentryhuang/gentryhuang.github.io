@@ -17,21 +17,26 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>归档: 2020/3 | gentryhuang的博客</title>
-  <meta name="description" content="博客">
-<meta property="og:type" content="website">
-<meta property="og:title" content="gentryhuang‘s blog">
-<meta property="og:url" content="https://gentryhuang.com/archives/2020/03/index.html">
+  <title>Dubbo源码分析 - 编解码器 | gentryhuang的博客</title>
+  <meta name="description" content="前言在 远程通信模块总览 和 网络传输层 中分别介绍了编解码的顶级接口 Codec2 和 Codec ，并对抽象实现类 AbstractCodec 以及 Transport 层的 TransportCodec 进行了介绍。本篇文章将介绍 Exchange 层和 Protocol 层相关的编解码器实现。 概述编解码器主要实现对消息的编码和解码，解决粘包和拆包等问题，是在序列化之上封装的一层逻辑。编码">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - 编解码器">
+<meta property="og:url" content="https://gentryhuang.com/posts/61d79ae/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="博客">
+<meta property="og:description" content="前言在 远程通信模块总览 和 网络传输层 中分别介绍了编解码的顶级接口 Codec2 和 Codec ，并对抽象实现类 AbstractCodec 以及 Transport 层的 TransportCodec 进行了介绍。本篇文章将介绍 Exchange 层和 Protocol 层相关的编解码器实现。 概述编解码器主要实现对消息的编码和解码，解决粘包和拆包等问题，是在序列化之上封装的一层逻辑。编码">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-remoting-exchange-codec-hierarchy.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-remoting-exchange-codec.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-remoting-tcp-ip-protocol.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-tcp-package.png">
+<meta property="article:published_time" content="2020-06-28T16:00:00.000Z">
+<meta property="article:modified_time" content="2020-12-21T14:46:28.060Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="求职">
-<meta property="article:tag" content="技术">
-<meta property="article:tag" content="生活">
+<meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-remoting-exchange-codec-hierarchy.jpg">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/archives/2020/03/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/61d79ae/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -391,179 +396,247 @@
 
   
   
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Dubbo-协议"><span class="toc-number">3.</span> <span class="toc-text">Dubbo 协议</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#拆包粘包问题"><span class="toc-number">4.</span> <span class="toc-text">拆包粘包问题</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#发生原因"><span class="toc-number">4.1.</span> <span class="toc-text">发生原因</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#解决方案"><span class="toc-number">4.2.</span> <span class="toc-text">解决方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Dubbo-协议解决方案"><span class="toc-number">4.3.</span> <span class="toc-text">Dubbo 协议解决方案</span></a></li></ol></li></ol>
+    </nav>
+  </div>
+</aside>
+
 <main class="main" role="main">
-  	<article class="content article article-archives article-type-list" itemscope="">
-	    <header class="article-header">
-	      <h1 itemprop="title">归档: 2020/3</h1>
-	      <p class="text-muted">共 14 篇文章</p>
-	    </header>
-	    <div class="article-body">
-	      
-  
-  
+  <div class="content">
+  <article id="post-rpc/编解码器" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
-    
+    <div class="article-header">
       
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - 编解码器
+    </h1>
+  
+
       
-      <section class="panel panel-default b-no">
-        <div class="panel-heading" role="tab">
-          <h3 class="panel-title">
-            <a data-toggle="collapse" href="#collapse2020" aria-expanded="true">
-              <i class="icon icon-calendar-plus text-active"></i><i class="icon icon-calendar-minus text"></i>
-              2020
-            </a>
-            <!-- <a href="/archives/2020" class="archive-year">2020</a> -->
-          </h3>
-        </div>
-        <div id="collapse2020" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading2020">
-        <div class="panel-body">
-          <div class="collection">
-    
-    
-<a href="/posts/a8d76a91/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-28T16:00:00.000Z" itemprop="datePublished">2020-03-29</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - XML配置
-</a>
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/61d79ae/" class="article-date">
+	  <time datetime="2020-06-28T16:00:00.000Z" itemprop="datePublished">2020-06-29</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
 
 
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/61d79ae/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.1k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 3(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在 <a href="https://gentryhuang.com/posts/95ab077/#%E7%BC%96%E8%A7%A3%E7%A0%81%E5%99%A8">远程通信模块总览</a> 和 <a href="https://gentryhuang.com/posts/53cd7ee7/#%E7%BC%96%E8%A7%A3%E7%A0%81">网络传输层</a> 中分别介绍了编解码的顶级接口 <strong>Codec2</strong> 和 <strong>Codec</strong> ，并对抽象实现类 <strong>AbstractCodec</strong> 以及 Transport 层的 <strong>TransportCodec</strong> 进行了介绍。本篇文章将介绍 Exchange 层和 Protocol 层相关的编解码器实现。</p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>编解码器主要实现对消息的编码和解码，解决粘包和拆包等问题，是在序列化之上封装的一层逻辑。编码器继承体系如下图所示：</p>
+<p><img src="/posts/61d79ae/dubbo-remoting-exchange-codec-hierarchy.jpg" alt></p>
+<p>在介绍编解码器之前，我们需要先对 Dubbo 协议进行说明，脱离了 Dubbo 协议编解码器是没有意义的。</p>
+<h1 id="Dubbo-协议"><a href="#Dubbo-协议" class="headerlink" title="Dubbo 协议"></a>Dubbo 协议</h1><p><img src="/posts/61d79ae/dubbo-remoting-exchange-codec.jpg" alt></p>
+<p>Dubbo 协议设计参考了现有的 TCP/IP 协议，一次 RPC 调用包括协议头和协议体两部分。下面对 Dubbo 协议内容进行详细说明：</p>
+<table>
+<thead>
+<tr>
+<th>偏移比特位</th>
+<th>表述</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0 ～ 7 位和 8 ～ 15 位</td>
+<td>Magic High 和 Magic Low</td>
+<td>分别是魔数高位和魔数低位，都是固定值，<strong>可以通过这 2 个 Byte 判断一个数据包是否为 Dubbo 协议</strong></td>
+</tr>
+<tr>
+<td>16 位</td>
+<td>Req/Res</td>
+<td>数据包类型，标识当前消息是请求还是响应。<strong>0 - Response，1 - Request</strong></td>
+</tr>
+<tr>
+<td>17 位</td>
+<td>2Way</td>
+<td>标识当前消息是单向还是双向，仅在第 16 位被设为 1（请求）时有效，<strong>0 - 单向，1 - 双向</strong></td>
+</tr>
+<tr>
+<td>18 位</td>
+<td>Event</td>
+<td>标识当前消息是否为事件消息。0 - 请求或响应包，1 - 心跳包</td>
+</tr>
+<tr>
+<td>19 ～ 23 位</td>
+<td>Serialization ID</td>
+<td>序列化器编号，标识当前消息使用哪一种序列化算法。如 2 - Hessian2Serialization  …</td>
+</tr>
+<tr>
+<td>24 ～ 31 位</td>
+<td>Status</td>
+<td>记录响应的状态，仅在第 16 位被设为 0（响应）时有效。如 20 - OK  …</td>
+</tr>
+<tr>
+<td>32 ～ 95 位</td>
+<td>RPC Request ID</td>
+<td>请求编号，用于记录请求的唯一标识，用来将请求和响应做关联，类型为 long</td>
+</tr>
+<tr>
+<td>96 ～ 127 位</td>
+<td>Data Length</td>
+<td>序列化后的消息体长度，该值按字节计数，类型位 int</td>
+</tr>
+<tr>
+<td>128 ～</td>
+<td>Body Content</td>
+<td>消息体内容，即请求包或响应包通过特定序列化算法序列化后的结果</td>
+</tr>
+</tbody></table>
+<p>Dubbo 协议中前 128 位是协议头，之后的内容是消息体，而协议头就是通过 ExchangeCodec 实现编解码的。在消息体中，客户端侧严格按照序列化顺序写入消息，服务端侧会遵循相同的顺序读取消息。</p>
+<p><strong>TCP/IP 协议内容如下图所示：</strong></p>
+<p><img src="/posts/61d79ae/dubbo-remoting-tcp-ip-protocol.jpg" alt></p>
+<h1 id="拆包粘包问题"><a href="#拆包粘包问题" class="headerlink" title="拆包粘包问题"></a>拆包粘包问题</h1><p>TCP 通讯协议是面向流的，包和包之间没有界限。TCP 为了提高性能，发送端会根据缓冲区实际情况进行划分，一个完整的包可能会拆分成多个包进行发送，也可能把多个小包封装成一个大的数据包发送。同理，接收端也会维护缓冲区。这就是 TCP 拆包和粘包。</p>
+<p><img src="/posts/61d79ae/dubbo-tcp-package.png" alt></p>
+<p><a href="https://www.jianshu.com/p/c1e8fd150042" target="_blank" rel="noopener">图片来源</a></p>
+<h2 id="发生原因"><a href="#发生原因" class="headerlink" title="发生原因"></a>发生原因</h2><ul>
+<li>应用程序写入的数据大于缓冲区大小，会发生拆包。</li>
+<li>应用程序写入的数据于缓冲区大小，会发生粘包。</li>
+<li>接收端不及时读取缓冲区数据，会发生粘包。</li>
+</ul>
+<h2 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h2><p>由于 TCP 通讯协议是面向流的，无法分区包的界限，解决拆包粘包问题本质上就是解决包界限的问题。</p>
+<ul>
+<li><p>固定长度</p>
+<blockquote>
+<p>设置定长消息，消息长度不够补充相关默认值，如空格等，接收方每次读取既定长度的内容作为一条完整消息。该方式的缺点是浪费了部分存储空间和带宽。</p>
+</blockquote>
+</li>
+<li><p>特殊分隔符</p>
+<blockquote>
+<p>设置数据包的边界，如添加特定符号（回车、换行符号），接收方通过这个边界就可以将不同的数据包拆分开。</p>
+</blockquote>
+</li>
+<li><p>消息头 + 固定长度</p>
+<blockquote>
+<p>把消息数据分成消息头和消息体，消息头带消息体的长度，接收方根据消息头中的长度解析数据。</p>
+</blockquote>
+</li>
+</ul>
+<h2 id="Dubbo-协议解决方案"><a href="#Dubbo-协议解决方案" class="headerlink" title="Dubbo 协议解决方案"></a>Dubbo 协议解决方案</h2><p>Dubbo 协议使用<strong>消息头 + 固定长度</strong>的方式处理粘包和拆包问题。消息头存储消息开始标识及消息长度，接收端获取消息头的时候解析出消息长度，然后根据该长度向后读取消息内容。也就是使用编解码处理消息头，使用序列化和反序列化处理消息体。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/61d79ae/" title="Dubbo源码分析 - 编解码器" target="_blank" rel="external">https://gentryhuang.com/posts/61d79ae/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
   
     
-    
-    
-<a href="/posts/1d3295e6/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-24T16:00:00.000Z" itemprop="datePublished">2020-03-25</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - API和属性配置
-</a>
-
 
   
-    
-    
-    
-<a href="/posts/68ac5094/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-21T16:00:00.000Z" itemprop="datePublished">2020-03-22</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 动态编译
-</a>
+</div>
 
-
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
   
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/ef4cfe7a/" title="Dubbo源码分析 - 优雅停机"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
     
     
-    
-<a href="/posts/3e0b5964/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-17T16:00:00.000Z" itemprop="datePublished">2020-03-18</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 自适应扩展
-</a>
-
-
-  
+    <li class="next">
+      <a href="/posts/26722deb/" title="Dubbo源码分析 - 信息交换层"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
     
     
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
     
-<a href="/posts/5d81f464/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-12T16:00:00.000Z" itemprop="datePublished">2020-03-13</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Dubbo SPI
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/a9c33b8c/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-10T16:00:00.000Z" itemprop="datePublished">2020-03-11</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Java SPI
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/46f95e97/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-09T16:00:00.000Z" itemprop="datePublished">2020-03-10</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> URL统一模型
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/ba7cbd3a/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-08T16:00:00.000Z" itemprop="datePublished">2020-03-09</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码环境
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/e2577ca1/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-07T16:00:00.000Z" itemprop="datePublished">2020-03-08</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo项目结构总览
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/7202a9c0/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-05T16:00:00.000Z" itemprop="datePublished">2020-03-06</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo示例 - 注解配置
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/3f1c0a92/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-03T16:00:00.000Z" itemprop="datePublished">2020-03-04</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo示例 - XML配置
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/f0ae64a/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-02T16:00:00.000Z" itemprop="datePublished">2020-03-03</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo示例 - API配置
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/eee3e639/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-03-01T16:00:00.000Z" itemprop="datePublished">2020-03-02</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Spring自定义标签
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/626d9676/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-02-29T16:00:00.000Z" itemprop="datePublished">2020-03-01</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> 初识RPC
-</a>
-
-
+  </ul>
   
   
-    </div></div></div></section>
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
   
 
-	    </div>
-  	</article>
-  	 	
+
 </main>
 
   
@@ -634,6 +707,12 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 <script src="/js/insight.js"></script>
 
 
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
 
 
