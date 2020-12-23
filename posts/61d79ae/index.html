@@ -25,16 +25,16 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言在 远程通信模块总览 和 网络传输层 中分别介绍了编解码的顶级接口 Codec2 和 Codec ，并对抽象实现类 AbstractCodec 以及 Transport 层的 TransportCodec 进行了介绍。本篇文章将介绍 Exchange 层和 Protocol 层相关的编解码器实现。 概述编解码器主要实现对消息的编码和解码，解决粘包和拆包等问题，是在序列化之上封装的一层逻辑。编码">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-remoting-exchange-codec-hierarchy.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-remoting-exchange-codec.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-remoting-tcp-ip-protocol.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-tcp-package.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-exchange-codec-hierarchy.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-exchange-codec.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-tcp-ip-protocol.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-tcp-package.png">
 <meta property="article:published_time" content="2020-06-28T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-12-23T06:02:35.192Z">
+<meta property="article:modified_time" content="2020-12-23T06:09:04.745Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/61d79ae/dubbo-remoting-exchange-codec-hierarchy.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-exchange-codec-hierarchy.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/61d79ae/index.html">
   
@@ -463,9 +463,9 @@
       
         <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在 <a href="https://gentryhuang.com/posts/95ab077/#%E7%BC%96%E8%A7%A3%E7%A0%81%E5%99%A8">远程通信模块总览</a> 和 <a href="https://gentryhuang.com/posts/53cd7ee7/#%E7%BC%96%E8%A7%A3%E7%A0%81">网络传输层</a> 中分别介绍了编解码的顶级接口 <strong>Codec2</strong> 和 <strong>Codec</strong> ，并对抽象实现类 <strong>AbstractCodec</strong> 以及 Transport 层的 <strong>TransportCodec</strong> 进行了介绍。本篇文章将介绍 Exchange 层和 Protocol 层相关的编解码器实现。</p>
 <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>编解码器主要实现对消息的编码和解码，解决粘包和拆包等问题，是在序列化之上封装的一层逻辑。编码器继承体系如下图所示：</p>
-<p><img src="/posts/61d79ae/dubbo-remoting-exchange-codec-hierarchy.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-exchange-codec-hierarchy.jpg" alt></p>
 <p>在介绍编解码器之前，我们需要先对 Dubbo 协议进行说明，脱离了 Dubbo 协议编解码器是没有意义的。</p>
-<h1 id="Dubbo-协议"><a href="#Dubbo-协议" class="headerlink" title="Dubbo 协议"></a>Dubbo 协议</h1><p><img src="/posts/61d79ae/dubbo-remoting-exchange-codec.jpg" alt></p>
+<h1 id="Dubbo-协议"><a href="#Dubbo-协议" class="headerlink" title="Dubbo 协议"></a>Dubbo 协议</h1><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-exchange-codec.jpg" alt></p>
 <p>Dubbo 协议设计参考了现有的 TCP/IP 协议，一次 RPC 调用包括协议头和协议体两部分。下面对 Dubbo 协议内容进行详细说明：</p>
 <table>
 <thead>
@@ -523,9 +523,9 @@
 </tbody></table>
 <p>Dubbo 协议中前 128 位是协议头，之后的内容是消息体，而协议头就是通过 ExchangeCodec 实现编解码的。在消息体中，客户端侧严格按照序列化顺序写入消息，服务端侧会遵循相同的顺序读取消息。</p>
 <p><strong>TCP/IP 协议内容如下图所示：</strong></p>
-<p><img src="/posts/61d79ae/dubbo-remoting-tcp-ip-protocol.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-remoting-tcp-ip-protocol.jpg" alt></p>
 <h1 id="拆包粘包问题"><a href="#拆包粘包问题" class="headerlink" title="拆包粘包问题"></a>拆包粘包问题</h1><p>TCP 通讯协议是面向流的，包和包之间没有界限。TCP 为了提高性能，发送端会根据缓冲区实际情况进行划分，一个完整的包可能会拆分成多个包进行发送，也可能把多个小包封装成一个大的数据包发送。同理，接收端也会维护缓冲区。这就是 TCP 拆包和粘包。</p>
-<p><img src="/posts/61d79ae/dubbo-tcp-package.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-tcp-package.png" alt></p>
 <p><a href="https://www.jianshu.com/p/c1e8fd150042" target="_blank" rel="noopener">图片来源</a></p>
 <h2 id="发生原因"><a href="#发生原因" class="headerlink" title="发生原因"></a>发生原因</h2><ul>
 <li>应用程序写入的数据大于缓冲区大小，会发生拆包。</li>
