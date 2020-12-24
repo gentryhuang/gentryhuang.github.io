@@ -25,16 +25,16 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言上一篇文章 线程池 对线程池的原理进行了说明，并对线程池的源码进行了深入分析，本篇文章对线程工具类 Executors 进行分析，需要说明的是 Executors 中除了并行计算的 WorkStealingPool 线程池，其它的都是直接基于 ThreadPoolExecutor 来实现的。本篇文章主要说明 Executors 基于 ThreadPoolExecutor 创建的线程池。 Fix">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/9e3a7d05/concurrent-threadpool-fixed.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/9e3a7d05/concurrent-threadpool-single.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/concurrent-threadpool-fixed.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/concurrent-threadpool-single.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/threadpool-syncronousqueue.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/9e3a7d05/concurrent-threadpool-cacheed.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/concurrent-threadpool-cacheed.jpg">
 <meta property="article:published_time" content="2020-12-09T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-12-24T13:16:16.057Z">
+<meta property="article:modified_time" content="2020-12-24T13:19:46.316Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="JUC">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/9e3a7d05/concurrent-threadpool-fixed.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/concurrent-threadpool-fixed.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/9e3a7d05/index.html">
   
@@ -470,14 +470,14 @@
 </li>
 </ul>
 <h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><p>核心线程数和最大线程数一致，并且使用的任务队列为无界队列。线程池中的线程数随着任务的提交会从 0 增加到核心线程数 nThreads，完成预热之后，线程池中的线程数将会保持 nThreads，之后的任务提交一律放入任务队列中，由空闲的核心线程从队列取出并执行。如果有工作线程退出，线程池将会创建新的工作线程以补足执行的数目 nThreads 。此外，由于使用的是无界队列，隐藏的默认拒绝策略是无效的，并且默认情况下线程池是不会回收核心线程数内的线程，keepAliveTime 同样是个无效参数。</p>
-<h2 id="运行示意图"><a href="#运行示意图" class="headerlink" title="运行示意图"></a>运行示意图</h2><p><img src="/posts/9e3a7d05/concurrent-threadpool-fixed.jpg" alt></p>
+<h2 id="运行示意图"><a href="#运行示意图" class="headerlink" title="运行示意图"></a>运行示意图</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/concurrent-threadpool-fixed.jpg" alt></p>
 <h2 id="适用场景"><a href="#适用场景" class="headerlink" title="适用场景"></a>适用场景</h2><p>适用于为了满足资源管理的需求，而需要限制线程数量的应用场景。</p>
 <h2 id="存在问题"><a href="#存在问题" class="headerlink" title="存在问题"></a>存在问题</h2><p>由于使用了无界的任务队列，当大量的任务提交到线程池，可能会造成任务堆积，而线程池的拒绝策略又处于失效状态，从而导致 OOM 。</p>
 <h1 id="SingleThreadExecutor"><a href="#SingleThreadExecutor" class="headerlink" title="SingleThreadExecutor"></a>SingleThreadExecutor</h1><p>SingleThreadExecutor 属于固定线程数的线程池，使用 Executors.newSingleThreadExecutor()  方法创建。</p>
 <h2 id="构造方法-1"><a href="#构造方法-1" class="headerlink" title="构造方法"></a>构造方法</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">  * 创建单个线程的线程池</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> ExecutorService <span class="title">newSingleThreadExecutor</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="keyword">return</span> <span class="keyword">new</span> FinalizableDelegatedExecutorService(<span class="keyword">new</span> ThreadPoolExecutor(<span class="number">1</span>, <span class="number">1</span>,</span><br><span class="line">             <span class="number">0L</span>, TimeUnit.MILLISECONDS,</span><br><span class="line">             <span class="keyword">new</span> LinkedBlockingQueue&lt;Runnable&gt;()));</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">/**</span></span><br><span class="line"><span class="comment">  * 创建单个线程的线程池</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  * <span class="doctag">@param</span> threadFactory 线程工厂</span></span><br><span class="line"><span class="comment">  * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> ExecutorService <span class="title">newSingleThreadExecutor</span><span class="params">(ThreadFactory threadFactory)</span> </span>&#123;</span><br><span class="line">     <span class="keyword">return</span> <span class="keyword">new</span> FinalizableDelegatedExecutorService(<span class="keyword">new</span> ThreadPoolExecutor(<span class="number">1</span>, <span class="number">1</span>,</span><br><span class="line">             <span class="number">0L</span>, TimeUnit.MILLISECONDS,</span><br><span class="line">             <span class="keyword">new</span> LinkedBlockingQueue&lt;Runnable&gt;(),</span><br><span class="line">             threadFactory));</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
 
 <h2 id="特点-1"><a href="#特点-1" class="headerlink" title="特点"></a>特点</h2><p>SingleThreadExecutor 和 FixedThreadPool 基本一致，区别在于前者的核心线程数和最大线程数固定为 1 ，并且是一个包装 ThreadPoolExecutor 的线程池，支持调用 finalize() 方法通知垃圾收集器时关闭线程池。</p>
-<h2 id="运行示意图-1"><a href="#运行示意图-1" class="headerlink" title="运行示意图"></a>运行示意图</h2><p><img src="/posts/9e3a7d05/concurrent-threadpool-single.jpg" alt></p>
+<h2 id="运行示意图-1"><a href="#运行示意图-1" class="headerlink" title="运行示意图"></a>运行示意图</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/concurrent-threadpool-single.jpg" alt></p>
 <h2 id="适用场景-1"><a href="#适用场景-1" class="headerlink" title="适用场景"></a>适用场景</h2><p>保证了所有任务都是被顺序执行，任意时间点最多会有一个任务处于活动状态。</p>
 <h2 id="存在问题-1"><a href="#存在问题-1" class="headerlink" title="存在问题"></a>存在问题</h2><p>和 FixedThreadPool 是一样的问题，使用了无界的任务队列，当大量的任务提交到线程池，可能会造成任务堆积，而线程池的拒绝策略又处于失效状态，从而导致 OOM 。</p>
 <h1 id="CachedThreadPool"><a href="#CachedThreadPool" class="headerlink" title="CachedThreadPool"></a>CachedThreadPool</h1><p>CachedThreadPool 属于缓冲线程池，会根据需要创建新线程。使用 Executors.newCachedThreadPool()  方法创建。</p>
@@ -494,7 +494,7 @@
 </ol>
 <h2 id="SynchronousQueue"><a href="#SynchronousQueue" class="headerlink" title="SynchronousQueue"></a>SynchronousQueue</h2><p>一个比较特殊的阻塞队列，其本身不存储元素。每个插入操作必须等待另一个线程执行移除操作，反之亦然。如果使用该阻塞队列，只有当两个线程执行相反模式的操作才能配对成功，否则先执行的一方只能等待。下图是对线程池使用该队列处理任务过程的描述：</p>
 <p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/threadpool-syncronousqueue.jpg" alt></p>
-<h2 id="运行示意图-2"><a href="#运行示意图-2" class="headerlink" title="运行示意图"></a>运行示意图</h2><p><img src="/posts/9e3a7d05/concurrent-threadpool-cacheed.jpg" alt></p>
+<h2 id="运行示意图-2"><a href="#运行示意图-2" class="headerlink" title="运行示意图"></a>运行示意图</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/concurrent-threadpool-cacheed.jpg" alt></p>
 <h2 id="适用场景-2"><a href="#适用场景-2" class="headerlink" title="适用场景"></a>适用场景</h2><p>处理大量短时间任务，或者负载较轻的服务器。</p>
 <h2 id="存在问题-2"><a href="#存在问题-2" class="headerlink" title="存在问题"></a>存在问题</h2><p>由于允许创建线程数量为 Integer.MAX_VALUE，可能会创建大量的线程最终超过了操作系统的上限而无法创建新线程，容易导致 CPU 飙升和 OOM。</p>
 <h1 id="Executors-创建线程问题"><a href="#Executors-创建线程问题" class="headerlink" title="Executors 创建线程问题"></a>Executors 创建线程问题</h1><p>Executors 工具类创建的线程池都会存在一定的风险，相比较而言手动创建线程池更加合理，因为可以根据不同的场景对线程池进行定制，来提升程序的性能和减少资源消耗。</p>
