@@ -17,21 +17,23 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>接口隔离原则 | gentryhuang的博客</title>
-  <meta name="description" content="定义  用多个专门的接口，而不使用单一的总接口，客户端不应该依赖它不需要的接口。 注意点 一个类对一个类的依赖应该建立在最小的接口上（这里的类是泛指，也代表接口）。 建立单一接口，不要建立庞大臃肿的接口 尽量细化接口，接口中的方法尽量少 注意适度原则，一定要适度，虽然接口中的方法尽量少，但是也要有限度。优点符合我们常说的高内聚低耦合的设计思想，从而使得类具有很好的可读性、可扩展性和可维护性。和单一">
+  <title>Java基础 - JDK动态代理 | gentryhuang的博客</title>
+  <meta name="description" content="概述Java 中代理分为两大类，一类是静态代理，另一类是动态代理。静态代理是针对需要被代理的类在编译之前就已经写好了对应的代理类，也就是说代理关系在编译之前就确立了。动态代理是针对目标类在程序运行期间自动生成的代理类，细分又可分为有接口的代理类和无接口的代理类。JDK动态代理支持目标类有接口的情况，目标类没有接口无法为其生成代理类，能够为没有接口生成代理类的工具如 CGLIB 等。本篇文章将对JD">
 <meta property="og:type" content="article">
-<meta property="og:title" content="接口隔离原则">
-<meta property="og:url" content="https://gentryhuang.com/posts/e0ec8882/index.html">
+<meta property="og:title" content="Java基础 - JDK动态代理">
+<meta property="og:url" content="https://gentryhuang.com/posts/d38b32e5/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="定义  用多个专门的接口，而不使用单一的总接口，客户端不应该依赖它不需要的接口。 注意点 一个类对一个类的依赖应该建立在最小的接口上（这里的类是泛指，也代表接口）。 建立单一接口，不要建立庞大臃肿的接口 尽量细化接口，接口中的方法尽量少 注意适度原则，一定要适度，虽然接口中的方法尽量少，但是也要有限度。优点符合我们常说的高内聚低耦合的设计思想，从而使得类具有很好的可读性、可扩展性和可维护性。和单一">
+<meta property="og:description" content="概述Java 中代理分为两大类，一类是静态代理，另一类是动态代理。静态代理是针对需要被代理的类在编译之前就已经写好了对应的代理类，也就是说代理关系在编译之前就确立了。动态代理是针对目标类在程序运行期间自动生成的代理类，细分又可分为有接口的代理类和无接口的代理类。JDK动态代理支持目标类有接口的情况，目标类没有接口无法为其生成代理类，能够为没有接口生成代理类的工具如 CGLIB 等。本篇文章将对JD">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2019-09-02T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-07-04T13:42:18.871Z">
+<meta property="og:image" content="https://gentryhuang.com/posts/d38b32e5/java-base-proxy-test.jpg">
+<meta property="article:published_time" content="2021-01-03T12:30:35.000Z">
+<meta property="article:modified_time" content="2021-01-12T06:57:01.654Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="设计模式">
+<meta property="article:tag" content="代理">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/d38b32e5/java-base-proxy-test.jpg">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/posts/e0ec8882/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/d38b32e5/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -395,21 +397,21 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#定义"><span class="toc-number">1.</span> <span class="toc-text">定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#注意点"><span class="toc-number">2.</span> <span class="toc-text">注意点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#优点"><span class="toc-number">3.</span> <span class="toc-text">优点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#和单一职责原则比较"><span class="toc-number">4.</span> <span class="toc-text">和单一职责原则比较</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#简单需求说明"><span class="toc-number">5.</span> <span class="toc-text">简单需求说明</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#coding"><span class="toc-number">6.</span> <span class="toc-text">coding</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#接口隔离原则反例"><span class="toc-number">6.1.</span> <span class="toc-text">接口隔离原则反例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#接口隔离原则正例"><span class="toc-number">6.2.</span> <span class="toc-text">接口隔离原则正例</span></a></li></ol></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#示例"><span class="toc-number">2.</span> <span class="toc-text">示例</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#接口"><span class="toc-number">2.1.</span> <span class="toc-text">接口</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现类"><span class="toc-number">2.2.</span> <span class="toc-text">实现类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#代理对象"><span class="toc-number">2.3.</span> <span class="toc-text">代理对象</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#测试"><span class="toc-number">2.4.</span> <span class="toc-text">测试</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#打印结果"><span class="toc-number">2.5.</span> <span class="toc-text">打印结果</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#JDK-动态代理"><span class="toc-number">3.</span> <span class="toc-text">JDK 动态代理</span></a></li></ol>
     </nav>
   </div>
 </aside>
 
 <main class="main" role="main">
   <div class="content">
-  <article id="post-design_pattern/principle/接口隔离原则" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+  <article id="post-java-base/jdk动态代理" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
     <div class="article-header">
       
         
   
     <h1 class="article-title" itemprop="name">
-      接口隔离原则
+      Java基础 - JDK动态代理
     </h1>
   
 
@@ -417,20 +419,20 @@
       <div class="article-meta">
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
-	<a href="/posts/e0ec8882/" class="article-date">
-	  <time datetime="2019-09-02T16:00:00.000Z" itemprop="datePublished">2019-09-03</time>
+	<a href="/posts/d38b32e5/" class="article-date">
+	  <time datetime="2021-01-03T12:30:35.000Z" itemprop="datePublished">2021-01-03</time>
 	</a>
 </span>
         
   <span class="article-category">
     <i class="icon icon-folder"></i>
-    <a class="article-category-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a>
+    <a class="article-category-link" href="/categories/JDK/">JDK</a>
   </span>
 
         
   <span class="article-tag">
     <i class="icon icon-tags"></i>
-	<a class="article-tag-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a>
+	<a class="article-tag-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a>
   </span>
 
 
@@ -443,10 +445,10 @@
 	</span>
 
 
-        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/e0ec8882/#comments" class="article-comment-link">评论</a></span>
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/d38b32e5/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 633(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 687(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 2(分)</span>
@@ -456,32 +458,18 @@
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><p>  用多个专门的接口，而不使用单一的总接口，客户端不应该依赖它不需要的接口。</p>
-<h2 id="注意点"><a href="#注意点" class="headerlink" title="注意点"></a>注意点</h2><ul>
-<li>一个类对一个类的依赖应该建立在最小的接口上（这里的类是泛指，也代表接口）。</li>
-<li>建立单一接口，不要建立庞大臃肿的接口</li>
-<li>尽量细化接口，接口中的方法尽量少</li>
-<li>注意适度原则，一定要适度，虽然接口中的方法尽量少，但是也要有限度。<h2 id="优点"><a href="#优点" class="headerlink" title="优点"></a>优点</h2>符合我们常说的高内聚低耦合的设计思想，从而使得类具有很好的可读性、可扩展性和可维护性。<h2 id="和单一职责原则比较"><a href="#和单一职责原则比较" class="headerlink" title="和单一职责原则比较"></a>和单一职责原则比较</h2>单一职责原则指的是类、接口和方法的职责是单一的，强调的是职责，如果职责是单一的那么在类或者接口中具有多个<br>方法都是可以的，因为它们都是一类的，比如叫声，不同的动物有不同的叫。接口隔离原则注重地是对接口依赖的隔离。<h2 id="简单需求说明"><a href="#简单需求说明" class="headerlink" title="简单需求说明"></a>简单需求说明</h2>使用统一的接口定义多个功能的方法，但是有的实现不一定会全部用到，最好是将这个统一的接口根据不同的维度进行拆分成多个接口，实现根据<br>需要进行接口的实现。   </li>
-</ul>
-<h2 id="coding"><a href="#coding" class="headerlink" title="coding"></a>coding</h2><h3 id="接口隔离原则反例"><a href="#接口隔离原则反例" class="headerlink" title="接口隔离原则反例"></a>接口隔离原则反例</h3><p><strong>接口</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IAnimalAction</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><strong>狗实现类</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DogCaseOne</span> <span class="keyword">implements</span> <span class="title">IAnimalAction</span></span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 注：这里是空方法，狗不会飞，所以明显设计的不合理，最好不要有太多的空方法</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><strong>鸟实现类</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LarkCaseOne</span> <span class="keyword">implements</span> <span class="title">IAnimalAction</span></span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 很明显，百灵鸟不会游泳，此处为空方法，设计不合理</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="接口隔离原则正例"><a href="#接口隔离原则正例" class="headerlink" title="接口隔离原则正例"></a>接口隔离原则正例</h3><p><strong>吃东西接口</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IEat</span></span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 吃东西</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Java 中代理分为两大类，一类是静态代理，另一类是动态代理。静态代理是针对需要被代理的类在编译之前就已经写好了对应的代理类，也就是说代理关系在编译之前就确立了。动态代理是针对目标类在程序运行期间自动生成的代理类，细分又可分为有接口的代理类和无接口的代理类。JDK动态代理支持目标类有接口的情况，目标类没有接口无法为其生成代理类，能够为没有接口生成代理类的工具如 CGLIB 等。本篇文章将对JDK动态代理实现原理进行介绍。</p>
+<h1 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h1><h2 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IPrintf</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 打印信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> message 信息</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">print</span><span class="params">(String message)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p><strong>飞翔接口</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IFly</span></span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 飞翔</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><strong>游泳接口</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ISwim</span></span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 游泳</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="实现类"><a href="#实现类" class="headerlink" title="实现类"></a>实现类</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PrintfImpl</span> <span class="keyword">implements</span> <span class="title">IPrintf</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">print</span><span class="params">(String message)</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"print: "</span> + message);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p><strong>狗实现类</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 狗只用实现 吃和游泳方法即可</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DogCaseTwo</span> <span class="keyword">implements</span> <span class="title">IEat</span>,<span class="title">ISwim</span></span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      log.info(<span class="string">"狗吃东西!"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      log.info(<span class="string">"狗游泳"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="代理对象"><a href="#代理对象" class="headerlink" title="代理对象"></a>代理对象</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Client</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 实例化对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> IPrintf PRINTF = <span class="keyword">new</span> PrintfImpl();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * JDK 生成代理对象</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> $Proxy0</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> IPrintf <span class="title">getProxy</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 返回 printf 对象的代理对象</span></span><br><span class="line">        <span class="keyword">return</span> (IPrintf) Proxy.newProxyInstance(</span><br><span class="line">                <span class="comment">// 类加载器，在程序运行时将生成的代理类加载到JVM中</span></span><br><span class="line">                PRINTF.getClass().getClassLoader(),</span><br><span class="line">                <span class="comment">// 被代理类的所有接口信息，用来确定生成的代理类可以具有哪些方法</span></span><br><span class="line">                PRINTF.getClass().getInterfaces(),</span><br><span class="line">                <span class="comment">// 调用处理器，每个代理对象都具有一个关联的调用处理器，用于指定动态生成的代理类需要完成的具体操作。</span></span><br><span class="line">                <span class="comment">// 该接口中有一个 invoke 方法，代理对象调用任何目标接口的方法时都会调用该 invoke 方法，该方法中会调用目标类的目标方法。</span></span><br><span class="line">                <span class="keyword">new</span> InvocationHandler() &#123;</span><br><span class="line">                    <span class="comment">/**</span></span><br><span class="line"><span class="comment">                     *</span></span><br><span class="line"><span class="comment">                     * <span class="doctag">@param</span> proxy 代理对象</span></span><br><span class="line"><span class="comment">                     * <span class="doctag">@param</span> method 代理对象当前调用的方法</span></span><br><span class="line"><span class="comment">                     * <span class="doctag">@param</span> args 方法参数</span></span><br><span class="line"><span class="comment">                     * <span class="doctag">@return</span> 方法执行的结果（无返回值则为 null）</span></span><br><span class="line"><span class="comment">                     * <span class="doctag">@throws</span> Throwable 异常</span></span><br><span class="line"><span class="comment">                     */</span></span><br><span class="line">                    <span class="meta">@Override</span></span><br><span class="line">                    <span class="function"><span class="keyword">public</span> Object <span class="title">invoke</span><span class="params">(Object proxy, Method method, Object[] args)</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">                        <span class="comment">// 前置逻辑</span></span><br><span class="line">                        System.out.println(<span class="string">"before action ... "</span>);</span><br><span class="line">                        <span class="comment">// 执行代理类的目标方法</span></span><br><span class="line">                        Object result = method.invoke(PRINTF, args);</span><br><span class="line">                        <span class="comment">// 后置逻辑</span></span><br><span class="line">                        System.out.println(<span class="string">"after action ... "</span>);</span><br><span class="line">                        <span class="keyword">return</span> result;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p><strong>鸟实现类</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 鸟实现 吃和飞方法即可</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LarkCaseTwo</span> <span class="keyword">implements</span> <span class="title">IEat</span>,<span class="title">IFly</span></span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      log.info(<span class="string">"鸟吃东西"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      log.info(<span class="string">"鸟飞翔"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ProxyTest</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">test</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        IPrintf proxy = Client.getProxy();</span><br><span class="line">        proxy.print(<span class="string">"hello world!"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="打印结果"><a href="#打印结果" class="headerlink" title="打印结果"></a>打印结果</h2><p><img src="/posts/d38b32e5/java-base-proxy-test.jpg" alt></p>
+<p>关于 JDK 动态代理使用介绍完毕，下面我们对底层实现原理进行说明。</p>
+<h1 id="JDK-动态代理"><a href="#JDK-动态代理" class="headerlink" title="JDK 动态代理"></a>JDK 动态代理</h1><p>Java 中需要在运行期动态的生成一个类并创建其对象，一般需要使用字节码技术和反射机制。JDK 动态代理通过<code>java.lang.reflect.Proxy</code>提供了一种原生的动态代理模式，其底层通过<strong>对字节码的操作</strong>和<strong>反射的使用</strong>拼装成代理类，通过反射创建代理对象。</p>
 
       
     </div>
@@ -491,7 +479,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.com/posts/e0ec8882/" title="接口隔离原则" target="_blank" rel="external">https://gentryhuang.com/posts/e0ec8882/</a>
+      <a href="https://gentryhuang.com/posts/d38b32e5/" title="Java基础 - JDK动态代理" target="_blank" rel="external">https://gentryhuang.com/posts/d38b32e5/</a>
     </li>
     
     <li class="post-copyright-license">
@@ -528,10 +516,6 @@
   </article>
   
     
-  <section id="comments">
-  	
-  </section>
-
 
   
 </div>
@@ -541,13 +525,9 @@
   
   <ul class="pager pull-left">
     
-    <li class="prev">
-      <a href="/posts/3d1cbe69/" title="里氏替换原则"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
-    </li>
-    
     
     <li class="next">
-      <a href="/posts/ebdadec7/" title="迪米特法则"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+      <a href="/posts/9e3a7d05/" title="并发 - 线程池工具类"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
     </li>
     
     
@@ -652,8 +632,6 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 
 
 
-
-   
 
 
   <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
