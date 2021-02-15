@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - 协议层总览 | gentryhuang的博客</title>
+  <meta name="description" content="前言在前面的文章中对 Dubbo 架构中的 Dubbo Remoting 层 进行了详细说明，本篇文章将介绍 Dubbo Remoting 层 的使用者 Protocol 层。Protocol 层会通过 Exchangers 门面类创建客户端 ExchangeClient 和服务端 ExchangeServer，此外还会创建通道处理器 ChannelHandler 以及编解码器 Codec2，最后">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - 协议层总览">
+<meta property="og:url" content="https://gentryhuang.com/posts/3131d6ea/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言在前面的文章中对 Dubbo 架构中的 Dubbo Remoting 层 进行了详细说明，本篇文章将介绍 Dubbo Remoting 层 的使用者 Protocol 层。Protocol 层会通过 Exchangers 门面类创建客户端 ExchangeClient 和服务端 ExchangeServer，此外还会创建通道处理器 ChannelHandler 以及编解码器 Codec2，最后">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/3131d6ea/dubbo-rpc-protocol.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/3131d6ea/dubbo-rpc-source.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/3131d6ea/dubbo-rpc-api.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/3131d6ea/dubbo-protocol-simple-invoke.jpg">
+<meta property="article:published_time" content="2020-07-09T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-02-15T06:56:41.215Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/3131d6ea/dubbo-rpc-protocol.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/3131d6ea/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">38</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">34</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.17px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/JUC/" style="font-size: 13.5px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.33px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/RPC/" style="font-size: 13.67px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.17px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.33px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.33px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.83px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d38b32e5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d38b32e5/" class="title">Java基础 - JDK动态代理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-03T12:30:35.000Z" itemprop="datePublished">2021-01-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/9e3a7d05/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/9e3a7d05/" class="title">并发 - 线程池工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-09T16:00:00.000Z" itemprop="datePublished">2020-12-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d7cef21d/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d7cef21d/" class="title">并发 - 线程池</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-02T16:00:00.000Z" itemprop="datePublished">2020-12-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/37f29896/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/37f29896/" class="title">并发 - Java并发工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-11-05T16:00:00.000Z" itemprop="datePublished">2020-11-06</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/40e44c1f/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/40e44c1f/" class="title">AQS 原理分析 - Condition实现原理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-26T13:45:45.000Z" itemprop="datePublished">2020-10-26</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#抽象模块"><span class="toc-number">3.</span> <span class="toc-text">抽象模块</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#核心包"><span class="toc-number">3.1.</span> <span class="toc-text">核心包</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#核心类"><span class="toc-number">3.2.</span> <span class="toc-text">核心类</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Invoker-接口"><span class="toc-number">3.2.1.</span> <span class="toc-text">Invoker 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Invocation-接口"><span class="toc-number">3.2.2.</span> <span class="toc-text">Invocation 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Result-接口"><span class="toc-number">3.2.3.</span> <span class="toc-text">Result 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Exporter-接口"><span class="toc-number">3.2.4.</span> <span class="toc-text">Exporter 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ExporterListener"><span class="toc-number">3.2.5.</span> <span class="toc-text">ExporterListener</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#InvokerListener-接口"><span class="toc-number">3.2.6.</span> <span class="toc-text">InvokerListener 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Protocol-接口"><span class="toc-number">3.2.7.</span> <span class="toc-text">Protocol 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ProxyFactory-接口"><span class="toc-number">3.2.8.</span> <span class="toc-text">ProxyFactory 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Filter"><span class="toc-number">3.2.9.</span> <span class="toc-text">Filter</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/协议层总览" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - 协议层总览
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/3131d6ea/" class="article-date">
+	  <time datetime="2020-07-09T16:00:00.000Z" itemprop="datePublished">2020-07-10</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/3131d6ea/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.1k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 13(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在前面的文章中对 Dubbo 架构中的 <strong>Dubbo Remoting 层</strong> 进行了详细说明，本篇文章将介绍 <strong>Dubbo Remoting 层</strong> 的使用者 <strong><code>Protocol 层</code></strong>。<strong>Protocol 层</strong>会通过 <strong>Exchangers 门面类</strong>创建客户端 <strong>ExchangeClient</strong> 和服务端 <strong>ExchangeServer</strong>，此外还会创建通道处理器 <strong>ChannelHandler</strong> 以及编解码器 <strong>Codec2</strong>，最后将它们交给 <strong>Exchange 层</strong>进行装饰。</p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>前面已经介绍过了序列化层、传输层、信息交换层以及代理层，它们各自负责 RPC 生命周期中的一环，而协议层则是位于它们之上的一层。Protocol 层在 Dubbo 架构中的位置如下图所示：</p>
+<p><img src="/posts/3131d6ea/dubbo-rpc-protocol.jpg" alt></p>
+<p>Protocol 层在 Dubbo 源码中对应的是 <strong>dubbo-rpc</strong> 模块，该模块的结构如下图所示：</p>
+<p><img src="/posts/3131d6ea/dubbo-rpc-source.jpg" alt></p>
+<p>从上图不难看出，<strong>dubbo-rpc</strong> 和前面介绍过的模块类似，一个抽象模块和多个具体实现模块。<strong>dubbo-rpc-api</strong> 是对具体协议、服务暴露、服务引用以及代理等的抽象，是整个 Protocol 层的核心。其它模块都是对 <strong>dubbo-rpc-api</strong> 模块的具体实现，都是 Dubbo 支持的具体协议，在后面的文章中会挑选几个具有代表性的具体协议实现进行详细分析。下面我们对 <strong>dubbo-rpc-api</strong> 模块进行整体说明。</p>
+<h1 id="抽象模块"><a href="#抽象模块" class="headerlink" title="抽象模块"></a>抽象模块</h1><p><img src="/posts/3131d6ea/dubbo-rpc-api.jpg" alt></p>
+<p>上图展示了 <strong>dubbo-rpc-api</strong> 模块的结构，下面我们对其核心包和类进行简单介绍。</p>
+<h2 id="核心包"><a href="#核心包" class="headerlink" title="核心包"></a>核心包</h2><ul>
+<li><strong>filter 包：</strong> 在进行服务暴露和服务引用时，基于 <strong>Dubbo SPI Active</strong> 机制加载匹配对应的过滤器集合，用于创建带有过滤器链的 <strong>Invoker</strong> 对象。</li>
+<li><strong>listener 包：</strong> 在服务暴露和服务引用时，可以通过添加 Listener 来监听相应的事件，与 Listener 相关的接口的 XxxAdapter、XxxWrapper 实现就在这个包中。</li>
+<li><strong>protocol 包：</strong> 一些实现了 Protocol 接口、Invoker 接口以及 Exporter 接口的抽象类位于该包中，它们主要为具体实现提供一些公共的逻辑。</li>
+<li><strong>proxy 包：</strong> 提供创建代理的能力，该包中支持 JDK 动态代理以及Javassist 字节码两种方式生成代理类。</li>
+<li><strong>service 包：</strong> 提供了回声检测接口 EchoServe 和泛化调用接口 GenericService ，在 Dubbo 2.7中已经将此包移除。</li>
+<li><strong>support 包：</strong> 提供了 RpcUtils 工具类、Mock 相关的 Protocol 实现以及 Invoker 实现。</li>
+</ul>
+<h2 id="核心类"><a href="#核心类" class="headerlink" title="核心类"></a>核心类</h2><p>在 Dubbo Protocol 层中涉及的核心接口有 Exporter、Invoker、Invocation、Result、Protocol、Filter 、ProxyFactory 等，这些接口分别抽象了 Dubbo RPC 层的不同概念，它们相互协同，构建了 Dubbo Protocol 层的骨架。下面我们将逐一介绍这些核心接口的含义。</p>
+<h3 id="Invoker-接口"><a href="#Invoker-接口" class="headerlink" title="Invoker 接口"></a>Invoker 接口</h3><p>Invoker 是实体域，它是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。具体定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Invoker</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">Node</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务接口</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> service interface.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Class&lt;T&gt; <span class="title">getInterface</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 一次调用</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invocation</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> result</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Result <span class="title">invoke</span><span class="params">(Invocation invocation)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Consumer 端在调用 Provider端时，会首先调用本地的 Proxy 代理对象，代理对象会将请求交给本地的 Invoker ，由 Invoker 发起远程调用，然后请求到达 Provider 端的 Invoker ，然后传递给上层的具体的服务实现。简单示意图如下：</p>
+<p><img src="/posts/3131d6ea/dubbo-protocol-simple-invoke.jpg" alt></p>
+<p>在 Consumer 端会持有接口的代理对象，该代理对象会封装一个具有远程通信功能的 <strong>*Invoker 对象</strong>，代理对象发起调用底层是通过 Invoker 完成网络调用。Provider 端的接口实现会被封装成一个 <strong>AbstractProxyInvoker</strong> 实例，进一步包装成对应的 <strong>Exporter</strong> 实例，当 Provider 端接收到一个请求之后会先找到对应的 <strong>Exporter</strong> 实例，然后调用其对应的 <strong>AbstractProxyInvoker</strong> 实例，从而完成 Provider 逻辑的调用。</p>
+<h3 id="Invocation-接口"><a href="#Invocation-接口" class="headerlink" title="Invocation 接口"></a>Invocation 接口</h3><p>Invocation 接口作为一次调用的方法参数，是对一次 RPC 调用的目标服务、方法信息、参数信息、具体参数值以及一些附加信息的抽象。具体定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Invocation</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 调用的方法名称</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> method name.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@serial</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">String <span class="title">getMethodName</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 参数类型集合</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> parameter types.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@serial</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    Class&lt;?&gt;[] getParameterTypes();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 此次调用具体的参数值</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> arguments.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@serial</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    Object[] getArguments();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Invocation可以携带KV信息作为附加信息，一并传递给Provider。</span></span><br><span class="line"><span class="comment">     * 注意：attachment 和 attribute 的区别</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> attachments.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@serial</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Map&lt;String, String&gt; <span class="title">getAttachments</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * get attachment by key.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> attachment value.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@serial</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">String <span class="title">getAttachment</span><span class="params">(String key)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * get attachment by key with default value.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> attachment value.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@serial</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">String <span class="title">getAttachment</span><span class="params">(String key, String defaultValue)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 此次调用关联的Invoker 对象</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> invoker.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@transient</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    Invoker&lt;?&gt; getInvoker();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Result-接口"><a href="#Result-接口" class="headerlink" title="Result 接口"></a>Result 接口</h3><p>Result 接口是一次调用的返回值，抽象了一次调用的返回结果，其中包含了被调用方返回值（或异常）以及附加信息。Result 接口定于如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Result</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取调用的返回值</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> result. if no result return null.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Object <span class="title">getValue</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 如果此次调用发生异常，用于获取异常信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> exception. if no exception return null.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Throwable <span class="title">getException</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Has exception.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> has exception.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">hasException</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * recreate()方法是一个复合操作，如果此次调用发生异常，则直接抛出异常。如果没有异常，则返回结果</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * &lt;code&gt;</span></span><br><span class="line"><span class="comment">     * if (hasException()) &#123;</span></span><br><span class="line"><span class="comment">     * throw getException();</span></span><br><span class="line"><span class="comment">     * &#125; else &#123;</span></span><br><span class="line"><span class="comment">     * return getValue();</span></span><br><span class="line"><span class="comment">     * &#125;</span></span><br><span class="line"><span class="comment">     * &lt;/code&gt;</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> result.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> if has exception throw it.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Object <span class="title">recreate</span><span class="params">()</span> <span class="keyword">throws</span> Throwable</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@see</span> com.alibaba.dubbo.rpc.Result#getValue()</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@deprecated</span> Replace to getValue()</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Deprecated</span></span><br><span class="line">    <span class="function">Object <span class="title">getResult</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Result中同样可以携带附加信息</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> attachments.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Map&lt;String, String&gt; <span class="title">getAttachments</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * get attachment by key.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> attachment value.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">String <span class="title">getAttachment</span><span class="params">(String key)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * get attachment by key with default value.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> attachment value.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">String <span class="title">getAttachment</span><span class="params">(String key, String defaultValue)</span></span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Dubbo 2.7 支持添加回调方法，在 RPC 调用方法结束时会触发这些回调，定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Result</span> <span class="keyword">extends</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取/设置此次调用的返回值</span></span><br><span class="line">    <span class="function">Object <span class="title">getValue</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setValue</span><span class="params">(Object value)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果此次调用发生异常，则可以通过下面三个方法获取</span></span><br><span class="line">    <span class="function">Throwable <span class="title">getException</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setException</span><span class="params">(Throwable t)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">hasException</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// recreate()方法是一个复合操作，如果此次调用发生异常，则直接抛出异常，</span></span><br><span class="line">    <span class="comment">// 如果没有异常，则返回结果</span></span><br><span class="line">    <span class="function">Object <span class="title">recreate</span><span class="params">()</span> <span class="keyword">throws</span> Throwable</span>;</span><br><span class="line">    <span class="comment">// 添加一个回调，当RPC调用完成时，会触发这里添加的回调</span></span><br><span class="line">    <span class="function">Result <span class="title">whenCompleteWithContext</span><span class="params">(BiConsumer&lt;Result, Throwable&gt; fn)</span></span>;</span><br><span class="line">    &lt;U&gt; <span class="function">CompletableFuture&lt;U&gt; <span class="title">thenApply</span><span class="params">(Function&lt;Result, ? extends U&gt; fn)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 阻塞线程，等待此次RPC调用完成(或是超时)</span></span><br><span class="line"></span><br><span class="line">    <span class="function">Result <span class="title">get</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException, ExecutionException</span>;</span><br><span class="line">    <span class="function">Result <span class="title">get</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span> <span class="keyword">throws</span> InterruptedException, ExecutionException, TimeoutException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Result中同样可以携带附加信息</span></span><br><span class="line">    <span class="function">Map&lt;String, String&gt; <span class="title">getAttachments</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function">Map&lt;String, Object&gt; <span class="title">getObjectAttachments</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">addAttachments</span><span class="params">(Map&lt;String, String&gt; map)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">addObjectAttachments</span><span class="params">(Map&lt;String, Object&gt; map)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setAttachments</span><span class="params">(Map&lt;String, String&gt; map)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setObjectAttachments</span><span class="params">(Map&lt;String, Object&gt; map)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function">String <span class="title">getAttachment</span><span class="params">(String key)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function">Object <span class="title">getObjectAttachment</span><span class="params">(String key)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function">String <span class="title">getAttachment</span><span class="params">(String key, String defaultValue)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function">Object <span class="title">getObjectAttachment</span><span class="params">(String key, Object defaultValue)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setAttachment</span><span class="params">(String key, String value)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setAttachment</span><span class="params">(String key, Object value)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">setObjectAttachment</span><span class="params">(String key, Object valu</span></span></span><br><span class="line"><span class="function"><span class="params">&#125;</span></span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Exporter-接口"><a href="#Exporter-接口" class="headerlink" title="Exporter 接口"></a>Exporter 接口</h3><p>通过前文的介绍，我们知道业务接口实现会被包装成一个 <strong>AbstractProxyInvoker</strong> 实例，然后通过 <strong>Exporter</strong> 实例暴露出去，以便 Consumer 端可以调用到该服务。<strong>Exporter</strong> 暴露 <strong>Invoker</strong> 的实现，本质上就是让 Provider 端能够根据请求的各种信息找到对应的 Invoker 对象。Dubbo 通过维护一个 Map，其中 key 为服务键，value 为封装服务的 <strong>Exporter</strong> 实例，这样就可以实现服务的暴露了。</p>
+<p><strong>Exporter</strong> 接口的定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Exporter</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取底层封装的Invoker对象</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> invoker</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Invoker&lt;T&gt; <span class="title">getInvoker</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 取消发布底层的Invoker对象</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * &lt;code&gt;</span></span><br><span class="line"><span class="comment">     * getInvoker().destroy();</span></span><br><span class="line"><span class="comment">     * &lt;/code&gt;</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">unexport</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ExporterListener"><a href="#ExporterListener" class="headerlink" title="ExporterListener"></a>ExporterListener</h3><p><strong>ExporterListener</strong> 是一个扩展接口， 该接口用于监听服务的暴露和取消，目前 Dubbo 本身没有提供特别有用的扩展实现，提供该接口主要为使用方提供扩展功能。该接口定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ExporterListener</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 监听 服务暴露</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> exporter</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@see</span> org.apache.dubbo.rpc.Protocol#export(Invoker)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">exported</span><span class="params">(Exporter&lt;?&gt; exporter)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 监听 取消服务暴露</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> exporter</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@see</span> org.apache.dubbo.rpc.Exporter#unexport()</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">unexported</span><span class="params">(Exporter&lt;?&gt; exporter)</span></span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="InvokerListener-接口"><a href="#InvokerListener-接口" class="headerlink" title="InvokerListener 接口"></a>InvokerListener 接口</h3><p><strong>InvokerListener</strong> 接口是一个扩展接口，用于监听服务引用和销毁引用。同样地，目前 Dubbo 本身没有提供特别有用的扩展实现。该接口定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">InvokerListener</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 监听服务引用完成</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@see</span> com.alibaba.dubbo.rpc.Protocol#refer(Class, com.alibaba.dubbo.common.URL)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">referred</span><span class="params">(Invoker&lt;?&gt; invoker)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 监听销毁引用完成</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@see</span> com.alibaba.dubbo.rpc.Invoker#destroy()</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">destroyed</span><span class="params">(Invoker&lt;?&gt; invoker)</span></span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Protocol-接口"><a href="#Protocol-接口" class="headerlink" title="Protocol 接口"></a>Protocol 接口</h3><p><strong>Protocol</strong> 接口中主要定义了 <strong>export()</strong> 和 <strong>refer()</strong> 方法，分别用于服务暴露和服务引用。具体定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span>(<span class="string">"dubbo"</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Protocol</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认端口</span></span><br><span class="line"><span class="comment">     * Get default port when user doesn't config the port.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> default port</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">getDefaultPort</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将一个 Invoker 暴露出去 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 1. 接收到请求后，协议应该记录请求源地址: RpcContext.getContext().setRemoteAddress();&lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 2. export()必须是幂等的，也就是说，在暴露相同的URL时，调用一次和调用两次没有区别 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 3. Invoker 是由框架传入的，协议不需要关心 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;     Service type</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker Service invoker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> exporter reference for exported service, useful for unexport the service later</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException thrown when error occurs during export the service, for example: port is occupied</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span></span><br><span class="line">    &lt;T&gt; <span class="function">Exporter&lt;T&gt; <span class="title">export</span><span class="params">(Invoker&lt;T&gt; invoker)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 引用一个 Invoker  &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 1. 协议的责任是根据参数返回一个 Invoker 对象，由 refer() 方法返回。&lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 2. Consumer端可以通过这个Invoker请求到Provider端的服务. &lt;br&gt;</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;  Service type</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type Service class</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url  URL address for the remote service</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> invoker service's local proxy</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException when there's any error while connecting to the service provider</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span></span><br><span class="line">    &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">refer</span><span class="params">(Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 释放当前 Protocol 对象底层占用的资源 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 1. 销毁export()方法以及refer()方法使用到的Invoker对象 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 2. 释放所有占用资源, 如: 连接, 端口, 等等. &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 3. 协议可以继续导出和引用新的服务，即使它被销毁。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在 Protocol 接口的实现中，<strong>export()</strong> 方法并不是简单地将 Invoker 对象包装成 Exporter 对象返回，该过程还会涉及代理对象的创建、底层 Server 的启动等操作。<strong>refer()</strong> 方法除了根据传入的服务接口以及URL参数查询 Invoker 之外，还会涉及到 Client 的创建等操作。</p>
+<h3 id="ProxyFactory-接口"><a href="#ProxyFactory-接口" class="headerlink" title="ProxyFactory 接口"></a>ProxyFactory 接口</h3><p><strong>ProxyFactory</strong> 接口用于在服务暴露时将服务实例封装成 Invoker 对象，在服务引用时为 Invoker 创建代理对象。接口具体定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span>(<span class="string">"javassist"</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ProxyFactory</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 为传入的 Invoker 创建代理对象，在引用服务的过程会调用该方法</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * create proxy.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker 消费者对提供者调用的Invoker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> proxy 代理对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span>(&#123;Constants.PROXY_KEY&#125;)</span><br><span class="line">    &lt;T&gt; <span class="function">T <span class="title">getProxy</span><span class="params">(Invoker&lt;T&gt; invoker)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 支持是否泛型</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> proxy</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span>(&#123;Constants.PROXY_KEY&#125;)</span><br><span class="line">    &lt;T&gt; <span class="function">T <span class="title">getProxy</span><span class="params">(Invoker&lt;T&gt; invoker, <span class="keyword">boolean</span> generic)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将传入的服务实例封装成Invoker，在暴露服务时会调用</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * create invoker.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> proxy Service对象</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type  Service接口类型</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url   Service对应的Dubbo URL</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> invoker</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span>(&#123;Constants.PROXY_KEY&#125;)</span><br><span class="line">    &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">getInvoker</span><span class="params">(T proxy, Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Filter"><a href="#Filter" class="headerlink" title="Filter"></a>Filter</h3><p>Dubbo 中的 Filter 用来拦截 Dubbo 请求，Filter 是一个扩展接口。Dubbo 内置了丰富的 Filter 扩展实现，这些内置的扩展实现非常重要，它们可以完成特定的功能。此外，使用方可以根据业务需要来扩展实现 Dubbo 的功能。Filter 接口具体定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将请求传递给后续的 Invoker 处理，注意，后续的 Invoker 对象可能是一个 Filter 封装而成的。</span></span><br><span class="line"><span class="comment">     * &lt;p&gt;</span></span><br><span class="line"><span class="comment">     * &lt;code&gt;</span></span><br><span class="line"><span class="comment">     * // before filter</span></span><br><span class="line"><span class="comment">     * Result result = invoker.invoke(invocation);</span></span><br><span class="line"><span class="comment">     * // after filter</span></span><br><span class="line"><span class="comment">     * return result;</span></span><br><span class="line"><span class="comment">     * &lt;/code&gt;</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker    service</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invocation invocation.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> invoke result.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@see</span> com.alibaba.dubbo.rpc.Invoker#invoke(Invocation)</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Result <span class="title">invoke</span><span class="params">(Invoker&lt;?&gt; invoker, Invocation invocation)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章首先介绍了 Dubbo Protocol 在 Dubbo 架构中所处位置，接着简单分析了协议层对应的代码模块，最后对 Protocol 层相关的核心接口进行了说明。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/3131d6ea/" title="Dubbo源码分析 - 协议层总览" target="_blank" rel="external">https://gentryhuang.com/posts/3131d6ea/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/ef4cfe7a/" title="Dubbo源码分析 - 优雅停机"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/61d79ae/" title="Dubbo源码分析 - 编解码器"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
