@@ -17,21 +17,24 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>归档: 2020/12 | gentryhuang的博客</title>
-  <meta name="description" content="博客">
-<meta property="og:type" content="website">
-<meta property="og:title" content="gentryhuang‘s blog">
-<meta property="og:url" content="https://gentryhuang.com/archives/2020/12/index.html">
+  <title>Dubbo过滤器 - ClassLoaderFilter | gentryhuang的博客</title>
+  <meta name="description" content="概述ClassLoaderFilter 是服务提供端的一个 Filter 实现，用于切换当前工作线程的类加载器到接口的类加载器，以便和接口的类加载器的上下文一起工作。 ClassLoaderFilter123456789101112131415161718Activate(group &#x3D; Constants.PROVIDER, order &#x3D; -30000)public class ClassLo">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo过滤器 - ClassLoaderFilter">
+<meta property="og:url" content="https://gentryhuang.com/posts/3fc82a32/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="博客">
+<meta property="og:description" content="概述ClassLoaderFilter 是服务提供端的一个 Filter 实现，用于切换当前工作线程的类加载器到接口的类加载器，以便和接口的类加载器的上下文一起工作。 ClassLoaderFilter123456789101112131415161718Activate(group &#x3D; Constants.PROVIDER, order &#x3D; -30000)public class ClassLo">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/3fc82a32/dubbo-filter-classloaderFilter-classLoader.jpg">
+<meta property="article:published_time" content="2020-07-25T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-02-17T08:13:15.924Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="求职">
-<meta property="article:tag" content="技术">
-<meta property="article:tag" content="生活">
+<meta property="article:tag" content="Dubbo">
+<meta property="article:tag" content="Filter">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/3fc82a32/dubbo-filter-classloaderFilter-classLoader.jpg">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/archives/2020/12/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/3fc82a32/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -391,59 +394,176 @@
 
   
   
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#ClassLoaderFilter"><span class="toc-number">2.</span> <span class="toc-text">ClassLoaderFilter</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#双亲委派模型"><span class="toc-number">3.</span> <span class="toc-text">双亲委派模型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#QA"><span class="toc-number">4.</span> <span class="toc-text">QA</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">5.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
 <main class="main" role="main">
-  	<article class="content article article-archives article-type-list" itemscope="">
-	    <header class="article-header">
-	      <h1 itemprop="title">归档: 2020/12</h1>
-	      <p class="text-muted">共 2 篇文章</p>
-	    </header>
-	    <div class="article-body">
-	      
-  
-  
+  <div class="content">
+  <article id="post-rpc/Dubbo过滤器-ClassLoaderFilter" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
-    
+    <div class="article-header">
       
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo过滤器 - ClassLoaderFilter
+    </h1>
+  
+
       
-      <section class="panel panel-default b-no">
-        <div class="panel-heading" role="tab">
-          <h3 class="panel-title">
-            <a data-toggle="collapse" href="#collapse2020" aria-expanded="true">
-              <i class="icon icon-calendar-plus text-active"></i><i class="icon icon-calendar-minus text"></i>
-              2020
-            </a>
-            <!-- <a href="/archives/2020" class="archive-year">2020</a> -->
-          </h3>
-        </div>
-        <div id="collapse2020" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading2020">
-        <div class="panel-body">
-          <div class="collection">
-    
-    
-<a href="/posts/9e3a7d05/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-12-09T16:00:00.000Z" itemprop="datePublished">2020-12-10</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> 并发 - 线程池工具类
-</a>
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/3fc82a32/" class="article-date">
+	  <time datetime="2020-07-25T16:00:00.000Z" itemprop="datePublished">2020-07-26</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/Filter/" rel="tag">Filter</a>
+  </span>
 
 
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/3fc82a32/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 4(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p><strong>ClassLoaderFilter</strong> 是服务提供端的一个 Filter 实现，用于切换当前工作线程的类加载器到接口的类加载器，以便和接口的类加载器的上下文一起工作。</p>
+<h1 id="ClassLoaderFilter"><a href="#ClassLoaderFilter" class="headerlink" title="ClassLoaderFilter"></a>ClassLoaderFilter</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">Activate(group = Constants.PROVIDER, order = -<span class="number">30000</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ClassLoaderFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invoker&lt;?&gt; invoker, Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 获得当前线程的类加载器</span></span><br><span class="line">        ClassLoader ocl = Thread.currentThread().getContextClassLoader();</span><br><span class="line">        <span class="comment">// 切换当前线程的类加载器为服务接口的类加载器</span></span><br><span class="line">        Thread.currentThread().setContextClassLoader(invoker.getInterface().getClassLoader());</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 继续过滤器链的下一个节点</span></span><br><span class="line">            <span class="keyword">return</span> invoker.invoke(invocation);</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="comment">// 切换当前线程的类加载器为原来的类加载器</span></span><br><span class="line">            Thread.currentThread().setContextClassLoader(ocl);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>ClassLoaderFilter</strong> 的逻辑：首先获取当前线程关联的 ClassLoader，然后将其 ClassLoader 设置为 invoker.getInterface().getClassLoader()，也就是加载服务接口类的类加载器；之后执行 invoker.invoke() 方法，执行后续的 Filter 逻辑以及业务逻辑；最后，将当前线程关联的 ClassLoader 重置为原来的 ClassLoader ocl 。</p>
+<h1 id="双亲委派模型"><a href="#双亲委派模型" class="headerlink" title="双亲委派模型"></a>双亲委派模型</h1><p>如果 ClassA 和 ClassB 都是同一个类加载器加载的，则它们之间是可以相互访问的。如果 ClassA 和 ClassB 是不同的类加载器加载的，示例图如下：</p>
+<p><img src="/posts/3fc82a32/dubbo-filter-classloaderFilter-classLoader.jpg" alt></p>
+<p>根据双亲委派模型，如果 ClassA 要访问 ClassB，大致流程如下：</p>
+<ol>
+<li>ClassA 会从 ClassLoaderA 中查找 ClassB，看是否已经加载。</li>
+<li>没有找到 ClassB 则会继续往上层查找，看父类加载器 ParentClassLoader 是否可以查找到 ClassB，如果找不到会继续往上层父类加载器查找。</li>
+<li>最终没有找到，会抛出 <strong>ClassNotFoundException</strong> 异常。</li>
+</ol>
+<p>如果要实现违反双亲委派模型来查找 Class，通常会使用上下文类加载器 <strong>ContextClassFilter</strong> 。</p>
+<h1 id="QA"><a href="#QA" class="headerlink" title="QA"></a>QA</h1><p><strong>Q:</strong> ClassLoaderFilter 的具体作用？</p>
+<p><strong>A:</strong> Dubbo 框架线程的类加载器可能和服务接口的类加载器不是同一个，而当前框架线程中又需要获取服务接口的类加载中的一些 Class，为了避免出现 ClassNotFoundException，此时只需要将框架线程的类加载器切换到加载了接口定义的类加载器，进而就能获得这个类加载中的 Class 。</p>
+<p><strong>Extra:</strong> Dubbo 中进行序列化优化时，会根据 Invoker 中配置的 <code>optimizer</code> 参数获取扩展的自定义序列化处理类，这些外部引入的序列化类在框架的类加载器中肯定没有，因此需要使用 Invoker 的类加载器获取对应的类。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">+--- DubboProtocol</span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 进行序列化优化，注册需要优化的类</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">optimizeSerialization</span><span class="params">(URL url)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 获得 optimizer 序列化优化器 配置项</span></span><br><span class="line">        String className = url.getParameter(Constants.OPTIMIZER_KEY, <span class="string">""</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果系统中没有序列化优化器就直接返回</span></span><br><span class="line">        <span class="keyword">if</span> (StringUtils.isEmpty(className) || optimizers.contains(className)) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        logger.info(<span class="string">"Optimizing the serialization process for Kryo, FST, etc..."</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 根据 序列化优化器名 加载 SerializationOptimizer 实现类。</span></span><br><span class="line">            <span class="comment">// 这里的当前线程的 ClassLoader 是处理过的，使用的是 Invoker 的类加载器</span></span><br><span class="line">            Class clazz = Thread.currentThread().getContextClassLoader().loadClass(className);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 是否是 SerializationOptimizer.class，或者 是SerializationOptimizer的子</span></span><br><span class="line">            <span class="keyword">if</span> (!SerializationOptimizer<span class="class">.<span class="keyword">class</span>.<span class="title">isAssignableFrom</span>(<span class="title">clazz</span>)) </span>&#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"The serialization optimizer "</span> + className + <span class="string">" isn't an instance of "</span> + SerializationOptimizer<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 创建 SerializationOptimizer 对象</span></span><br><span class="line">            SerializationOptimizer optimizer = (SerializationOptimizer) clazz.newInstance();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 没有要优化的类直接返回</span></span><br><span class="line">            <span class="keyword">if</span> (optimizer.getSerializableClasses() == <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 将要优化的类注册到 SerializableClassRegistry 中 （todo 在使用 Kryo,FST 等序列化算法时，会读取该集合中的类，完成注册）</span></span><br><span class="line">            <span class="keyword">for</span> (Class c : optimizer.getSerializableClasses()) &#123;</span><br><span class="line">                SerializableClassRegistry.registerClass(c);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 将 序列化优化器实现类名 加入到缓存中</span></span><br><span class="line">            optimizers.add(className);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (ClassNotFoundException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Cannot find the serialization optimizer class: "</span> + className, e);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InstantiationException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Cannot instantiate the serialization optimizer class: "</span> + className, e);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IllegalAccessException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Cannot instantiate the serialization optimizer class: "</span> + className, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文件简单介绍了 Dubbo Filter 之 服务端的 ClassLoader 过滤器，它的作用就是用于切换当前工作线程的类加载器到接口的类加载器，以便和接口的类加载器的上下文一起工作。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/3fc82a32/" title="Dubbo过滤器 - ClassLoaderFilter" target="_blank" rel="external">https://gentryhuang.com/posts/3fc82a32/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
   
     
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/751c0982/" title="Dubbo源码分析 - 本地暴露"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
     
     
-<a href="/posts/d7cef21d/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-12-02T16:00:00.000Z" itemprop="datePublished">2020-12-03</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> 并发 - 线程池
-</a>
-
-
+    <li class="next">
+      <a href="/posts/bfcb5211/" title="Dubbo过滤器 - ExecuteLimitFilter &amp; ActiveLimitFilter"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
   
   
-    </div></div></div></section>
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
   
 
-	    </div>
-  	</article>
-  	 	
+
 </main>
 
   
@@ -514,6 +634,12 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 <script src="/js/insight.js"></script>
 
 
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
 
 
