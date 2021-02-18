@@ -25,14 +25,14 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述ClassLoaderFilter 是服务提供端的一个 Filter 实现，用于切换当前工作线程的类加载器到接口的类加载器，以便和接口的类加载器的上下文一起工作。 ClassLoaderFilter123456789101112131415161718Activate(group &#x3D; Constants.PROVIDER, order &#x3D; -30000)public class ClassLo">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/3fc82a32/dubbo-filter-classloaderFilter-classLoader.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-classloaderFilter-classLoader.jpg">
 <meta property="article:published_time" content="2020-07-25T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-02-17T08:13:15.924Z">
+<meta property="article:modified_time" content="2021-02-18T09:53:39.254Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="Filter">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/3fc82a32/dubbo-filter-classloaderFilter-classLoader.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-classloaderFilter-classLoader.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/3fc82a32/index.html">
   
@@ -464,7 +464,7 @@
 
 <p><strong>ClassLoaderFilter</strong> 的逻辑：首先获取当前线程关联的 ClassLoader，然后将其 ClassLoader 设置为 invoker.getInterface().getClassLoader()，也就是加载服务接口类的类加载器；之后执行 invoker.invoke() 方法，执行后续的 Filter 逻辑以及业务逻辑；最后，将当前线程关联的 ClassLoader 重置为原来的 ClassLoader ocl 。</p>
 <h1 id="双亲委派模型"><a href="#双亲委派模型" class="headerlink" title="双亲委派模型"></a>双亲委派模型</h1><p>如果 ClassA 和 ClassB 都是同一个类加载器加载的，则它们之间是可以相互访问的。如果 ClassA 和 ClassB 是不同的类加载器加载的，示例图如下：</p>
-<p><img src="/posts/3fc82a32/dubbo-filter-classloaderFilter-classLoader.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-classloaderFilter-classLoader.jpg" alt></p>
 <p>根据双亲委派模型，如果 ClassA 要访问 ClassB，大致流程如下：</p>
 <ol>
 <li>ClassA 会从 ClassLoaderA 中查找 ClassB，看是否已经加载。</li>
