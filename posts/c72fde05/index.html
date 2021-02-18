@@ -17,27 +17,22 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>uml基础 | gentryhuang的博客</title>
-  <meta name="description" content="定义统一建模语言（缩写UML），非专利的第三代建模和规约语言 特点 UML是一种开放的方法 UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法 UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效  UML分类 结构式图形 强调的是系统式的建模，具体包含静态图（类图、对象图、包图）、实现图（组件图、">
+  <title>Dubbo过滤器 - ContextFilter &amp; ConsumerContextFilter | gentryhuang的博客</title>
+  <meta name="description" content="概述ContextFilter 和 ConsumerContextFilter 分别用来初始化服务提供端和消费端的 RpcContext 。 RPC 上下文RpcContext 是 Dubbo 的上下文信息，其定义如下：  1 上下文中存放的是当前调用过程中所需的环境信息。所有配置信息都将转换为 URL 的参数。2 RpcContext 是一个 ThreadLocal 的临时状态记录器，当接收到">
 <meta property="og:type" content="article">
-<meta property="og:title" content="uml基础">
-<meta property="og:url" content="https://gentryhuang.com/posts/cadc5d6c/index.html">
+<meta property="og:title" content="Dubbo过滤器 - ContextFilter &amp; ConsumerContextFilter">
+<meta property="og:url" content="https://gentryhuang.com/posts/c72fde05/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="定义统一建模语言（缩写UML），非专利的第三代建模和规约语言 特点 UML是一种开放的方法 UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法 UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效  UML分类 结构式图形 强调的是系统式的建模，具体包含静态图（类图、对象图、包图）、实现图（组件图、">
+<meta property="og:description" content="概述ContextFilter 和 ConsumerContextFilter 分别用来初始化服务提供端和消费端的 RpcContext 。 RPC 上下文RpcContext 是 Dubbo 的上下文信息，其定义如下：  1 上下文中存放的是当前调用过程中所需的环境信息。所有配置信息都将转换为 URL 的参数。2 RpcContext 是一个 ThreadLocal 的临时状态记录器，当接收到">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sx.png">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/jh.png">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/zh.png">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sxt.png">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/umlqxj.png">
-<meta property="article:published_time" content="2019-08-27T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-08-09T09:14:31.577Z">
+<meta property="article:published_time" content="2020-07-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-02-18T08:57:12.862Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="设计模式">
+<meta property="article:tag" content="Dubbo">
+<meta property="article:tag" content="Filter">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sx.png">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/posts/cadc5d6c/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/c72fde05/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -401,21 +396,21 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#定义"><span class="toc-number">1.</span> <span class="toc-text">定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#特点"><span class="toc-number">2.</span> <span class="toc-text">特点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML分类"><span class="toc-number">3.</span> <span class="toc-text">UML分类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML类图"><span class="toc-number">4.</span> <span class="toc-text">UML类图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML记忆方式"><span class="toc-number">5.</span> <span class="toc-text">UML记忆方式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML时序图"><span class="toc-number">6.</span> <span class="toc-text">UML时序图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML类图讲解"><span class="toc-number">7.</span> <span class="toc-text">UML类图讲解</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML整体讲解"><span class="toc-number">8.</span> <span class="toc-text">UML整体讲解</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UML中部分对比"><span class="toc-number">9.</span> <span class="toc-text">UML中部分对比</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#RPC-上下文"><span class="toc-number">2.</span> <span class="toc-text">RPC 上下文</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#服务消费方"><span class="toc-number">2.1.</span> <span class="toc-text">服务消费方</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务停供方"><span class="toc-number">2.2.</span> <span class="toc-text">服务停供方</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#ConsumerContextFilter"><span class="toc-number">3.</span> <span class="toc-text">ConsumerContextFilter</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#ContextFilter"><span class="toc-number">4.</span> <span class="toc-text">ContextFilter</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">5.</span> <span class="toc-text">小结</span></a></li></ol>
     </nav>
   </div>
 </aside>
 
 <main class="main" role="main">
   <div class="content">
-  <article id="post-design_pattern/uml" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+  <article id="post-rpc/Dubbo过滤器-RpcContext" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
     <div class="article-header">
       
         
   
     <h1 class="article-title" itemprop="name">
-      uml基础
+      Dubbo过滤器 - ContextFilter &amp; ConsumerContextFilter
     </h1>
   
 
@@ -423,20 +418,20 @@
       <div class="article-meta">
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
-	<a href="/posts/cadc5d6c/" class="article-date">
-	  <time datetime="2019-08-27T16:00:00.000Z" itemprop="datePublished">2019-08-28</time>
+	<a href="/posts/c72fde05/" class="article-date">
+	  <time datetime="2020-07-30T16:00:00.000Z" itemprop="datePublished">2020-07-31</time>
 	</a>
 </span>
         
   <span class="article-category">
     <i class="icon icon-folder"></i>
-    <a class="article-category-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
   </span>
 
         
   <span class="article-tag">
     <i class="icon icon-tags"></i>
-	<a class="article-tag-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/Filter/" rel="tag">Filter</a>
   </span>
 
 
@@ -449,10 +444,10 @@
 	</span>
 
 
-        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/cadc5d6c/#comments" class="article-comment-link">评论</a></span>
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/c72fde05/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.3k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.1k(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 4(分)</span>
@@ -462,69 +457,24 @@
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><p>统一建模语言（缩写UML），非专利的第三代建模和规约语言</p>
-<h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><ol>
-<li>UML是一种开放的方法</li>
-<li>UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法</li>
-<li>UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效</li>
-</ol>
-<h2 id="UML分类"><a href="#UML分类" class="headerlink" title="UML分类"></a>UML分类</h2><ol>
-<li><p>结构式图形</p>
-<p>强调的是系统式的建模，具体包含静态图（<em>类图</em>、对象图、包图）、实现图（组件图、部署图）、剖面图以及复合结构图</p>
-</li>
-<li><p>行为式图形</p>
-<p> 强调系统模型中触发的事件，具体包含活动图、状态图以及用例图</p>
-</li>
-<li><p>交互式图形</p>
-<p>属于行为式图形子集合，强调系统模型中资源流程。具体包含通信图、交互概念图、<em>时序图</em>  以及时间图</p>
-<p>​</p>
-</li>
-</ol>
-<h2 id="UML类图"><a href="#UML类图" class="headerlink" title="UML类图"></a>UML类图</h2><p>用于表示类、接口、实例等之间相互的静态关系。虽然名字叫类图，但类图中并不只有类，还可能包括权限、属性、方法等</p>
-<h2 id="UML记忆方式"><a href="#UML记忆方式" class="headerlink" title="UML记忆方式"></a>UML记忆方式</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">1. uml箭头：从子类指向父类，只有知道对方信息时才能指向对方方向</span><br><span class="line">2. 空心三角箭头：继承或实现，实线-继承：积极的，强关联，关联，通常一个类中有一个类的对象做属性；虚线-实现：消极的，弱关联，依赖</span><br><span class="line">3. 空心菱形：聚合，（注：可以看作一个盘子，可以放很多相同的东西（箭头方向所指的类），聚在一起。是has a的关系）弱关联</span><br><span class="line">4. 实心菱形：组合，（注：代表器皿里有实体结构存在，组合起来成为一个。是contains-a的关系）强关联</span><br></pre></td></tr></table></figure>
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p><strong>ContextFilter</strong> 和 <strong>ConsumerContextFilter</strong> 分别用来初始化服务提供端和消费端的 <strong>RpcContext</strong> 。</p>
+<h1 id="RPC-上下文"><a href="#RPC-上下文" class="headerlink" title="RPC 上下文"></a>RPC 上下文</h1><p>RpcContext 是 Dubbo 的上下文信息，其定义如下：</p>
+<blockquote>
+<p>1 上下文中存放的是当前调用过程中所需的环境信息。所有配置信息都将转换为 URL 的参数。<br>2 RpcContext 是一个 ThreadLocal 的临时状态记录器，当接收到 RPC 请求，或发起 RPC 请求时，RpcContext 的状态都会变化。比如：A 调用 B，B 再调用 C，则 B 机器上：在 B 调 C 之前，RpcContext 记录的是 A 调 B 的信息，在 B 调 C 之后，RpcContext 记录的是 B 调 C 的信息。</p>
+</blockquote>
+<h2 id="服务消费方"><a href="#服务消费方" class="headerlink" title="服务消费方"></a>服务消费方</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 远程调用</span></span><br><span class="line">xxxService.xxx();</span><br><span class="line"><span class="comment">// 本端是否为消费端，这里会返回true</span></span><br><span class="line"><span class="keyword">boolean</span> isConsumerSide = RpcContext.getContext().isConsumerSide();</span><br><span class="line"><span class="comment">// 获取最后一次调用的提供方IP地址</span></span><br><span class="line">String serverIP = RpcContext.getContext().getRemoteHost();</span><br><span class="line"><span class="comment">// 获取当前服务配置信息，所有配置信息都将转换为URL的参数</span></span><br><span class="line">String application = RpcContext.getContext().getUrl().getParameter(<span class="string">"application"</span>);</span><br><span class="line"><span class="comment">// 注意：每发起RPC调用，上下文状态会变化</span></span><br><span class="line">yyyService.yyy();</span><br></pre></td></tr></table></figure>
 
-<ol>
-<li><p>uml箭头：从子类指向父类，定义子类时需要通过<em>extends</em>关键字指定父类，只有知道对方信息时才能指向对方方向</p>
-</li>
-<li><p>实线-继承 | 虚线-实现</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sx.png" alt> ​</p>
-</li>
-<li><p>空心菱形-聚合</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/jh.png" alt></p>
-</li>
-<li><p>实心菱形-组合</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/zh.png" alt></p>
-<ol start="5">
-<li>组合关系中常见的数字表达</li>
-</ol>
-</li>
-</ol>
-<figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">◆常见数字表达及含义，假设有A类和B类，数字标记在A类侧</span><br><span class="line">◆0..1：0或1个实例    在系统某一时刻，b的实例可以与0个或1个A实例相关</span><br><span class="line">◆0..*：0或多个实例　  在系统某一时刻，b的实例可以与0个或多个A实例相关</span><br><span class="line">◆1..1：1个实例.       b的实例可以和1个A实例相关</span><br><span class="line">◆1只能有一个实例.     b的实例可以和1个A实例相关</span><br><span class="line">◆1..*：至少有一个实例.　　b实例可以与一个或多个A实例相关</span><br></pre></td></tr></table></figure>
-
-<h2 id="UML时序图"><a href="#UML时序图" class="headerlink" title="UML时序图"></a>UML时序图</h2><ol>
-<li><p>是显示对象之间交互的图，这些对象是按照时间顺序排列的</p>
-</li>
-<li><p>时序图中 包含的建模元素</p>
-<p>对象（Actor）、生命线（lifeline）、控制焦点（Focus of control）、消息（Message）等</p>
-</li>
-<li><p>时序图示例</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sxt.png" alt></p>
-<figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">竖线代表生命线</span><br><span class="line"></span><br><span class="line">对象：c：client ，s：server，d：device 代表实例</span><br><span class="line"></span><br><span class="line">消息：箭头代表的元素(open,work等)</span><br><span class="line"></span><br><span class="line">竖矩形代表实例处于某种活动中，</span><br><span class="line"></span><br><span class="line">实线实心箭头：代表方法调用，同步调用</span><br><span class="line"></span><br><span class="line">实线非实心箭头：代表异步调用</span><br><span class="line"></span><br><span class="line">虚线：代表返回</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-<h2 id="UML类图讲解"><a href="#UML类图讲解" class="headerlink" title="UML类图讲解"></a>UML类图讲解</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">+　　　　公共方法</span><br><span class="line"></span><br><span class="line">-　　　　private权限</span><br><span class="line"></span><br><span class="line">#　　　　protected权限 包内和包外继承的子类都能引用</span><br><span class="line"></span><br><span class="line">~　　　　default权限（包权限）只有包内能引用</span><br><span class="line"></span><br><span class="line">下划线　  静态 Static</span><br><span class="line"></span><br><span class="line">斜体　　  抽象类（或抽象方法）（包含抽象方法的必是抽象类）（类和至少一个方法都是斜体）</span><br><span class="line"></span><br><span class="line">方法　　  可以带参，可以不带参</span><br><span class="line"></span><br><span class="line">　　　　  返回值写到冒号后边，void不用加</span><br></pre></td></tr></table></figure>
-
-<h2 id="UML整体讲解"><a href="#UML整体讲解" class="headerlink" title="UML整体讲解"></a>UML整体讲解</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">设计模式中的对象关系:</span><br><span class="line"></span><br><span class="line"> 依赖关系　　虚线箭头，箭头方向指向被依赖的部分</span><br><span class="line"> 组合关系　　实心菱形</span><br><span class="line"> 聚合关系　　空心菱形（想象成盘子，盛东西，盘子的多，另一方少）</span><br><span class="line"> 关联关系　　实线箭头，箭头指向被关联的部分  类与类的连接，（它使一个类知道另一个类的属性和方法，关联关  系一般用成员变量实现）</span><br><span class="line"> 继承　　　　空心三角形实线</span><br><span class="line"> 实现　　　　空心三角形虚线</span><br><span class="line">注意：</span><br><span class="line"> 实现接口有两种方式，一种是棒棒糖的形式，另一种是虚线空心三角形的方式</span><br></pre></td></tr></table></figure>
-
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/umlqxj.png" alt></p>
-<h2 id="UML中部分对比"><a href="#UML中部分对比" class="headerlink" title="UML中部分对比"></a>UML中部分对比</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">1.1　　关联和依赖的对比</span><br><span class="line">关联是a类中存在b类对象，企鹅类中有气候类的属性</span><br><span class="line">依赖是a类成员方法中有b类的属性，动物新陈代谢方法中有水和空气的属性，只有调这个方法的时候，才可能临时用一下</span><br><span class="line">1.2　　组合和聚合的对比</span><br><span class="line">组合有相同的生命周期，鸟有翅膀，鸟死了，翅膀不复存在</span><br><span class="line">大雁群有大雁，一只大雁挂了，大雁群不会消失</span><br><span class="line">1.3　　继承和实现的对</span><br><span class="line">实线：继承</span><br><span class="line">虚线：实现</span><br></pre></td></tr></table></figure>
+<h2 id="服务停供方"><a href="#服务停供方" class="headerlink" title="服务停供方"></a>服务停供方</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">XxxServiceImpl</span> <span class="keyword">implements</span> <span class="title">XxxService</span> </span>&#123;</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">xxx</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 本端是否为提供端，这里会返回true</span></span><br><span class="line">        <span class="keyword">boolean</span> isProviderSide = RpcContext.getContext().isProviderSide();</span><br><span class="line">        <span class="comment">// 获取调用方IP地址</span></span><br><span class="line">        String clientIP = RpcContext.getContext().getRemoteHost();</span><br><span class="line">        <span class="comment">// 获取当前服务配置信息，所有配置信息都将转换为URL的参数</span></span><br><span class="line">        String application = RpcContext.getContext().getUrl().getParameter(<span class="string">"application"</span>);</span><br><span class="line">        <span class="comment">// 注意：每发起RPC调用，上下文状态会变化</span></span><br><span class="line">        yyyService.yyy();</span><br><span class="line">        <span class="comment">// 此时本端变成消费端，这里会返回false</span></span><br><span class="line">        <span class="keyword">boolean</span> isProviderSide = RpcContext.getContext().isProviderSide();</span><br><span class="line">    &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 
+<h1 id="ConsumerContextFilter"><a href="#ConsumerContextFilter" class="headerlink" title="ConsumerContextFilter"></a>ConsumerContextFilter</h1><p>在服务消费者中使用，负责发起调用时初始化 RpcContext 。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Activate</span>(group = Constants.CONSUMER, order = -<span class="number">10000</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ConsumerContextFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invoker&lt;?&gt; invoker, Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        RpcContext.getContext()</span><br><span class="line">                <span class="comment">// 记录Invoker</span></span><br><span class="line">                .setInvoker(invoker)</span><br><span class="line">                <span class="comment">// 记录服务调用参数</span></span><br><span class="line">                .setInvocation(invocation)</span><br><span class="line">                <span class="comment">// 本地地址</span></span><br><span class="line">                .setLocalAddress(NetUtils.getLocalHost(), <span class="number">0</span>)</span><br><span class="line">                <span class="comment">// 远端地址</span></span><br><span class="line">                .setRemoteAddress(invoker.getUrl().getHost(), invoker.getUrl().getPort());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 设置 RpcInvocation 对象的 invoker 属性</span></span><br><span class="line">        <span class="keyword">if</span> (invocation <span class="keyword">instanceof</span> RpcInvocation) &#123;</span><br><span class="line">            ((RpcInvocation) invocation).setInvoker(invoker);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            RpcResult result = (RpcResult) invoker.invoke(invocation);</span><br><span class="line">            RpcContext.getServerContext().setAttachments(result.getAttachments());</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * 清理隐式参数集合</span></span><br><span class="line"><span class="comment">             * 注意：每次服务调用完成，RpcContext设置的隐式参数都会被清理</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            RpcContext.getContext().clearAttachments();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
+<p><strong>ConsumerContextFilter</strong> 通常会和 <strong>ContextFilter</strong> 配合使用，因为在微服务环境中有很多链式调用。收到请求时，当前节点可以被看作一个服务提供者，由 <strong>ContextFilter</strong> 设置上下文。当发起请求调用其他服务，当前服务变成一个消费者，由 <strong>ConsumerContextFilter</strong> 设置上下文。</p>
+<h1 id="ContextFilter"><a href="#ContextFilter" class="headerlink" title="ContextFilter"></a>ContextFilter</h1><p>在服务提供者中使用，负责被调用时初始化 RpcContext 。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Activate</span>(group = Constants.PROVIDER, order = -<span class="number">10000</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ContextFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invoker&lt;?&gt; invoker, Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 创建新的 attachments 集合，清理公用的隐式参数。公用的隐式参数，设置的地方如下：</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@see</span> RpcInvocation#RpcInvocation(com.alibaba.dubbo.rpc.Invocation, com.alibaba.dubbo.rpc.Invoker)</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        Map&lt;String, String&gt; attachments = invocation.getAttachments();</span><br><span class="line">        <span class="keyword">if</span> (attachments != <span class="keyword">null</span>) &#123;</span><br><span class="line">            attachments = <span class="keyword">new</span> HashMap&lt;String, String&gt;(attachments);</span><br><span class="line">            <span class="comment">// 清理 path</span></span><br><span class="line">            attachments.remove(Constants.PATH_KEY);</span><br><span class="line">            <span class="comment">// 清理 group</span></span><br><span class="line">            attachments.remove(Constants.GROUP_KEY);</span><br><span class="line">            <span class="comment">// 清理 version</span></span><br><span class="line">            attachments.remove(Constants.VERSION_KEY);</span><br><span class="line">            <span class="comment">// 清理 dubbo</span></span><br><span class="line">            attachments.remove(Constants.DUBBO_VERSION_KEY);</span><br><span class="line">            <span class="comment">// 清理 token</span></span><br><span class="line">            attachments.remove(Constants.TOKEN_KEY);</span><br><span class="line">            <span class="comment">// 清理 timeout</span></span><br><span class="line">            attachments.remove(Constants.TIMEOUT_KEY);</span><br><span class="line">            <span class="comment">// 清除异步属性，防止异步属性传到过滤器下一个环节</span></span><br><span class="line">            attachments.remove(Constants.ASYNC_KEY);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 这里和 ConsumerContextFilter 不同，没有设置 remoteAddress 的值，做为服务端的过滤器，在收到请求的时候就已经设置了 remoteAddress 的值</span></span><br><span class="line">        <span class="comment">// @see com.alibaba.dubbo.remoting.exchange.support.ExchangeHandlerAdapter.reply</span></span><br><span class="line">        RpcContext.getContext()</span><br><span class="line">                .setInvoker(invoker)</span><br><span class="line">                .setInvocation(invocation)</span><br><span class="line"><span class="comment">//                .setAttachments(attachments)  // merged from dubbox</span></span><br><span class="line">                .setLocalAddress(invoker.getUrl().getHost(), invoker.getUrl().getPort());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// mreged from dubbox</span></span><br><span class="line">        <span class="comment">// we may already added some attachments into RpcContext before this filter (e.g. in rest protocol)</span></span><br><span class="line">        <span class="keyword">if</span> (attachments != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (RpcContext.getContext().getAttachments() != <span class="keyword">null</span>) &#123;</span><br><span class="line">                RpcContext.getContext().getAttachments().putAll(attachments);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                RpcContext.getContext().setAttachments(attachments);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 设置 RpcInvocation 对象的 'invoker' 属性</span></span><br><span class="line">        <span class="keyword">if</span> (invocation <span class="keyword">instanceof</span> RpcInvocation) &#123;</span><br><span class="line">            ((RpcInvocation) invocation).setInvoker(invoker);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 调用过滤器链的下一个节点</span></span><br><span class="line">            RpcResult result = (RpcResult) invoker.invoke(invocation);</span><br><span class="line">            <span class="comment">// 将 SERVER_LOCAL 这个 RpcContext 中的附加信息添加到 RpcResult 的 attachments 字段中，返回给 Consumer。</span></span><br><span class="line">            result.addAttachments(RpcContext.getServerContext().getAttachments());</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 清除上下文信息，当前线程处理下一个调用的时候，会创建新的 RpcContext</span></span><br><span class="line">            RpcContext.removeContext();</span><br><span class="line">            RpcContext.getServerContext().clearAttachments();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-
-
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章对 <strong>RpcContext</strong> 分别在服务提供端和服务消费端的初始化进行了介绍，初始化的时机是每次发起调用和每次被调用。</p>
 
       
     </div>
@@ -534,7 +484,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.com/posts/cadc5d6c/" title="uml基础" target="_blank" rel="external">https://gentryhuang.com/posts/cadc5d6c/</a>
+      <a href="https://gentryhuang.com/posts/c72fde05/" title="Dubbo过滤器 - ContextFilter &amp; ConsumerContextFilter" target="_blank" rel="external">https://gentryhuang.com/posts/c72fde05/</a>
     </li>
     
     <li class="post-copyright-license">
@@ -571,10 +521,6 @@
   </article>
   
     
-  <section id="comments">
-  	
-  </section>
-
 
   
 </div>
@@ -585,9 +531,13 @@
   <ul class="pager pull-left">
     
     <li class="prev">
-      <a href="/posts/90fd4bf3/" title="简单工厂"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+      <a href="/posts/751c0982/" title="Dubbo源码分析 - 本地暴露"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
     </li>
     
+    
+    <li class="next">
+      <a href="/posts/3fc82a32/" title="Dubbo过滤器 - ClassLoaderFilter"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
     
     
     <li class="toggle-toc">
@@ -691,8 +641,6 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 
 
 
-
-   
 
 
   <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
