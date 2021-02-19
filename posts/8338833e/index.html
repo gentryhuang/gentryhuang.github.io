@@ -17,21 +17,22 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>归档: 2020/5 | gentryhuang的博客</title>
-  <meta name="description" content="博客">
-<meta property="og:type" content="website">
-<meta property="og:title" content="gentryhuang‘s blog">
-<meta property="og:url" content="https://gentryhuang.com/archives/2020/05/index.html">
+  <title>Dubbo过滤器 - TimeoutFilter | gentryhuang的博客</title>
+  <meta name="description" content="概述服务提供端的超时过滤器，即如果服务调用超时，记录告警日志，不干涉服务的运行。 TimeoutFilter1234567891011121314151617181920212223242526272829@Activate(group &#x3D; Constants.PROVIDER)public class TimeoutFilter implements Filter &amp;#123;    priva">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo过滤器 - TimeoutFilter">
+<meta property="og:url" content="https://gentryhuang.com/posts/8338833e/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="博客">
+<meta property="og:description" content="概述服务提供端的超时过滤器，即如果服务调用超时，记录告警日志，不干涉服务的运行。 TimeoutFilter1234567891011121314151617181920212223242526272829@Activate(group &#x3D; Constants.PROVIDER)public class TimeoutFilter implements Filter &amp;#123;    priva">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-08-02T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-02-19T01:57:04.384Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="求职">
-<meta property="article:tag" content="技术">
-<meta property="article:tag" content="生活">
+<meta property="article:tag" content="Dubbo">
+<meta property="article:tag" content="Filter">
 <meta name="twitter:card" content="summary">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/archives/2020/05/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/8338833e/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -391,139 +392,161 @@
 
   
   
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#TimeoutFilter"><span class="toc-number">2.</span> <span class="toc-text">TimeoutFilter</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">3.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
 <main class="main" role="main">
-  	<article class="content article article-archives article-type-list" itemscope="">
-	    <header class="article-header">
-	      <h1 itemprop="title">归档: 2020/5</h1>
-	      <p class="text-muted">共 10 篇文章</p>
-	    </header>
-	    <div class="article-body">
-	      
-  
-  
+  <div class="content">
+  <article id="post-rpc/Dubbo过滤器-TimeoutFilter" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
-    
+    <div class="article-header">
       
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo过滤器 - TimeoutFilter
+    </h1>
+  
+
       
-      <section class="panel panel-default b-no">
-        <div class="panel-heading" role="tab">
-          <h3 class="panel-title">
-            <a data-toggle="collapse" href="#collapse2020" aria-expanded="true">
-              <i class="icon icon-calendar-plus text-active"></i><i class="icon icon-calendar-minus text"></i>
-              2020
-            </a>
-            <!-- <a href="/archives/2020" class="archive-year">2020</a> -->
-          </h3>
-        </div>
-        <div id="collapse2020" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="heading2020">
-        <div class="panel-body">
-          <div class="collection">
-    
-    
-<a href="/posts/4468445c/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-29T16:00:00.000Z" itemprop="datePublished">2020-05-30</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Netty4网络通信
-</a>
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/8338833e/" class="article-date">
+	  <time datetime="2020-08-02T16:00:00.000Z" itemprop="datePublished">2020-08-03</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/Filter/" rel="tag">Filter</a>
+  </span>
 
 
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/8338833e/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 249(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 1(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>服务提供端的超时过滤器，即如果服务调用超时，记录告警日志，不干涉服务的运行。</p>
+<h1 id="TimeoutFilter"><a href="#TimeoutFilter" class="headerlink" title="TimeoutFilter"></a>TimeoutFilter</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Activate</span>(group = Constants.PROVIDER)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TimeoutFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(TimeoutFilter<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invoker&lt;?&gt; invoker, Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 调用开始时间</span></span><br><span class="line">        <span class="keyword">long</span> start = System.currentTimeMillis();</span><br><span class="line">        <span class="comment">// 执行服务调用逻辑</span></span><br><span class="line">        Result result = invoker.invoke(invocation);</span><br><span class="line">        <span class="comment">// 计算调用消耗时长</span></span><br><span class="line">        <span class="keyword">long</span> elapsed = System.currentTimeMillis() - start;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         *  注意：</span></span><br><span class="line"><span class="comment">         *  1 这里timeout 是服务提供者的配置，不同于服务消费者的配置。</span></span><br><span class="line"><span class="comment">         *  2 服务提供者执行服务即使超时了也不会取消执行，而消费者已经结束了调用，返回调用超时</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">if</span> (invoker.getUrl() != <span class="keyword">null</span> &amp;&amp; elapsed &gt; invoker.getUrl().getMethodParameter(invocation.getMethodName(), <span class="string">"timeout"</span>, Integer.MAX_VALUE)) &#123;</span><br><span class="line">            <span class="keyword">if</span> (logger.isWarnEnabled()) &#123;</span><br><span class="line">                logger.warn(<span class="string">"invoke time out. method: "</span> + invocation.getMethodName()</span><br><span class="line">                        + <span class="string">" arguments: "</span> + Arrays.toString(invocation.getArguments()) + <span class="string">" , url is "</span></span><br><span class="line">                        + invoker.getUrl() + <span class="string">", invoke elapsed "</span> + elapsed + <span class="string">" ms."</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p><strong>TimeoutFilter</strong> 用于记录服务端执行逻辑超时日志，是对 Dubbo 框架中所有服务的监控。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/8338833e/" title="Dubbo过滤器 - TimeoutFilter" target="_blank" rel="external">https://gentryhuang.com/posts/8338833e/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
   
     
-    
-    
-<a href="/posts/53cd7ee7/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-22T16:00:00.000Z" itemprop="datePublished">2020-05-23</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 网络传输层
-</a>
-
 
   
-    
-    
-    
-<a href="/posts/e79185fb/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-17T16:00:00.000Z" itemprop="datePublished">2020-05-18</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Buffer缓冲区
-</a>
+</div>
 
-
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
   
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/2e2f77b9/" title="Dubbo过滤器 - EchoFilter"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
     
     
-    
-<a href="/posts/95ab077/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-09T16:00:00.000Z" itemprop="datePublished">2020-05-10</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 远程通信模块总览
-</a>
-
-
-  
+    <li class="next">
+      <a href="/posts/f715f3aa/" title="Dubbo过滤器 - TpsLimitFilter"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
     
     
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
     
-<a href="/posts/cfaae53/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-04T16:00:00.000Z" itemprop="datePublished">2020-05-05</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - FST序列化
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/4fd38523/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-03T16:00:00.000Z" itemprop="datePublished">2020-05-04</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - Hessian序列化
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/5898e8ff/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-02T16:00:00.000Z" itemprop="datePublished">2020-05-03</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - JDK序列化
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/16132b67/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-02T16:00:00.000Z" itemprop="datePublished">2020-05-03</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 序列化总览
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/1663a5dc/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-05-01T16:00:00.000Z" itemprop="datePublished">2020-05-02</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - 动态代理本地存根
-</a>
-
-
-  
-    
-    
-    
-<a href="/posts/faa2b4a3/" class="collection-item" target="_blank" itemprop="url">
-  <time datetime="2020-04-30T16:00:00.000Z" itemprop="datePublished">2020-05-01</time>
-  <span>&nbsp;&nbsp;&nbsp;</span> Dubbo源码分析 - JDK动态代理
-</a>
-
-
+  </ul>
   
   
-    </div></div></div></section>
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
   
 
-	    </div>
-  	</article>
-  	 	
+
 </main>
 
   
@@ -594,6 +617,12 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 <script src="/js/insight.js"></script>
 
 
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
 
 
