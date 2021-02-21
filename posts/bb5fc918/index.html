@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - 泛化实现 | gentryhuang的博客</title>
+  <meta name="description" content="概述Dubbo 中的泛化接口实现主要用于服务端没有 API 接口及模型类元的情况，泛化实现需要实现 GenericService 接口。调用端在引用某个服务时可以指定通用调用（generic配置项），进而可以调用该服务对应的泛化实现。服务消费端无需关注泛化实现的细节，只需要引用服务的时候指定通用调用即可。 应用场景通常用于框架集成，比如：实现一个通用的远程服务 Mock 框架，可通过实现 Gene">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - 泛化实现">
+<meta property="og:url" content="https://gentryhuang.com/posts/bb5fc918/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述Dubbo 中的泛化接口实现主要用于服务端没有 API 接口及模型类元的情况，泛化实现需要实现 GenericService 接口。调用端在引用某个服务时可以指定通用调用（generic配置项），进而可以调用该服务对应的泛化实现。服务消费端无需关注泛化实现的细节，只需要引用服务的时候指定通用调用即可。 应用场景通常用于框架集成，比如：实现一个通用的远程服务 Mock 框架，可通过实现 Gene">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-08-14T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-02-21T14:49:36.775Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta property="article:tag" content="Filter">
+<meta name="twitter:card" content="summary">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/bb5fc918/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">50</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">46</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">11</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">7</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d38b32e5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d38b32e5/" class="title">Java基础 - JDK动态代理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-03T12:30:35.000Z" itemprop="datePublished">2021-01-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/9e3a7d05/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/9e3a7d05/" class="title">并发 - 线程池工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-09T16:00:00.000Z" itemprop="datePublished">2020-12-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d7cef21d/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d7cef21d/" class="title">并发 - 线程池</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-02T16:00:00.000Z" itemprop="datePublished">2020-12-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/37f29896/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/37f29896/" class="title">并发 - Java并发工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-11-05T16:00:00.000Z" itemprop="datePublished">2020-11-06</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/40e44c1f/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/40e44c1f/" class="title">AQS 原理分析 - Condition实现原理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-26T13:45:45.000Z" itemprop="datePublished">2020-10-26</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#应用场景"><span class="toc-number">2.</span> <span class="toc-text">应用场景</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#使用示例"><span class="toc-number">3.</span> <span class="toc-text">使用示例</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#服务端"><span class="toc-number">3.1.</span> <span class="toc-text">服务端</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#消费端"><span class="toc-number">3.2.</span> <span class="toc-text">消费端</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#GenericImplFilter"><span class="toc-number">4.</span> <span class="toc-text">GenericImplFilter</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#GenericFilter"><span class="toc-number">5.</span> <span class="toc-text">GenericFilter</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">6.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/Dubbo过滤器-泛化实现" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - 泛化实现
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/bb5fc918/" class="article-date">
+	  <time datetime="2020-08-14T16:00:00.000Z" itemprop="datePublished">2020-08-15</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/Filter/" rel="tag">Filter</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/bb5fc918/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.7k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 7(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Dubbo 中的泛化接口实现主要用于服务端没有 API 接口及模型类元的情况，泛化实现需要实现 <strong>GenericService</strong> 接口。调用端在引用某个服务时可以指定通用调用（generic配置项），进而可以调用该服务对应的泛化实现。服务消费端无需关注泛化实现的细节，只需要引用服务的时候指定通用调用即可。</p>
+<h1 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h1><p>通常用于框架集成，比如：实现一个通用的远程服务 Mock 框架，可通过实现 <strong>GenericService</strong> 接口处理所有服务请求。</p>
+<h1 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h1><h2 id="服务端"><a href="#服务端" class="headerlink" title="服务端"></a>服务端</h2><p>服务端需要实现 <strong>GenericService</strong> 接口以实现泛化功能。</p>
+<ul>
+<li>泛化实现</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyGenericService</span> <span class="keyword">implements</span> <span class="title">GenericService</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 泛化实现</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> method         调用端调用的方法名</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> parameterTypes 方法参数类型</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> args           参数值</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> GenericException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> Object $invoke(String method, String[] parameterTypes, Object[] args) <span class="keyword">throws</span> GenericException &#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="string">"sayHello"</span>.equals(method)) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="string">"print "</span> + args[<span class="number">0</span>];</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">"not find method!"</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>服务暴露<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">interface</span>=<span class="string">"com.code.dubbo.DemoService"</span> <span class="attr">ref</span>=<span class="string">"myGenericService"</span>/&gt;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<p><strong>说明：</strong>泛化实现暴露出去需要依托已有的服务接口，将接口的实现设置成泛化实现即可。</p>
+<h2 id="消费端"><a href="#消费端" class="headerlink" title="消费端"></a>消费端</h2><ul>
+<li>服务引入<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:reference</span> <span class="attr">id</span>=<span class="string">"demoService"</span> <span class="attr">interface</span>=<span class="string">"com.code.dubbo.DemoService"</span> <span class="attr">generic</span>=<span class="string">"true"</span>/&gt;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<p><strong>说明：</strong> </p>
+<ol>
+<li>消费端需要引入 <strong>interface</strong> 配置项的依赖，并且设置 <strong>generic</strong> 属性，以指定引用的服务为通用调用。</li>
+<li><strong>generic</strong> 配置项支持设置 true、nativejava 以及 bean，在 Dubbo 2.7 中还支持了 protobuf-json 和 raw.return ，用于对参数进行序列化和反序列化。</li>
+<li>消费端调用服务和普通的消费者一摸一样。</li>
+</ol>
+<ul>
+<li>远程调用<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DemoService demoService = (DemoService) applicationContext.getBean(<span class="string">"demoService"</span>);</span><br><span class="line">String result = demoService.sayHello(<span class="string">"gentryhuang"</span>);</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h1 id="GenericImplFilter"><a href="#GenericImplFilter" class="headerlink" title="GenericImplFilter"></a>GenericImplFilter</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Activate</span>(group = Constants.CONSUMER, value = Constants.GENERIC_KEY, order = <span class="number">20000</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">GenericImplFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(GenericImplFilter<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 泛化参数类型</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    private static final Class&lt;?&gt;[] GENERIC_PARAMETER_TYPES = new Class&lt;?&gt;[]&#123;String.class, String[].class, Object[].class&#125;;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invoker&lt;?&gt; invoker, Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 1. 获得 generic 配置项</span></span><br><span class="line">        String generic = invoker.getUrl().getParameter(Constants.GENERIC_KEY);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  泛化实现的调用 - 客户端调用的服务是 GenericService</span></span><br><span class="line">        <span class="keyword">if</span> (ProtocolUtils.isGeneric(generic) <span class="comment">// 判断是否开启了泛化引用</span></span><br><span class="line">                &amp;&amp; !Constants.$INVOKE.equals(invocation.getMethodName()) <span class="comment">// 方法名非 $invoke</span></span><br><span class="line">                <span class="comment">// 调用信息是 RpcInvocation 类型</span></span><br><span class="line">                &amp;&amp; invocation <span class="keyword">instanceof</span> RpcInvocation) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 2. 序列化参数</span></span><br><span class="line">            RpcInvocation invocation2 = (RpcInvocation) invocation;</span><br><span class="line">            <span class="comment">// 调用的方法名</span></span><br><span class="line">            String methodName = invocation2.getMethodName();</span><br><span class="line">            <span class="comment">// 参数类型列表</span></span><br><span class="line">            Class&lt;?&gt;[] parameterTypes = invocation2.getParameterTypes();</span><br><span class="line">            <span class="comment">// 参数值列表</span></span><br><span class="line">            Object[] arguments = invocation2.getArguments();</span><br><span class="line">            <span class="comment">// 参数类型名列表</span></span><br><span class="line">            String[] types = <span class="keyword">new</span> String[parameterTypes.length];</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; parameterTypes.length; i++) &#123;</span><br><span class="line">                types[i] = ReflectUtils.getName(parameterTypes[i]);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 3. 根据 generic 的值选择对应序列化参数的方式</span></span><br><span class="line">            Object[] args;</span><br><span class="line">            <span class="comment">// 3.1 generic == bean</span></span><br><span class="line">            <span class="keyword">if</span> (ProtocolUtils.isBeanGenericSerialization(generic)) &#123;</span><br><span class="line">                args = <span class="keyword">new</span> Object[arguments.length];</span><br><span class="line">                <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; arguments.length; i++) &#123;</span><br><span class="line">                    <span class="comment">// 将参数进行转换： POJO -&gt; JavaBeanDescriptor</span></span><br><span class="line">                    args[i] = JavaBeanSerializeUtil.serialize(arguments[i], JavaBeanAccessor.METHOD);</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 3.2 generic != bean</span></span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// 将参数进行转换：POJO -&gt; Map</span></span><br><span class="line">                args = PojoUtils.generalize(arguments);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 4、重新设置RPC调用信息，通过新的PpcInvocation就能调用到泛化实现的服务</span></span><br><span class="line">            <span class="comment">// 4.1 设置调用方法的名字为 $invoke</span></span><br><span class="line">            invocation2.setMethodName(Constants.$INVOKE);</span><br><span class="line">            <span class="comment">// 4.2 设置调用方法的参数类型为 GENERIC_PARAMETER_TYPES</span></span><br><span class="line">            invocation2.setParameterTypes(GENERIC_PARAMETER_TYPES);</span><br><span class="line">            <span class="comment">// 4.3 设置调用方法的参数数据，分别为方法名，参数类型数组，参数数组</span></span><br><span class="line">            invocation2.setArguments(<span class="keyword">new</span> Object[]&#123;methodName, types, args&#125;);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 5 方法调用</span></span><br><span class="line">            Result result = invoker.invoke(invocation2);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">            <span class="comment">// 6、反序列化结果及异常结果处理</span></span><br><span class="line">            <span class="keyword">if</span> (!result.hasException()) &#123;</span><br><span class="line">                <span class="comment">// 获取调用结果</span></span><br><span class="line">                Object value = result.getValue();</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">// 反射方法对象</span></span><br><span class="line">                    Method method = invoker.getInterface().getMethod(methodName, parameterTypes);</span><br><span class="line">                    <span class="comment">// generic=bean 的情况，反序列化： JavaBeanDescriptor -&gt; 结果</span></span><br><span class="line">                    <span class="keyword">if</span> (ProtocolUtils.isBeanGenericSerialization(generic)) &#123;</span><br><span class="line">                        <span class="keyword">if</span> (value == <span class="keyword">null</span>) &#123;</span><br><span class="line">                            <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(value);</span><br><span class="line">                        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (value <span class="keyword">instanceof</span> JavaBeanDescriptor) &#123;</span><br><span class="line">                            <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(JavaBeanSerializeUtil.deserialize((JavaBeanDescriptor) value));</span><br><span class="line">                        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                            <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(</span><br><span class="line">                                    <span class="string">"The type of result value is "</span> +</span><br><span class="line">                                            value.getClass().getName() +</span><br><span class="line">                                            <span class="string">" other than "</span> +</span><br><span class="line">                                            JavaBeanDescriptor<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>() +</span></span><br><span class="line">                                            ", and the result is " +</span><br><span class="line">                                            value);</span><br><span class="line">                        &#125;</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// generic = true，反序列化： Map -&gt; Pojo</span></span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(PojoUtils.realize(value, method.getReturnType(), method.getGenericReturnType()));</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; <span class="keyword">catch</span> (NoSuchMethodException e) &#123;</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(e.getMessage(), e);</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 异常结果处理</span></span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (result.getException() <span class="keyword">instanceof</span> GenericException) &#123;</span><br><span class="line">                GenericException exception = (GenericException) result.getException();</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    String className = exception.getExceptionClass();</span><br><span class="line">                    Class&lt;?&gt; clazz = ReflectUtils.forName(className);</span><br><span class="line">                    Throwable targetException = <span class="keyword">null</span>;</span><br><span class="line">                    Throwable lastException = <span class="keyword">null</span>;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        <span class="comment">// 创建异常对象</span></span><br><span class="line">                        targetException = (Throwable) clazz.newInstance();</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">                        lastException = e;</span><br><span class="line">                        <span class="keyword">for</span> (Constructor&lt;?&gt; constructor : clazz.getConstructors()) &#123;</span><br><span class="line">                            <span class="keyword">try</span> &#123;</span><br><span class="line">                                targetException = (Throwable) constructor.newInstance(<span class="keyword">new</span> Object[constructor.getParameterTypes().length]);</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125; <span class="keyword">catch</span> (Throwable e1) &#123;</span><br><span class="line">                                lastException = e1;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="keyword">if</span> (targetException != <span class="keyword">null</span>) &#123;</span><br><span class="line">                        <span class="keyword">try</span> &#123;</span><br><span class="line">                            Field field = Throwable.class.getDeclaredField("detailMessage");</span><br><span class="line">                            <span class="keyword">if</span> (!field.isAccessible()) &#123;</span><br><span class="line">                                field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">                            &#125;</span><br><span class="line">                            field.set(targetException, exception.getExceptionMessage());</span><br><span class="line">                        &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">                            logger.warn(e.getMessage(), e);</span><br><span class="line">                        &#125;</span><br><span class="line">                        result = <span class="keyword">new</span> RpcResult(targetException);</span><br><span class="line">                    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (lastException != <span class="keyword">null</span>) &#123;</span><br><span class="line">                        <span class="keyword">throw</span> lastException;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Can not deserialize exception "</span> + exception.getExceptionClass() + <span class="string">", message: "</span> + exception.getExceptionMessage(), e);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 省略泛化引用的调用 - GenericService 调用服务接口</span></span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">        <span class="comment">//  普通调用</span></span><br><span class="line">        <span class="keyword">return</span> invoker.invoke(invocation);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>GenericImplFilter</strong> 是服务消费端的过滤器，主要是对 <strong>泛化引用</strong> 和 <strong>泛化实现</strong> 在调用端的处理。关于泛化引用部分在泛化调用中已经详细说明，下面对泛化实现的逻辑进行说明：</p>
+<ol>
+<li>获取 generic 配置项，判断是否开启泛化引用。</li>
+<li>从调用信息对象 RpcInvocation 中获取调用的方法名、参数类型列表、参数值列表。</li>
+<li>根据 generic 的值选择对应的序列化方式对参数进行序列化。</li>
+<li>重置调用信息对象中的方法名、方法参数类型、方法参数，以构造符合 $invoke 方法的格式，重置完成后进行方法调用。</li>
+<li>对正常结果进行反序列化，以及根据 GenericException 异常，创建原始异常 targetException 并返回给调用端。</li>
+</ol>
+<p>这里需要说明的是上述的第 5 步，为什么执行 <strong>invoker.invoke(invocation2)</strong> 方法就会调用泛化实现 <strong>$invoke</strong> 方法？ 原因如下：</p>
+<ol>
+<li>服务暴露的过程确定了服务实现对象和服务接口<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">+--- ServiceConfig#doExport</span><br><span class="line">        <span class="comment">// 检测ref是否泛化接口的实现</span></span><br><span class="line">        <span class="keyword">if</span> (ref <span class="keyword">instanceof</span> GenericService) &#123;</span><br><span class="line">            <span class="comment">// 设置 interfaceClass 为 GenericService.class</span></span><br><span class="line">            interfaceClass = GenericService<span class="class">.<span class="keyword">class</span></span>;</span><br><span class="line">            <span class="keyword">if</span> (StringUtils.isEmpty(generic)) &#123;</span><br><span class="line">                <span class="comment">// 设置 generic = "true"</span></span><br><span class="line">                generic = Boolean.TRUE.toString();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p><strong>注意：</strong> 虽然接口设置为了 GenericService ，但是不影响服务暴露，服务暴露的 URL 中使用接口名表示服务接口信息，也就是 interface 的值。</p>
+<ol start="2">
+<li>将服务实例封装成 Invoker ,服务实例就是 GenericService 实例。<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 将传入的服务实例封装成Invoker</span></span><br><span class="line"><span class="comment"> * &lt;p&gt;</span></span><br><span class="line"><span class="comment"> * create invoker.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> &lt;T&gt;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> proxy Service对象</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> type  Service接口类型</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> url   Service对应的Dubbo URL</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> invoker</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@Adaptive</span>(&#123;Constants.PROXY_KEY&#125;)</span><br><span class="line">&lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">getInvoker</span><span class="params">(T proxy, Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException</span>;</span><br></pre></td></tr></table></figure>
+
+
+</li>
+</ol>
+<h1 id="GenericFilter"><a href="#GenericFilter" class="headerlink" title="GenericFilter"></a>GenericFilter</h1><p><strong>GenericFilter</strong> 不会特别处理泛化实现的调用，将这种情况当作普通调用对待。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>Dubbo 提供了 <strong>GenericService</strong> 接口用于实现泛化服务，由于泛化实现对于调用端来说是没有具体接口的，因此泛化实现必须依托现有的服务接口。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/bb5fc918/" title="Dubbo源码分析 - 泛化实现" target="_blank" rel="external">https://gentryhuang.com/posts/bb5fc918/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/751c0982/" title="Dubbo源码分析 - 本地暴露"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/ffce7d6d/" title="Dubbo源码分析 - 泛化调用"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
