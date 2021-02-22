@@ -25,14 +25,14 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述Dubbo 中的泛化接口实现主要用于服务端没有 API 接口及模型类元的情况，泛化实现需要实现 GenericService 接口。调用端在引用某个服务时可以指定通用调用（generic配置项），进而可以调用该服务对应的泛化实现。服务消费端无需关注泛化实现的细节，只需要引用服务的时候指定通用调用即可。 应用场景通常用于框架集成，比如：实现一个通用的远程服务 Mock 框架，可通过实现 Gene">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/bb5fc918/dubbo-filter-generic-impl.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-impl.jpg">
 <meta property="article:published_time" content="2020-08-14T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-02-22T03:19:58.566Z">
+<meta property="article:modified_time" content="2021-02-22T03:25:25.577Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="Filter">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/bb5fc918/dubbo-filter-generic-impl.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-impl.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/bb5fc918/index.html">
   
@@ -509,7 +509,7 @@
 </li>
 </ol>
 <h1 id="GenericFilter"><a href="#GenericFilter" class="headerlink" title="GenericFilter"></a>GenericFilter</h1><p><strong>GenericFilter</strong> 不会特别处理泛化实现的调用，将这种情况当作普通调用对待。</p>
-<h1 id="泛化实现流程图"><a href="#泛化实现流程图" class="headerlink" title="泛化实现流程图"></a>泛化实现流程图</h1><p><img src="/posts/bb5fc918/dubbo-filter-generic-impl.jpg" alt></p>
+<h1 id="泛化实现流程图"><a href="#泛化实现流程图" class="headerlink" title="泛化实现流程图"></a>泛化实现流程图</h1><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-impl.jpg" alt></p>
 <h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>Dubbo 提供了 <strong>GenericService</strong> 接口用于实现泛化服务，由于泛化实现对于调用端来说是没有具体接口的，因此泛化实现必须依托现有的服务接口。</p>
 
       

@@ -25,14 +25,14 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述Dubbo 中的泛化调用主要用于客户端没有 API接口及模型类元 的情况。即客户端只需根据服务端提供的API文档，无需引入相关接口依赖，直接通过 GenericSerive 接口来发起服务调用，参数及返回值中的所有 POJO 均使用 Map 表示。泛化调用对于服务提供端是无需关注的，按正常服务暴露即可。 应用场景服务测试框架服务测试框架是作为各个 RPC 服务的调用端，一般情况下，调用端是需要">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/ffce7d6d/dubbo-filter-generic-process.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-process.jpg">
 <meta property="article:published_time" content="2020-08-12T14:59:38.000Z">
-<meta property="article:modified_time" content="2021-02-22T03:02:52.977Z">
+<meta property="article:modified_time" content="2021-02-22T03:25:22.147Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="Filter">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/ffce7d6d/dubbo-filter-generic-process.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-process.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/ffce7d6d/index.html">
   
@@ -511,7 +511,7 @@
 <li>构建新的 RpcInvocation 对象进行方法调用，本质上是将 $invoke 泛化调用被转为具体的普通调用。</li>
 <li>对调用结果进行处理，其中会对正常结果进行序列化处理，然后响应给调用端。若是异常结果，且非 GenericException 异常，则使用 GenericException 包装后返回，防止异常在服务消费端不存在导致反序列化失败。</li>
 </ol>
-<h1 id="泛化调用流程图"><a href="#泛化调用流程图" class="headerlink" title="泛化调用流程图"></a>泛化调用流程图</h1><p><img src="/posts/ffce7d6d/dubbo-filter-generic-process.jpg" alt></p>
+<h1 id="泛化调用流程图"><a href="#泛化调用流程图" class="headerlink" title="泛化调用流程图"></a>泛化调用流程图</h1><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-process.jpg" alt></p>
 <h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>Dubbo 泛化调用实际是在 Filter 过滤链上执行的序列化和反序列化操作，服务端通过调用端传递的调用信息反射获取对应的服务方法，进而进行服务调用。</p>
 
       

@@ -25,14 +25,14 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述Dubbo 框架支持通过令牌验证在注册中心控制权限，以决定是否下发令牌给消费者，以防止消费者绕过注册中心访问服务提供者，另外通过注册中心可灵活改变授权方式，而不需修改或升级提供者。  配置 全局开启令牌1234&lt;!--随机token令牌，使用UUID生成--&gt;&lt;dubbo:provider interface&#x3D;&quot;com.foo.BarService&quot; token&#x3D;&quot;true&quot;">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/4c117d83/dubbo-filter-token.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-token.jpg">
 <meta property="article:published_time" content="2020-08-06T12:59:38.000Z">
-<meta property="article:modified_time" content="2021-02-19T02:56:10.938Z">
+<meta property="article:modified_time" content="2021-02-22T03:24:49.937Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="Filter">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/4c117d83/dubbo-filter-token.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-token.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/4c117d83/index.html">
   
@@ -460,7 +460,7 @@
     <div class="article-entry marked-body" itemprop="articleBody">
       
         <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Dubbo 框架支持通过令牌验证在注册中心控制权限，以决定是否下发令牌给消费者，以防止消费者绕过注册中心访问服务提供者，另外通过注册中心可灵活改变授权方式，而不需修改或升级提供者。</p>
-<p><img src="/posts/4c117d83/dubbo-filter-token.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-token.jpg" alt></p>
 <h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><ul>
 <li>全局开启令牌<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!--随机token令牌，使用UUID生成--&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:provider</span> <span class="attr">interface</span>=<span class="string">"com.foo.BarService"</span> <span class="attr">token</span>=<span class="string">"true"</span> /&gt;</span></span><br><span class="line"><span class="comment">&lt;!--固定token令牌，相当于密码--&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:provider</span> <span class="attr">interface</span>=<span class="string">"com.foo.BarService"</span> <span class="attr">token</span>=<span class="string">"123456"</span> /&gt;</span></span><br></pre></td></tr></table></figure></li>
 <li>服务级别开启令牌<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!--随机token令牌，使用UUID生成--&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">interface</span>=<span class="string">"com.foo.BarService"</span> <span class="attr">token</span>=<span class="string">"true"</span> /&gt;</span></span><br><span class="line"><span class="comment">&lt;!--固定token令牌，相当于密码--&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">interface</span>=<span class="string">"com.foo.BarService"</span> <span class="attr">token</span>=<span class="string">"123456"</span> /&gt;</span></span><br></pre></td></tr></table></figure>
