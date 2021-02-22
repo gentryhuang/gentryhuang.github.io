@@ -27,7 +27,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-impl.jpg">
 <meta property="article:published_time" content="2020-08-14T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-02-22T03:25:25.577Z">
+<meta property="article:modified_time" content="2021-02-22T06:01:32.390Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="Filter">
@@ -492,7 +492,7 @@
 <li>获取 generic 配置项，判断是否开启泛化引用。</li>
 <li>从调用信息对象 RpcInvocation 中获取调用的方法名、参数类型列表、参数值列表。</li>
 <li>根据 generic 的值选择对应的序列化方式对参数进行序列化。</li>
-<li>重置调用信息对象中的方法名、方法参数类型、方法参数，以构造符合 $invoke 方法的格式，重置完成后进行方法调用。</li>
+<li>重置调用信息对象中的方法名、方法参数类型、方法参数，<strong>本质上将普通方法调用转为 $invoke 方法调用</strong>，重置完成后进行方法调用。</li>
 <li>对正常结果进行反序列化，以及根据 GenericException 异常，创建原始异常 targetException 并返回给调用端。</li>
 </ol>
 <p>这里需要说明的是上述的第 5 步，为什么执行 <strong>invoker.invoke(invocation2)</strong> 方法就会调用泛化实现 <strong>$invoke</strong> 方法？ 原因如下：</p>

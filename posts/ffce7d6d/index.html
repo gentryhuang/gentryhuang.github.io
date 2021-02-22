@@ -27,7 +27,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-process.jpg">
 <meta property="article:published_time" content="2020-08-12T14:59:38.000Z">
-<meta property="article:modified_time" content="2021-02-22T03:25:22.147Z">
+<meta property="article:modified_time" content="2021-02-22T05:59:04.128Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="Filter">
@@ -508,7 +508,7 @@
 <li>从调用信息 Invocation 中获取服务方法名、方法参数类型、方法参数列表。</li>
 <li>反射获取提供方的方法对象，注意这里的 invoker 是服务端的，因此 interface 是服务接口，而非GenericService 。</li>
 <li>从隐式参数中获取 generic 配置项，该配置项决定了参数反序列化的方式。</li>
-<li>构建新的 RpcInvocation 对象进行方法调用，本质上是将 $invoke 泛化调用被转为具体的普通调用。</li>
+<li>构建新的 RpcInvocation 对象进行方法调用，<strong>本质上是将 $invoke 泛化调用被转为具体的普通调用</strong>。</li>
 <li>对调用结果进行处理，其中会对正常结果进行序列化处理，然后响应给调用端。若是异常结果，且非 GenericException 异常，则使用 GenericException 包装后返回，防止异常在服务消费端不存在导致反序列化失败。</li>
 </ol>
 <h1 id="泛化调用流程图"><a href="#泛化调用流程图" class="headerlink" title="泛化调用流程图"></a>泛化调用流程图</h1><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-generic-process.jpg" alt></p>
