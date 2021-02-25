@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - 多协议概览 | gentryhuang的博客</title>
+  <meta name="description" content="前言在协议层总览中对Protocol层进行了总体介绍，其中对相关的核心包和核心类进行了说明。本篇文章将对 Dubbo 中的多协议进行概览，后续文章中将对具体协议实现进行介绍。 ProtocolProtocol 接口中主要定义了 export() 和 refer() 方法，分别用于服务暴露和服务引用。Protocol 接口相关的 UML 图如下：  需要说明的是，Protocol 的 Registr">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - 多协议概览">
+<meta property="og:url" content="https://gentryhuang.com/posts/450e3eda/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言在协议层总览中对Protocol层进行了总体介绍，其中对相关的核心包和核心类进行了说明。本篇文章将对 Dubbo 中的多协议进行概览，后续文章中将对具体协议实现进行介绍。 ProtocolProtocol 接口中主要定义了 export() 和 refer() 方法，分别用于服务暴露和服务引用。Protocol 接口相关的 UML 图如下：  需要说明的是，Protocol 的 Registr">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/450e3eda/dubbo-protocol-uml.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/450e3eda/dubbo-protocol-hierarchy.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/450e3eda/dubbo-protocol-service-key-dubbo.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/450e3eda/dubbo-protocol-service-key-injvm.jpg">
+<meta property="article:published_time" content="2020-08-24T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-02-25T14:52:34.897Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta property="article:tag" content="Protocol">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/450e3eda/dubbo-protocol-uml.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/450e3eda/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">51</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">47</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">11</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d38b32e5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d38b32e5/" class="title">Java基础 - JDK动态代理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-03T12:30:35.000Z" itemprop="datePublished">2021-01-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/9e3a7d05/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/9e3a7d05/" class="title">并发 - 线程池工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-09T16:00:00.000Z" itemprop="datePublished">2020-12-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d7cef21d/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d7cef21d/" class="title">并发 - 线程池</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-02T16:00:00.000Z" itemprop="datePublished">2020-12-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/37f29896/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/37f29896/" class="title">并发 - Java并发工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-11-05T16:00:00.000Z" itemprop="datePublished">2020-11-06</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/40e44c1f/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/40e44c1f/" class="title">AQS 原理分析 - Condition实现原理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-26T13:45:45.000Z" itemprop="datePublished">2020-10-26</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Protocol"><span class="toc-number">2.</span> <span class="toc-text">Protocol</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#AbstractProtocol"><span class="toc-number">3.</span> <span class="toc-text">AbstractProtocol</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#AbstractProxyProtocol"><span class="toc-number">4.</span> <span class="toc-text">AbstractProxyProtocol</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#属性"><span class="toc-number">4.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务暴露"><span class="toc-number">4.2.</span> <span class="toc-text">服务暴露</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务引用"><span class="toc-number">4.3.</span> <span class="toc-text">服务引用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务地址"><span class="toc-number">4.4.</span> <span class="toc-text">服务地址</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#模版方法"><span class="toc-number">4.5.</span> <span class="toc-text">模版方法</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#领域模型"><span class="toc-number">5.</span> <span class="toc-text">领域模型</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#AbstractExporter"><span class="toc-number">5.1.</span> <span class="toc-text">AbstractExporter</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AbstractInvoker"><span class="toc-number">5.2.</span> <span class="toc-text">AbstractInvoker</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#属性-1"><span class="toc-number">5.2.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#标记销毁"><span class="toc-number">5.2.2.</span> <span class="toc-text">标记销毁</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#服务调用"><span class="toc-number">5.2.3.</span> <span class="toc-text">服务调用</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">6.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/多协议概览" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - 多协议概览
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/450e3eda/" class="article-date">
+	  <time datetime="2020-08-24T16:00:00.000Z" itemprop="datePublished">2020-08-25</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/Protocol/" rel="tag">Protocol</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/450e3eda/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.7k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 16(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在<a href="https://gentryhuang.com/posts/3131d6ea/">协议层总览</a>中对<code>Protocol</code>层进行了总体介绍，其中对相关的核心包和核心类进行了说明。本篇文章将对 Dubbo 中的多协议进行概览，后续文章中将对具体协议实现进行介绍。</p>
+<h1 id="Protocol"><a href="#Protocol" class="headerlink" title="Protocol"></a>Protocol</h1><p><strong>Protocol</strong> 接口中主要定义了 <strong>export()</strong> 和 <strong>refer()</strong> 方法，分别用于服务暴露和服务引用。<strong>Protocol</strong> 接口相关的 UML 图如下：</p>
+<p><img src="/posts/450e3eda/dubbo-protocol-uml.jpg" alt></p>
+<p>需要说明的是，<code>Protocol</code> 的 <code>RegistryProtocol</code> 实现类并没有包含在内，虽然它不是协议的直接相关实现类，但它不可或缺。它是服务提供者、服务消费者以及注册中心之间的纽带。</p>
+<p><strong>Protocol</strong> 接口具体定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span>(<span class="string">"dubbo"</span>)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Protocol</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认端口</span></span><br><span class="line"><span class="comment">     * Get default port when user doesn't config the port.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> default port</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">getDefaultPort</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将一个 Invoker 暴露出去 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 1. 接收到请求后，协议应该记录请求源地址: RpcContext.getContext().setRemoteAddress();&lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 2. export()必须是幂等的，也就是说，在暴露相同的URL时，调用一次和调用两次没有区别 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 3. Invoker 是由框架传入的，协议不需要关心 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;     Service type</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker Service invoker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> exporter reference for exported service, useful for unexport the service later</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException thrown when error occurs during export the service, for example: port is occupied</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span></span><br><span class="line">    &lt;T&gt; <span class="function">Exporter&lt;T&gt; <span class="title">export</span><span class="params">(Invoker&lt;T&gt; invoker)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 引用一个 Invoker  &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 1. 协议的责任是根据参数返回一个 Invoker 对象，由 refer() 方法返回。&lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 2. Consumer端可以通过这个Invoker请求到Provider端的服务. &lt;br&gt;</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;  Service type</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type Service class</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url  URL address for the remote service</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> invoker service's local proxy</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException when there's any error while connecting to the service provider</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span></span><br><span class="line">    &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">refer</span><span class="params">(Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 释放当前 Protocol 对象底层占用的资源 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 1. 销毁export()方法以及refer()方法使用到的Invoker对象 &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 2. 释放所有占用资源, 如: 连接, 端口, 等等. &lt;br&gt;</span></span><br><span class="line"><span class="comment">     * 3. 协议可以继续导出和引用新的服务，即使它被销毁。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在 Protocol 接口的实现中，<strong>export()</strong> 方法并不是简单地将 Invoker 对象包装成 Exporter 对象返回，该过程还会涉及代理对象的创建、底层 Server 的启动等操作。<strong>refer()</strong> 方法除了根据传入的服务接口以及URL参数查询 Invoker 之外，还会涉及到 Client 的创建等操作。Protocol 接口的继承关系如下图所示：</p>
+<p><img src="/posts/450e3eda/dubbo-protocol-hierarchy.jpg" alt></p>
+<p>从上图的 Protocol 接口的继承关系图可以发现，具体协议实现有两个分支：以 <code>AbstractProtocol</code> 为一支的协议实现，以 <code>AbstractProxyProtocol</code> 为另一支的协议实现。从整体上看这两个分支体现了 Dubbo 的多协议，后面会详细说明。</p>
+<h1 id="AbstractProtocol"><a href="#AbstractProtocol" class="headerlink" title="AbstractProtocol"></a>AbstractProtocol</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">AbstractProtocol</span> <span class="keyword">implements</span> <span class="title">Protocol</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(getClass());</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 用于存储暴露出去的服务集合（包括 injvm 协议暴露的服务）</span></span><br><span class="line"><span class="comment">     * 1 key: 服务键，&#123;<span class="doctag">@link</span> #serviceKey(URL)&#125; 或者 &#123;<span class="doctag">@link</span> URL#getServiceKey()&#125;,不同协议会有所差别：</span></span><br><span class="line"><span class="comment">     * - InjvmProtocol使用 URL#getServicekey()</span></span><br><span class="line"><span class="comment">     * - DubboProtocol使用 #serviceKey(URL)</span></span><br><span class="line"><span class="comment">     * 2 value: 服务键对应的 Exporter 对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">final</span> Map&lt;String, Exporter&lt;?&gt;&gt; exporterMap = <span class="keyword">new</span> ConcurrentHashMap&lt;String, Exporter&lt;?&gt;&gt;();</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务引用集合</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">final</span> Set&lt;Invoker&lt;?&gt;&gt; invokers = <span class="keyword">new</span> ConcurrentHashSet&lt;Invoker&lt;?&gt;&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取服务健</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">static</span> String <span class="title">serviceKey</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 绑定端口</span></span><br><span class="line">        <span class="keyword">int</span> port = url.getParameter(Constants.BIND_PORT_KEY, url.getPort());</span><br><span class="line">        <span class="keyword">return</span> serviceKey(</span><br><span class="line">                port, <span class="comment">// 端口</span></span><br><span class="line">                url.getPath(),<span class="comment">// 服务接口全路径名</span></span><br><span class="line">                url.getParameter(Constants.VERSION_KEY), <span class="comment">// 服务版本</span></span><br><span class="line">                url.getParameter(Constants.GROUP_KEY)); <span class="comment">// 分组名</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取服务键</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> port           端口</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> serviceName    服务名</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> serviceVersion 服务版本</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> serviceGroup   分组名</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">static</span> String <span class="title">serviceKey</span><span class="params">(<span class="keyword">int</span> port, String serviceName, String serviceVersion, String serviceGroup)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> ProtocolUtils.serviceKey(port, serviceName, serviceVersion, serviceGroup);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 1 销毁全部的服务引用</span></span><br><span class="line"><span class="comment">     * 2 销毁发布出去的服务</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 销毁协议对应的服务消费者的所有 Invoker，</span></span><br><span class="line">        <span class="comment">// 如： 如果是Dubbo协议，那么这里的服务消费者的所有Invoker则为 DubboInvoker</span></span><br><span class="line">        <span class="keyword">for</span> (Invoker&lt;?&gt; invoker : invokers) &#123;</span><br><span class="line">            <span class="keyword">if</span> (invoker != <span class="keyword">null</span>) &#123;</span><br><span class="line">                invokers.remove(invoker);</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                        logger.info(<span class="string">"Destroy reference: "</span> + invoker.getUrl());</span><br><span class="line">                    &#125;</span><br><span class="line">                    invoker.destroy();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                    logger.warn(t.getMessage(), t);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 销毁协议对应的服务提供者的所有Exporter</span></span><br><span class="line">        <span class="comment">// 如：如果是Dubbo协议，那么这里的服务提供者的所有Exporter则为 DubboExporter</span></span><br><span class="line">        <span class="keyword">for</span> (String key : <span class="keyword">new</span> ArrayList&lt;String&gt;(exporterMap.keySet())) &#123;</span><br><span class="line">            Exporter&lt;?&gt; exporter = exporterMap.remove(key);</span><br><span class="line">            <span class="keyword">if</span> (exporter != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                        logger.info(<span class="string">"Unexport service: "</span> + exporter.getInvoker().getUrl());</span><br><span class="line">                    &#125;</span><br><span class="line">                    exporter.unexport();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                    logger.warn(t.getMessage(), t);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>AbstractProtocol</code> 实现了 <code>Protocol</code> ，提供了一些 <code>Protocol</code> 实现所需的公共方法及字段，概括如下：</p>
+<blockquote>
+<ul>
+<li>1 存储暴露服务的 Map</li>
+<li>2 存储服务引用的 Set</li>
+<li>3 获取服务键方法（Injvm 所需服务键非这里的方法，并且两者服务键构成有所差别）</li>
+<li>4 释放协议底层占用资源</li>
+</ul>
+</blockquote>
+<ul>
+<li><p>服务键格式如下：<br><img src="/posts/450e3eda/dubbo-protocol-service-key-dubbo.jpg" alt></p>
+</li>
+<li><p>Injvm 协议中的服务键格式如下：<br><img src="/posts/450e3eda/dubbo-protocol-service-key-injvm.jpg" alt></p>
+</li>
+</ul>
+<h1 id="AbstractProxyProtocol"><a href="#AbstractProxyProtocol" class="headerlink" title="AbstractProxyProtocol"></a>AbstractProxyProtocol</h1><p><code>AbstractProxyProtocol</code> 继承了 <code>AbstractProtocol</code> 抽象类，从命名就可以看出该类是一个代理协议类，其本身及其实现本质上并没有单独实现一套协议，而是使用 <code>HTTP</code> 协议进行通信。</p>
+<h2 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">AbstractProxyProtocol</span> <span class="keyword">extends</span> <span class="title">AbstractProtocol</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 需要抛出的异常类集合，详细: &#123;<span class="doctag">@link</span> #doRefer(Class, URL)&#125; 方法</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> List&lt;Class&lt;?&gt;&gt; rpcExceptions = <span class="keyword">new</span> CopyOnWriteArrayList&lt;Class&lt;?&gt;&gt;();</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 代理工厂 - IOC注入</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> ProxyFactory proxyFactory;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbstractProxyProtocol</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbstractProxyProtocol</span><span class="params">(Class&lt;?&gt;... exceptions)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (Class&lt;?&gt; exception : exceptions) &#123;</span><br><span class="line">            addRpcException(exception);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">addRpcException</span><span class="params">(Class&lt;?&gt; exception)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.rpcExceptions.add(exception);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> ProxyFactory <span class="title">getProxyFactory</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> proxyFactory;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setProxyFactory</span><span class="params">(ProxyFactory proxyFactory)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.proxyFactory = proxyFactory;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>AbstractProxyProtocol</code> 中的 <strong>proxyFactory</strong> 用于为传入的 <strong>Invoker</strong> 创建代理对象，并且支持将服务实例封装成 <strong>Invoker</strong> 。<strong>rpcExceptions</strong> 用于保存当前协议指定的异常，执行 RPC 调用出现异常时，如果异常是协议对应的异常，则抛出当前异常。</p>
+<h2 id="服务暴露"><a href="#服务暴露" class="headerlink" title="服务暴露"></a>服务暴露</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractProxyProtocol</span><br><span class="line">   <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务暴露</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker Service invoker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>)</span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">Exporter&lt;T&gt; <span class="title">export</span><span class="params">(<span class="keyword">final</span> Invoker&lt;T&gt; invoker)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 获得服务键</span></span><br><span class="line">        <span class="keyword">final</span> String uri = serviceKey(invoker.getUrl());</span><br><span class="line">        <span class="comment">// 获得服务健对应的 Exporter 对象，若已经暴露，直接返回</span></span><br><span class="line">        Exporter&lt;T&gt; exporter = (Exporter&lt;T&gt;) exporterMap.get(uri);</span><br><span class="line">        <span class="keyword">if</span> (exporter != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> exporter;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 通过 ProxyFactory 创建代理对象，将 Invoker 封装成业务接口的代理对象。</span></span><br><span class="line">        <span class="keyword">final</span> Runnable runnable = doExport(proxyFactory.getProxy(invoker, <span class="keyword">true</span>), invoker.getInterface(), invoker.getUrl());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建 Exporter 对象</span></span><br><span class="line">        exporter = <span class="keyword">new</span> AbstractExporter&lt;T&gt;(invoker) &#123;</span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * 基于 AbstractExporter 抽象类覆写 unexport方法，会调用 Runnable</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">unexport</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                <span class="comment">// 取消服务暴露</span></span><br><span class="line">                <span class="keyword">super</span>.unexport();</span><br><span class="line">                <span class="comment">// 从缓存中移除对应的 Exporter</span></span><br><span class="line">                exporterMap.remove(uri);</span><br><span class="line">                <span class="comment">// doExport()方法返回的 Runnable 是一个回调，其中会销毁底层的 Server。</span></span><br><span class="line">                <span class="keyword">if</span> (runnable != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        runnable.run();</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                        logger.warn(t.getMessage(), t);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="comment">// 添加到 Exporter 集合中</span></span><br><span class="line">        exporterMap.put(uri, exporter);</span><br><span class="line">        <span class="keyword">return</span> exporter;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p><code>AbstractProxyProtocol</code> 进行服务暴露时，会通过子类实现的 <code>doExport()</code> 方法启动底层服务，以接收 <code>HTTP</code> 请求，请求的处理交给代理对象，具体的 HTTP 服务器实现取决于具体子类实现。下面对服务暴露过程进行简单概述：</p>
+<ol>
+<li>根据服务健检查 <code>Exporter</code> 缓存，判断是否已经暴露过服务。</li>
+<li>缓存没有命中则调用 <code>ProxyFactory.getProxy()</code> 方法将 <code>Invoker</code> 封装成业务接口的代理对象，这里<strong>统一对泛化进行了支持</strong>，代理对象负责对请求的处理。</li>
+<li>通过 <code>AbstractProxyProtocol</code> 的子类实现的 <code>doExport()</code> 方法启动底层的服务，这个底层服务可以是 <code>Servlet</code>、<code>Tomcat</code>，<code>Jetty</code>。</li>
+<li>创建 <code>AbstractExporter</code> 匿名对象，进行服务暴露，且基于 <code>AbstractExporter</code> 抽象类覆写 <strong>unexport</strong>方法，调用 Runnable 以销毁底层的 Server。</li>
+</ol>
+<h2 id="服务引用"><a href="#服务引用" class="headerlink" title="服务引用"></a>服务引用</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractProxyProtocol</span><br><span class="line"> <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务引用</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type Service class</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url  URL address for the remote service</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">refer</span><span class="params">(<span class="keyword">final</span> Class&lt;T&gt; type, <span class="keyword">final</span> URL url)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 执行引用服务并通过代理工厂获取对应的 Invoker 对象</span></span><br><span class="line">        <span class="keyword">final</span> Invoker&lt;T&gt; target = proxyFactory.getInvoker(doRefer(type, url), type, url);</span><br><span class="line">        <span class="comment">// 创建 Invoker 匿名对象</span></span><br><span class="line">        Invoker&lt;T&gt; invoker = <span class="keyword">new</span> AbstractInvoker&lt;T&gt;(type, url) &#123;</span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * 覆写 doInvoke 方法</span></span><br><span class="line"><span class="comment">             * <span class="doctag">@param</span> invocation</span></span><br><span class="line"><span class="comment">             * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">             * <span class="doctag">@throws</span> Throwable</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">protected</span> Result <span class="title">doInvoke</span><span class="params">(Invocation invocation)</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="comment">// 执行RPC调用</span></span><br><span class="line">                    Result result = target.invoke(invocation);</span><br><span class="line">                    <span class="comment">// 若执行异常，并且是需要抛出的异常，则直接抛出</span></span><br><span class="line">                    Throwable e = result.getException();</span><br><span class="line">                    <span class="keyword">if</span> (e != <span class="keyword">null</span>) &#123;</span><br><span class="line">                        <span class="keyword">for</span> (Class&lt;?&gt; rpcException : rpcExceptions) &#123;</span><br><span class="line">                            <span class="keyword">if</span> (rpcException.isAssignableFrom(e.getClass())) &#123;</span><br><span class="line">                                <span class="keyword">throw</span> getRpcException(type, url, invocation, e);</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">return</span> result;</span><br><span class="line">                &#125; <span class="keyword">catch</span> (RpcException e) &#123;</span><br><span class="line">                    <span class="comment">// 若是未知异常，获得异常对应的错误码</span></span><br><span class="line">                    <span class="keyword">if</span> (e.getCode() == RpcException.UNKNOWN_EXCEPTION) &#123;</span><br><span class="line">                        e.setCode(getErrorCode(e.getCause()));</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">throw</span> e;</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">                    <span class="comment">// 抛出 RpcException 异常</span></span><br><span class="line">                    <span class="keyword">throw</span> getRpcException(type, url, invocation, e);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 添加到Invoker 集合</span></span><br><span class="line">        invokers.add(invoker);</span><br><span class="line">        <span class="keyword">return</span> invoker;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>AbstractProxyProtocol</code> 进行服务引用时，会通过子类实现的 <code>doRefer()</code> 方法返回远程服务对象，一般是个代理对象，通过该对象可以发起 <code>HTTP</code> 请求。接着通过 <code>ProxyFactory.getInvoker()</code> 方法将远程服务对象封装成一个 <code>Invoker</code> 对象，该对象具备调用远程服务的能力，客户端的代理对象就是使用该对象的能力发起远程调用的。下面对服务引用过程进行简单概述：</p>
+<ol>
+<li>通过子类实现的 <strong>doRefer()</strong> 方法获取远程服务，一般是个代理对象。</li>
+<li>调用 <strong>ProxyFactory.getInvoker()</strong> 方法对远程服务进行封装，包装成 <strong>Invoker</strong> 对象。</li>
+<li>创建一个匿名 <strong>AbstractInvoker</strong> 对象，内部调用逻辑使用的就是第 2 步封装的 <strong>Invoker</strong> 的执行逻辑。</li>
+<li>返回创建的匿名 <strong>AbstractInvoker</strong> 对象。</li>
+</ol>
+<h2 id="服务地址"><a href="#服务地址" class="headerlink" title="服务地址"></a>服务地址</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractProxyProtocol</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取URL中的 bind.ip 和 bind.port</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> String <span class="title">getAddr</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 先从URL中获取bind.ip的值作为ip的值</span></span><br><span class="line">        String bindIp = url.getParameter(Constants.BIND_IP_KEY, url.getHost());</span><br><span class="line">        <span class="comment">// 如果URL中设置了anyhost属性，那么ip的值取 0.0.0.0</span></span><br><span class="line">        <span class="keyword">if</span> (url.getParameter(Constants.ANYHOST_KEY, <span class="keyword">false</span>)) &#123;</span><br><span class="line">            bindIp = Constants.ANYHOST_VALUE;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 返回： ip:port</span></span><br><span class="line">        <span class="keyword">return</span> NetUtils.getIpByHost(bindIp) + <span class="string">":"</span> + url.getParameter(Constants.BIND_PORT_KEY, url.getPort());</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>获取服务地址的时候需要注意绑定地址和注册地址，绑定地址是启动服务的地址，注册地址是注册到注册中心，供消费者进行服务查找。</p>
+<h2 id="模版方法"><a href="#模版方法" class="headerlink" title="模版方法"></a>模版方法</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractProxyProtocol</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 执行暴露，并返回取消暴露的回调 Runnable</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> impl 服务 Proxy 对象</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type 服务接口类型</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url  URL</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;  服务接口</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> 取消服务暴露的回调 Runnable</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">abstract</span> &lt;T&gt; <span class="function">Runnable <span class="title">doExport</span><span class="params">(T impl, Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 执行引用，并返回调用远程服务的Service 对象</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type 服务接口</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url  URL</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;  服务接口</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> 调用远程服务的Service 对象</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">abstract</span> &lt;T&gt; <span class="function">T <span class="title">doRefer</span><span class="params">(Class&lt;T&gt; type, URL url)</span> <span class="keyword">throws</span> RpcException</span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>AbstractProxyProtocol</code> 中的模版方法有两个，分别定义了服务暴露和服务引用方法，前者用于启动<code>HTTP</code>服务，后者用于创建远程服务的代理对象。</p>
+<h1 id="领域模型"><a href="#领域模型" class="headerlink" title="领域模型"></a>领域模型</h1><h2 id="AbstractExporter"><a href="#AbstractExporter" class="headerlink" title="AbstractExporter"></a>AbstractExporter</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">AbstractExporter</span>&lt;<span class="title">T</span>&gt; <span class="keyword">implements</span> <span class="title">Exporter</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(getClass());</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Invoker对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Invoker&lt;T&gt; invoker;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 是否取消服务暴露</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> unexported = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbstractExporter</span><span class="params">(Invoker&lt;T&gt; invoker)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (invoker == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"service invoker == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (invoker.getInterface() == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"service type == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (invoker.getUrl() == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"service url == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">this</span>.invoker = invoker;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Invoker&lt;T&gt; <span class="title">getInvoker</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> invoker;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 取消服务的暴露</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">unexport</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 已经取消暴露就直接返回</span></span><br><span class="line">        <span class="keyword">if</span> (unexported) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 标记已经取消暴露</span></span><br><span class="line">        unexported = <span class="keyword">true</span>;</span><br><span class="line">        <span class="comment">// 销毁</span></span><br><span class="line">        getInvoker().destroy();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>AbstractExporter</code> 是对 <code>Invoker</code> 的简单封装，并且实现了取消服务暴露的方法。</p>
+<h2 id="AbstractInvoker"><a href="#AbstractInvoker" class="headerlink" title="AbstractInvoker"></a>AbstractInvoker</h2><p><code>AbstractInvoker</code> 主要提供了 <code>Invoker</code> 的通用属性和 <code>#invoke()</code> 方法的通用实现，具体的实现逻辑交给子类。</p>
+<h3 id="属性-1"><a href="#属性-1" class="headerlink" title="属性"></a>属性</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">AbstractInvoker</span>&lt;<span class="title">T</span>&gt; <span class="keyword">implements</span> <span class="title">Invoker</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(getClass());</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 该 Invoker 对象封装的业务接口</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Class&lt;T&gt; type;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 与当前 Invoker 关联的 URL 对象，其中包含了全部的配置信息</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> URL url;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 当前 Invoker 关联的一些附加信息，这些附加信息可以来自关联的 URL.</span></span><br><span class="line"><span class="comment">     * 共用的隐式传参，在&#123;<span class="doctag">@link</span> #invoke(Invocation)&#125;方法中使用</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Map&lt;String, String&gt; attachment;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 是否可用</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> available = <span class="keyword">true</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 是否销毁</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> AtomicBoolean destroyed = <span class="keyword">new</span> AtomicBoolean(<span class="keyword">false</span>);</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbstractInvoker</span><span class="params">(Class&lt;T&gt; type, URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>(type, url, (Map&lt;String, String&gt;) <span class="keyword">null</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbstractInvoker</span><span class="params">(Class&lt;T&gt; type, URL url, String[] keys)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>(type, url, convertAttachment(url, keys));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbstractInvoker</span><span class="params">(Class&lt;T&gt; type, URL url, Map&lt;String, String&gt; attachment)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (type == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"service type == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (url == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"service url == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">this</span>.type = type;</span><br><span class="line">        <span class="keyword">this</span>.url = url;</span><br><span class="line">        <span class="keyword">this</span>.attachment = attachment == <span class="keyword">null</span> ? <span class="keyword">null</span> : Collections.unmodifiableMap(attachment);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>AbstractInvoker</code> 通用属性包括：业务接口、URL、附加参数以及用于标记服务状态的两个字段。</p>
+<h3 id="标记销毁"><a href="#标记销毁" class="headerlink" title="标记销毁"></a>标记销毁</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractInvoker</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// destroyed 设置为 true</span></span><br><span class="line">        <span class="keyword">if</span> (!destroyed.compareAndSet(<span class="keyword">false</span>, <span class="keyword">true</span>)) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// available 设置为 false</span></span><br><span class="line">        setAvailable(<span class="keyword">false</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="服务调用"><a href="#服务调用" class="headerlink" title="服务调用"></a>服务调用</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractInvoker</span><br><span class="line"> <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invocation inv)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// if invoker is destroyed due to address refresh from registry, let's allow the current invoke to proceed</span></span><br><span class="line">        <span class="keyword">if</span> (destroyed.get()) &#123;</span><br><span class="line">            logger.warn(<span class="string">"Invoker for service "</span> + <span class="keyword">this</span> + <span class="string">" on consumer "</span> + NetUtils.getLocalHost() + <span class="string">" is destroyed, "</span></span><br><span class="line">                    + <span class="string">", dubbo version is "</span> + Version.getVersion() + <span class="string">", this invoker should not be used any longer"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 为调用信息设置Invoker属性</span></span><br><span class="line">        RpcInvocation invocation = (RpcInvocation) inv;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 注意： 执行到这里是真正的Invoker，之前的Invoker都是层层嵌套</span></span><br><span class="line">        invocation.setInvoker(<span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//将 attachment集合添加为Invocation的附加信息，如： path,interface等</span></span><br><span class="line">        <span class="keyword">if</span> (attachment != <span class="keyword">null</span> &amp;&amp; attachment.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            invocation.addAttachmentsIfAbsent(attachment);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 将 RpcContext 的附加信息添加到 Invocation 的附加信息中</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        Map&lt;String, String&gt; contextAttachments = RpcContext.getContext().getAttachments();</span><br><span class="line">        <span class="keyword">if</span> (contextAttachments != <span class="keyword">null</span> &amp;&amp; contextAttachments.size() != <span class="number">0</span>) &#123;</span><br><span class="line"></span><br><span class="line">            invocation.addAttachments(contextAttachments);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果方法是异步的就设置异步标志</span></span><br><span class="line">        <span class="keyword">if</span> (getUrl().getMethodParameter(invocation.getMethodName(), Constants.ASYNC_KEY, <span class="keyword">false</span>)) &#123;</span><br><span class="line">            <span class="comment">// 设置异步信息到 RpcInvocation#attachment 中</span></span><br><span class="line">            invocation.setAttachment(Constants.ASYNC_KEY, Boolean.TRUE.toString());</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  如果是异步调用，给invocation的attachment 添加一个 id 属性，并设置唯一ID值。</span></span><br><span class="line">        RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 执行调用，由不同协议对应具体的子类实现</span></span><br><span class="line">            <span class="keyword">return</span> doInvoke(invocation);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InvocationTargetException e) &#123; <span class="comment">// biz exception</span></span><br><span class="line">            Throwable te = e.getTargetException();</span><br><span class="line">            <span class="keyword">if</span> (te == <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(e);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> (te <span class="keyword">instanceof</span> RpcException) &#123;</span><br><span class="line">                    ((RpcException) te).setCode(RpcException.BIZ_EXCEPTION);</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(te);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (RpcException e) &#123;</span><br><span class="line">            <span class="keyword">if</span> (e.isBiz()) &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(e);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">throw</span> e;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 子类实现调用逻辑</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invocation</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> Throwable</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">abstract</span> Result <span class="title">doInvoke</span><span class="params">(Invocation invocation)</span> <span class="keyword">throws</span> Throwable</span>;</span><br></pre></td></tr></table></figure>
+
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章主要对 <code>Protocol</code> 的继承体系抽象部分进行了介绍，这些抽象定义可以看作是具体实现的通用逻辑和工具。在接下来的几篇文章中会对不同的实现进行详细分析。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/450e3eda/" title="Dubbo源码分析 - 多协议概览" target="_blank" rel="external">https://gentryhuang.com/posts/450e3eda/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/751c0982/" title="Dubbo源码分析 - 本地暴露"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/bb5fc918/" title="Dubbo源码分析 - 泛化实现"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
