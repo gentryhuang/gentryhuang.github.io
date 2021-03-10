@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo过滤器 - FutureFilter | gentryhuang的博客</title>
+  <meta name="description" content="概述FutureFilter 是 Dubbo 在消费端的过滤器，用于处理消费端的事件通知。在调用之前、调用之后、出现异常时，会触发 oninvoke、onreturn、onthrow 三个事件，可以配置当事件发生时，通知哪个类的哪个方法。 示例服务接口123interface IDemoService &amp;#123;  String sayHello(String name);&amp;#125;  服务提">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo过滤器 - FutureFilter">
+<meta property="og:url" content="https://gentryhuang.com/posts/a87a4615/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述FutureFilter 是 Dubbo 在消费端的过滤器，用于处理消费端的事件通知。在调用之前、调用之后、出现异常时，会触发 oninvoke、onreturn、onthrow 三个事件，可以配置当事件发生时，通知哪个类的哪个方法。 示例服务接口123interface IDemoService &amp;#123;  String sayHello(String name);&amp;#125;  服务提">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-08-10T12:20:38.000Z">
+<meta property="article:modified_time" content="2021-02-26T08:06:23.729Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta property="article:tag" content="Filter">
+<meta name="twitter:card" content="summary">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/a87a4615/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">53</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">49</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">12</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.14px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d38b32e5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d38b32e5/" class="title">Java基础 - JDK动态代理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-03T12:30:35.000Z" itemprop="datePublished">2021-01-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/9e3a7d05/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/9e3a7d05/" class="title">并发 - 线程池工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-09T16:00:00.000Z" itemprop="datePublished">2020-12-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d7cef21d/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d7cef21d/" class="title">并发 - 线程池</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-02T16:00:00.000Z" itemprop="datePublished">2020-12-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/37f29896/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/37f29896/" class="title">并发 - Java并发工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-11-05T16:00:00.000Z" itemprop="datePublished">2020-11-06</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/40e44c1f/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/40e44c1f/" class="title">AQS 原理分析 - Condition实现原理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-10-26T13:45:45.000Z" itemprop="datePublished">2020-10-26</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#示例"><span class="toc-number">2.</span> <span class="toc-text">示例</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#服务接口"><span class="toc-number">2.1.</span> <span class="toc-text">服务接口</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务提供端"><span class="toc-number">2.2.</span> <span class="toc-text">服务提供端</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#服务实现"><span class="toc-number">2.2.1.</span> <span class="toc-text">服务实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#服务配置"><span class="toc-number">2.2.2.</span> <span class="toc-text">服务配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务消费端"><span class="toc-number">2.3.</span> <span class="toc-text">服务消费端</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Callback-接口"><span class="toc-number">2.3.1.</span> <span class="toc-text">Callback 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Callback-实现"><span class="toc-number">2.3.2.</span> <span class="toc-text">Callback 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#消费配置"><span class="toc-number">2.3.3.</span> <span class="toc-text">消费配置</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#FutureFilter"><span class="toc-number">3.</span> <span class="toc-text">FutureFilter</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#触发-oninvoke"><span class="toc-number">3.1.</span> <span class="toc-text">触发 oninvoke</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#同步回调"><span class="toc-number">3.2.</span> <span class="toc-text">同步回调</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#异步回调"><span class="toc-number">3.3.</span> <span class="toc-text">异步回调</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#触发-onreturn"><span class="toc-number">3.4.</span> <span class="toc-text">触发 onreturn</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#触发-onthrow"><span class="toc-number">3.5.</span> <span class="toc-text">触发 onthrow</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/Dubbo过滤器-FutureFilter" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo过滤器 - FutureFilter
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/a87a4615/" class="article-date">
+	  <time datetime="2020-08-10T12:20:38.000Z" itemprop="datePublished">2020-08-10</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/Filter/" rel="tag">Filter</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/a87a4615/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 2.4k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 10(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p><code>FutureFilter</code> 是 Dubbo 在消费端的过滤器，用于处理消费端的事件通知。在调用之前、调用之后、出现异常时，会触发 <code>oninvoke</code>、<code>onreturn</code>、<code>onthrow</code> 三个事件，可以配置当事件发生时，通知哪个类的哪个方法。</p>
+<h1 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h1><h2 id="服务接口"><a href="#服务接口" class="headerlink" title="服务接口"></a>服务接口</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">interface</span> <span class="title">IDemoService</span> </span>&#123;</span><br><span class="line">  <span class="function">String <span class="title">sayHello</span><span class="params">(String name)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="服务提供端"><a href="#服务提供端" class="headerlink" title="服务提供端"></a>服务提供端</h2><h3 id="服务实现"><a href="#服务实现" class="headerlink" title="服务实现"></a>服务实现</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DemoServiceImpl</span> <span class="keyword">implements</span> <span class="title">DemoService</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">sayHello</span><span class="params">(String name)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">"nice to meet you - "</span> + name;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="服务配置"><a href="#服务配置" class="headerlink" title="服务配置"></a>服务配置</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">interface</span>=<span class="string">"com.code.dubbo.DemoService"</span> <span class="attr">ref</span>=<span class="string">"demoServiceImpl"</span>/&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="服务消费端"><a href="#服务消费端" class="headerlink" title="服务消费端"></a>服务消费端</h2><h3 id="Callback-接口"><a href="#Callback-接口" class="headerlink" title="Callback 接口"></a>Callback 接口</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Notify</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 前置方法，必须具有与原调用方法相同的入参列表</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> requestParam 请求参数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">oninvoke</span><span class="params">(String requestParam)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 正常回调方法，至少要有一个入参来接收返回结果</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> result       用于接收原调用方法的结果</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> requestParam 用于接收原调用方法的请求参数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">onreturn</span><span class="params">(String result, String requestParam)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 异常回调方法，至少要有一个入参且第一个入参类型为Throwable或其子类接收返回结果</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ex          用于接收调用出现的异常</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> requestPram 用于接收原调用方法的请求参数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">onthrow</span><span class="params">(Throwable ex, String requestPram)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Callback-实现"><a href="#Callback-实现" class="headerlink" title="Callback 实现"></a>Callback 实现</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">NotifyImpl</span> <span class="keyword">implements</span> <span class="title">Notify</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">oninvoke</span><span class="params">(String requestParam)</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"oninvoke is running !"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onreturn</span><span class="params">(String result, String requestParam)</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"onreturn is running !"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onthrow</span><span class="params">(Throwable ex, String requestParam)</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"onthrow is running !"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="消费配置"><a href="#消费配置" class="headerlink" title="消费配置"></a>消费配置</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- </span></span><br><span class="line"><span class="comment">  1 oninvoke 在方法调用前触发（如果调用出现异常则会直接触发onthrow方法）</span></span><br><span class="line"><span class="comment">  2 onreturn 在方法返回会触发（如果调用出现异常则会直接触发onthrow方法）</span></span><br><span class="line"><span class="comment">  3 onthrow 调用出现异常时候触发</span></span><br><span class="line"><span class="comment"> --&gt;</span></span><br><span class="line"> <span class="tag">&lt;<span class="name">dubbo:reference</span> <span class="attr">id</span>=<span class="string">"demoService"</span> <span class="attr">check</span>=<span class="string">"false"</span> <span class="attr">interface</span>=<span class="string">"com.code.dubbo.DemoService"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dubbo:method</span> <span class="attr">name</span>=<span class="string">"sayHello"</span></span></span><br><span class="line"><span class="tag">                  <span class="attr">oninvoke</span>=<span class="string">"notifyImpl.oninvoke"</span></span></span><br><span class="line"><span class="tag">                  <span class="attr">onreturn</span>=<span class="string">"notifyImpl.onreturn"</span></span></span><br><span class="line"><span class="tag">                  <span class="attr">onthrow</span>=<span class="string">"notifyImpl.onthrow"</span>/&gt;</span></span><br><span class="line"> <span class="tag">&lt;/<span class="name">dubbo:reference</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+<h1 id="FutureFilter"><a href="#FutureFilter" class="headerlink" title="FutureFilter"></a>FutureFilter</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Activate</span>(group = Constants.CONSUMER)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FutureFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(FutureFilter<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(<span class="keyword">final</span> Invoker&lt;?&gt; invoker, <span class="keyword">final</span> Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 1 是否异步调用</span></span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">boolean</span> isAsync = RpcUtils.isAsync(invoker.getUrl(), invocation);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2 触发前置方法，即 执行 Callback.oninvoke 方法</span></span><br><span class="line">        fireInvokeCallback(invoker, invocation);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3 调用服务提供者</span></span><br><span class="line">        Result result = invoker.invoke(invocation);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4 异步回调 onreturn/onthrow</span></span><br><span class="line">        <span class="keyword">if</span> (isAsync) &#123;</span><br><span class="line">            asyncCallback(invoker, invocation);</span><br><span class="line">            <span class="comment">// 5  同步回调用 onreturn/onth</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            syncCallback(invoker, invocation, result);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 返回结果，如果是异步调用或单向调用，结果是空的</span></span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>FutureFilter</code> 用于触发消费端的事件通知，执行逻辑如下：</strong></p>
+<ol>
+<li>在方法调用前触发 <strong>oninvoke</strong> 指定的方法。</li>
+<li>服务调用。</li>
+<li>根据同步调用还是异步调用，走不同的逻辑分支。同步和异步调用的主要处理区别：<ul>
+<li>同步调用，事件触发是直接调用的，没有额外逻辑。</li>
+<li>异步调用，需要从上下文中先获取到调用产生的 <strong>Future</strong> 对象，给该对象设置回调对象，回调对象在合适的时机触发事件通知。</li>
+</ul>
+</li>
+</ol>
+<h2 id="触发-oninvoke"><a href="#触发-oninvoke" class="headerlink" title="触发 oninvoke"></a>触发 oninvoke</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">+--- FutureFilter</span><br><span class="line"> <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">fireInvokeCallback</span><span class="params">(<span class="keyword">final</span> Invoker&lt;?&gt; invoker, <span class="keyword">final</span> Invocation invocation)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 获得前置方法和方法所在对象</span></span><br><span class="line">        <span class="keyword">final</span> Method onInvokeMethod = (Method) StaticContext.getSystemContext().get(StaticContext.getKey(invoker.getUrl(), invocation.getMethodName(), Constants.ON_INVOKE_METHOD_KEY));</span><br><span class="line">        <span class="keyword">final</span> Object onInvokeInst = StaticContext.getSystemContext().get(StaticContext.getKey(invoker.getUrl(), invocation.getMethodName(), Constants.ON_INVOKE_INSTANCE_KEY));</span><br><span class="line">        <span class="comment">// 没有设置直接返回</span></span><br><span class="line">        <span class="keyword">if</span> (onInvokeMethod == <span class="keyword">null</span> &amp;&amp; onInvokeInst == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (onInvokeMethod == <span class="keyword">null</span> || onInvokeInst == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"service:"</span> + invoker.getUrl().getServiceKey() + <span class="string">" has a onreturn callback config , but no such "</span> + (onInvokeMethod == <span class="keyword">null</span> ? <span class="string">"method"</span> : <span class="string">"instance"</span>) + <span class="string">" found. url:"</span> + invoker.getUrl());</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 设置访问权限</span></span><br><span class="line">        <span class="keyword">if</span> (!onInvokeMethod.isAccessible()) &#123;</span><br><span class="line">            onInvokeMethod.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获得原调用方法的入参</span></span><br><span class="line">        Object[] params = invocation.getArguments();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 反射调用前置方法，可以发现 oninvoke 的方法参数要与调用的方法参数一致</span></span><br><span class="line">            onInvokeMethod.invoke(onInvokeInst, params);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InvocationTargetException e) &#123;</span><br><span class="line">            <span class="comment">// 触发异常回调</span></span><br><span class="line">            fireThrowCallback(invoker, invocation, e.getTargetException());</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">            <span class="comment">// 触发异常回调</span></span><br><span class="line">            fireThrowCallback(invoker, invocation, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>oninvoke</code> 指定的方法就是前置方法，该方法会在调用服务之前执行，且该方法必须具有和原调用方法相同的入参列表。</p>
+<h2 id="同步回调"><a href="#同步回调" class="headerlink" title="同步回调"></a>同步回调</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">+--- FutureFilter</span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">syncCallback</span><span class="params">(<span class="keyword">final</span> Invoker&lt;?&gt; invoker, <span class="keyword">final</span> Invocation invocation, <span class="keyword">final</span> Result result)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 有异常，触发异常回调</span></span><br><span class="line">        <span class="keyword">if</span> (result.hasException()) &#123;</span><br><span class="line">            <span class="comment">// 注意：如果是consumer自己throw的异常，不会走到这里,而是直接执行 onthrow 方法</span></span><br><span class="line">            fireThrowCallback(invoker, invocation, result.getException());</span><br><span class="line">            <span class="comment">// 正常，触发正常回调</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 执行 onreturn 方法</span></span><br><span class="line">            fireReturnCallback(invoker, invocation, result.getValue());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>同步调用，事件触发是直接调用的。调用结果有异常则触发 <code>onthrow</code> 方法，没有异常则触发 <code>onreturn</code> 方法。</p>
+<h2 id="异步回调"><a href="#异步回调" class="headerlink" title="异步回调"></a>异步回调</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">+--- FutureFilter</span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">asyncCallback</span><span class="params">(<span class="keyword">final</span> Invoker&lt;?&gt; invoker, <span class="keyword">final</span> Invocation invocation)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获得 Future 对象 。由于异步不知道服务提供方什么时候会执行完毕，所以要添加回调等待服务提供者返回结果。</span></span><br><span class="line">        Future&lt;?&gt; f = RpcContext.getContext().getFuture();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 设置回调 ResponseCallback 到 DefaultFuture中</span></span><br><span class="line">        <span class="keyword">if</span> (f <span class="keyword">instanceof</span> FutureAdapter) &#123;</span><br><span class="line">            ResponseFuture future = ((FutureAdapter&lt;?&gt;) f).getFuture();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 当provider返回响应时，执行 DefaultFuture.doReceived 方法，该方法会调用ResponseCallback对象的done或者caught方法</span></span><br><span class="line">            future.setCallback(<span class="keyword">new</span> ResponseCallback() &#123;</span><br><span class="line">                <span class="comment">/**</span></span><br><span class="line"><span class="comment">                 * 正常回调</span></span><br><span class="line"><span class="comment">                 * <span class="doctag">@param</span> rpcResult</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">done</span><span class="params">(Object rpcResult)</span> </span>&#123;</span><br><span class="line">                    <span class="keyword">if</span> (rpcResult == <span class="keyword">null</span>) &#123;</span><br><span class="line">                        logger.error(<span class="keyword">new</span> IllegalStateException(<span class="string">"invalid result value : null, expected "</span> + Result<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>()))</span>;</span><br><span class="line">                        <span class="keyword">return</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="comment">///must be rpcResult</span></span><br><span class="line">                    <span class="keyword">if</span> (!(rpcResult <span class="keyword">instanceof</span> Result)) &#123;</span><br><span class="line">                        logger.error(<span class="keyword">new</span> IllegalStateException(<span class="string">"invalid result type :"</span> + rpcResult.getClass() + <span class="string">", expected "</span> + Result<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>()))</span>;</span><br><span class="line">                        <span class="keyword">return</span>;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 根据调用结果，调用 ResponseCallback 对象的 done 或者 caught 方法</span></span><br><span class="line">                    Result result = (Result) rpcResult;</span><br><span class="line">                    <span class="keyword">if</span> (result.hasException()) &#123;</span><br><span class="line">                        fireThrowCallback(invoker, invocation, result.getException());</span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        fireReturnCallback(invoker, invocation, result.getValue());</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">/**</span></span><br><span class="line"><span class="comment">                 * 触发异常回调方法</span></span><br><span class="line"><span class="comment">                 * <span class="doctag">@param</span> exception</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">caught</span><span class="params">(Throwable exception)</span> </span>&#123;</span><br><span class="line">                    fireThrowCallback(invoker, invocation, exception);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>异步事件通知逻辑需要从上下文中先获取到调用产生的 <code>Future</code> 对象，然后给该对象设置回调对象，回调对象在合适的时机触发事件通知。<a href="https://gentryhuang.com/posts/26722deb/#%E8%AE%BE%E7%BD%AE%E5%9B%9E%E8%B0%83">信息交换层</a> 中的结果通知和回调紧密关联，关于两者的交互可以参考 <code>信息交换层</code>。</p>
+<h2 id="触发-onreturn"><a href="#触发-onreturn" class="headerlink" title="触发 onreturn"></a>触发 onreturn</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line">+--- FutureFilter</span><br><span class="line"> <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">fireReturnCallback</span><span class="params">(<span class="keyword">final</span> Invoker&lt;?&gt; invoker, <span class="keyword">final</span> Invocation invocation, <span class="keyword">final</span> Object result)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获得 onreturn 方法和对象</span></span><br><span class="line">        <span class="keyword">final</span> Method onReturnMethod = (Method) StaticContext.getSystemContext().get(StaticContext.getKey(invoker.getUrl(), invocation.getMethodName(), Constants.ON_RETURN_METHOD_KEY));</span><br><span class="line">        <span class="keyword">final</span> Object onReturnInst = StaticContext.getSystemContext().get(StaticContext.getKey(invoker.getUrl(), invocation.getMethodName(), Constants.ON_RETURN_INSTANCE_KEY));</span><br><span class="line"></span><br><span class="line">        <span class="comment">//not set onreturn callback</span></span><br><span class="line">        <span class="keyword">if</span> (onReturnMethod == <span class="keyword">null</span> &amp;&amp; onReturnInst == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (onReturnMethod == <span class="keyword">null</span> || onReturnInst == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"service:"</span> + invoker.getUrl().getServiceKey() + <span class="string">" has a onreturn callback config , but no such "</span> + (onReturnMethod == <span class="keyword">null</span> ? <span class="string">"method"</span> : <span class="string">"instance"</span>) + <span class="string">" found. url:"</span> + invoker.getUrl());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (!onReturnMethod.isAccessible()) &#123;</span><br><span class="line">            onReturnMethod.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 原调用方法的入参</span></span><br><span class="line">        Object[] args = invocation.getArguments();</span><br><span class="line"></span><br><span class="line">        Object[] params;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// onreturn 方法的参数列表</span></span><br><span class="line">        Class&lt;?&gt;[] rParaTypes = onReturnMethod.getParameterTypes();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// onreturn 方法的参数多于1个</span></span><br><span class="line">        <span class="keyword">if</span> (rParaTypes.length &gt; <span class="number">1</span>) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// onreturn(xx, Object[]) 两个参数：第一个参数与真实方法返回结果类型相同【用来接收返回结果】，第二个接收所有的真实请求参数</span></span><br><span class="line">            <span class="keyword">if</span> (rParaTypes.length == <span class="number">2</span> &amp;&amp; rParaTypes[<span class="number">1</span>].isAssignableFrom(Object[]<span class="class">.<span class="keyword">class</span>)) </span>&#123;</span><br><span class="line">                params = <span class="keyword">new</span> Object[<span class="number">2</span>];</span><br><span class="line">                params[<span class="number">0</span>] = result;</span><br><span class="line">                params[<span class="number">1</span>] = args;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// onreturn(xx, Object... args) 多个参数：第一个参数与真实方法的返回结果类型相同，后边几个接收所有的真实请求参数</span></span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                params = <span class="keyword">new</span> Object[args.length + <span class="number">1</span>];</span><br><span class="line">                params[<span class="number">0</span>] = result;</span><br><span class="line">                System.arraycopy(args, <span class="number">0</span>, params, <span class="number">1</span>, args.length);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// onreturn(xx) 只有一个参数：接收返回执行结果</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            params = <span class="keyword">new</span> Object[]&#123;result&#125;;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 调用方法</span></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            onReturnMethod.invoke(onReturnInst, params);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (InvocationTargetException e) &#123;</span><br><span class="line">            fireThrowCallback(invoker, invocation, e.getTargetException());</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">            fireThrowCallback(invoker, invocation, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>onreturn</code> 指定的方法是返回正常结果通知方法，该方法会在调用结果没有异常的情况下执行，且该方法必须至少要有一个入参来接收返回结果。</p>
+<h2 id="触发-onthrow"><a href="#触发-onthrow" class="headerlink" title="触发 onthrow"></a>触发 onthrow</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line">+--- FutureFilter</span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">fireThrowCallback</span><span class="params">(<span class="keyword">final</span> Invoker&lt;?&gt; invoker, <span class="keyword">final</span> Invocation invocation, <span class="keyword">final</span> Throwable exception)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获得 onthrow 方法和对象</span></span><br><span class="line">        <span class="keyword">final</span> Method onthrowMethod = (Method) StaticContext.getSystemContext().get(StaticContext.getKey(invoker.getUrl(), invocation.getMethodName(), Constants.ON_THROW_METHOD_KEY));</span><br><span class="line">        <span class="keyword">final</span> Object onthrowInst = StaticContext.getSystemContext().get(StaticContext.getKey(invoker.getUrl(), invocation.getMethodName(), Constants.ON_THROW_INSTANCE_KEY));</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (onthrowMethod == <span class="keyword">null</span> &amp;&amp; onthrowInst == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (onthrowMethod == <span class="keyword">null</span> || onthrowInst == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"service:"</span> + invoker.getUrl().getServiceKey() + <span class="string">" has a onthrow callback config , but no such "</span> + (onthrowMethod == <span class="keyword">null</span> ? <span class="string">"method"</span> : <span class="string">"instance"</span>) + <span class="string">" found. url:"</span> + invoker.getUrl());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (!onthrowMethod.isAccessible()) &#123;</span><br><span class="line">            onthrowMethod.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取 onthrow 方法的参数列表</span></span><br><span class="line">        Class&lt;?&gt;[] rParaTypes = onthrowMethod.getParameterTypes();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// onthrow 方法的参数第一个值必须为异常类型，所以这里需要构造参数列表</span></span><br><span class="line">        <span class="keyword">if</span> (rParaTypes[<span class="number">0</span>].isAssignableFrom(exception.getClass())) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 原调用方法的参数列表</span></span><br><span class="line">                Object[] args = invocation.getArguments();</span><br><span class="line">                Object[] params;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// onthrow 方法的参数个数 &gt; 1</span></span><br><span class="line">                <span class="keyword">if</span> (rParaTypes.length &gt; <span class="number">1</span>) &#123;</span><br><span class="line">                    <span class="comment">// 原调用方法只有一个参数，而且这个参数是数组类型</span></span><br><span class="line">                    <span class="comment">// onthrow(xx, Object[]) 两个参数：第一个参数接收 exception，第二个接收所有的真实请求参数</span></span><br><span class="line">                    <span class="keyword">if</span> (rParaTypes.length == <span class="number">2</span> &amp;&amp; rParaTypes[<span class="number">1</span>].isAssignableFrom(Object[]<span class="class">.<span class="keyword">class</span>)) </span>&#123;</span><br><span class="line">                        params = <span class="keyword">new</span> Object[<span class="number">2</span>];</span><br><span class="line">                        params[<span class="number">0</span>] = exception;</span><br><span class="line">                        params[<span class="number">1</span>] = args;</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// 原调用方法的参数多于一个</span></span><br><span class="line">                        <span class="comment">// onthrow(xx, Object... args) 多个参数：第一个参数接收exception，后边几个接收所有的真实请求参数</span></span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        params = <span class="keyword">new</span> Object[args.length + <span class="number">1</span>];</span><br><span class="line">                        params[<span class="number">0</span>] = exception;</span><br><span class="line">                        System.arraycopy(args, <span class="number">0</span>, params, <span class="number">1</span>, args.length);</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 原调用方法没有参数</span></span><br><span class="line">                    <span class="comment">// onthrow(xx) 只有一个参数：接收exception</span></span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    params = <span class="keyword">new</span> Object[]&#123;exception&#125;;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 调用方法</span></span><br><span class="line">                onthrowMethod.invoke(onthrowInst, params);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">                logger.error(invocation.getMethodName() + <span class="string">".call back method invoke error . callback method :"</span> + onthrowMethod + <span class="string">", url:"</span> + invoker.getUrl(), e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            logger.error(invocation.getMethodName() + <span class="string">".call back method invoke error . callback method :"</span> + onthrowMethod + <span class="string">", url:"</span> + invoker.getUrl(), exception);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>onthrow</code> 指定的方法是返回异常结果通知方法，该方法会在调用结果有异常的情况下执行，且该方法必须至少有一个入参且第一个入参类型为Throwable或其子类接收返回的异常结果。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p><code>FutureFilter</code> 用于消费端事件通知，以过滤器的形式统一处理，支持在服务调用之前、调用后以及调用异常的逻辑处理，和切面带来的结果类似。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/a87a4615/" title="Dubbo过滤器 - FutureFilter" target="_blank" rel="external">https://gentryhuang.com/posts/a87a4615/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/ffce7d6d/" title="Dubbo源码分析 - 泛化调用"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/c5f1bd62/" title="Dubbo过滤器 - ExceptionFilter"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
