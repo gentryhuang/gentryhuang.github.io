@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>集群容错 - Router | gentryhuang的博客</title>
+  <meta name="description" content="概述Dubbo 中的路由 Router 的主要功能就是根据用户配置的路由规则以及请求携带信息，过滤出符合条件的 Invoker 集合，供后续负载均衡逻辑使用。相关类图图如下：  RouterFactory &amp; RouterRouterFactory123456789101112@SPIpublic interface RouterFactory &amp;#123;    &#x2F;**     *">
+<meta property="og:type" content="article">
+<meta property="og:title" content="集群容错 - Router">
+<meta property="og:url" content="https://gentryhuang.com/posts/26e2f6a4/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述Dubbo 中的路由 Router 的主要功能就是根据用户配置的路由规则以及请求携带信息，过滤出符合条件的 Invoker 集合，供后续负载均衡逻辑使用。相关类图图如下：  RouterFactory &amp; RouterRouterFactory123456789101112@SPIpublic interface RouterFactory &amp;#123;    &#x2F;**     *">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/26e2f6a4/dubbo-cluster-router-uml.jpg">
+<meta property="article:published_time" content="2020-10-02T23:00:00.000Z">
+<meta property="article:modified_time" content="2021-03-22T15:58:10.899Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/26e2f6a4/dubbo-cluster-router-uml.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/26e2f6a4/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">60</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">56</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">12</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-20T11:33:59.000Z" itemprop="datePublished">2021-01-20</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-15T11:00:50.000Z" itemprop="datePublished">2021-01-15</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d38b32e5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d38b32e5/" class="title">Java基础 - JDK动态代理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-03T12:30:35.000Z" itemprop="datePublished">2021-01-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/9e3a7d05/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/9e3a7d05/" class="title">并发 - 线程池工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-09T16:00:00.000Z" itemprop="datePublished">2020-12-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d7cef21d/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d7cef21d/" class="title">并发 - 线程池</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-02T16:00:00.000Z" itemprop="datePublished">2020-12-03</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#RouterFactory-amp-Router"><span class="toc-number">2.</span> <span class="toc-text">RouterFactory &amp; Router</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#RouterFactory"><span class="toc-number">2.1.</span> <span class="toc-text">RouterFactory</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Router"><span class="toc-number">2.2.</span> <span class="toc-text">Router</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#ConditionRouterFactory-amp-ConditionRouter"><span class="toc-number">3.</span> <span class="toc-text">ConditionRouterFactory &amp; ConditionRouter</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#ConditionRouterFactory"><span class="toc-number">3.1.</span> <span class="toc-text">ConditionRouterFactory</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ConditionRouter"><span class="toc-number">3.2.</span> <span class="toc-text">ConditionRouter</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#规则"><span class="toc-number">3.2.1.</span> <span class="toc-text">规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#表达式"><span class="toc-number">3.2.2.</span> <span class="toc-text">表达式</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#参数支持"><span class="toc-number">3.2.2.1.</span> <span class="toc-text">参数支持</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#条件支持"><span class="toc-number">3.2.2.2.</span> <span class="toc-text">条件支持</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#值支持"><span class="toc-number">3.2.2.3.</span> <span class="toc-text">值支持</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#属性"><span class="toc-number">3.3.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#构造方法"><span class="toc-number">3.4.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#匹配项"><span class="toc-number">3.5.</span> <span class="toc-text">匹配项</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#解析路由规则"><span class="toc-number">3.6.</span> <span class="toc-text">解析路由规则</span></a></li></ol></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/集群容错之Router" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      集群容错 - Router
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/26e2f6a4/" class="article-date">
+	  <time datetime="2020-10-02T23:00:00.000Z" itemprop="datePublished">2020-10-03</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/26e2f6a4/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.4k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 14(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Dubbo 中的路由 <code>Router</code> 的主要功能就是根据用户配置的路由规则以及请求携带信息，过滤出符合条件的 Invoker 集合，供后续负载均衡逻辑使用。相关类图图如下：</p>
+<p><img src="/posts/26e2f6a4/dubbo-cluster-router-uml.jpg" alt></p>
+<h1 id="RouterFactory-amp-Router"><a href="#RouterFactory-amp-Router" class="headerlink" title="RouterFactory &amp; Router"></a>RouterFactory &amp; Router</h1><h2 id="RouterFactory"><a href="#RouterFactory" class="headerlink" title="RouterFactory"></a>RouterFactory</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">RouterFactory</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * </span></span><br><span class="line"><span class="comment">     * 创建 Router.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> router</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span>(<span class="string">"protocol"</span>)</span><br><span class="line">    <span class="function">Router <span class="title">getRouter</span><span class="params">(URL url)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>RouterFactory</code> 是 Dubbo 的扩展点，没有默认扩展实现，用于创建 Router。其中 <code>getRouter</code> 方法动态生成的适配器会根据 protocol 参数选择扩展实现。</p>
+<h2 id="Router"><a href="#Router" class="headerlink" title="Router"></a>Router</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Router</span> <span class="keyword">extends</span> <span class="title">Comparable</span>&lt;<span class="title">Router</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取路由规则URL</span></span><br><span class="line"><span class="comment">     * </span></span><br><span class="line"><span class="comment">     * get the router url.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> url</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">URL <span class="title">getUrl</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 路由，筛选匹配的Invoker 集合</span></span><br><span class="line"><span class="comment">     * </span></span><br><span class="line"><span class="comment">     * route.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invokers   Invoker 集合</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url        refer url</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invocation</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> routed invokers 路由后的Invoker 集合</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    &lt;T&gt; List&lt;Invoker&lt;T&gt;&gt; route(List&lt;Invoker&lt;T&gt;&gt; invokers, URL url, Invocation invocation) <span class="keyword">throws</span> RpcException;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>Router</code> 决定了一次 Dubbo 调用的目标服务，<strong>该接口的每个实现类都代表一个路由规则</strong>。当消费方调用服务提供方时，Dubbo 根据路由规则从服务目录中筛选出符合条件的服务列表，之后通过负载均衡算法再次进行筛选。</p>
+<h1 id="ConditionRouterFactory-amp-ConditionRouter"><a href="#ConditionRouterFactory-amp-ConditionRouter" class="headerlink" title="ConditionRouterFactory &amp; ConditionRouter"></a>ConditionRouterFactory &amp; ConditionRouter</h1><h2 id="ConditionRouterFactory"><a href="#ConditionRouterFactory" class="headerlink" title="ConditionRouterFactory"></a>ConditionRouterFactory</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ConditionRouterFactory</span> <span class="keyword">implements</span> <span class="title">RouterFactory</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 拓展名</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String NAME = <span class="string">"condition"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Router <span class="title">getRouter</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 创建 ConditionRouter 对象</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> ConditionRouter(url);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>ConditionRouterFactory</code> 实现，其扩展名为 <strong>condition</strong> ，在其 <strong>getRouter</strong> 方法中会创建 <code>ConditionRouter</code> 对象。</p>
+<h2 id="ConditionRouter"><a href="#ConditionRouter" class="headerlink" title="ConditionRouter"></a>ConditionRouter</h2><p><code>ConditionRouter</code> 是基于条件表达式的路由实现类，再分析条件路由之前，我们先对条件表达式相关内容进行简单说明。下面就是一条基于条件表达式的路由规则：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host &#x3D; 10.20.153.10 &#x3D;&gt; host &#x3D; 10.20.153.11</span><br></pre></td></tr></table></figure>
+
+<h3 id="规则"><a href="#规则" class="headerlink" title="规则"></a>规则</h3><ul>
+<li><strong>=&gt;</strong> 之前的为消费者匹配条件，该条件中的所有参数会与消费者的 URL 进行对比，当消费者满足匹配条件时，会对该消费者执行后面的过滤规则。</li>
+<li><strong>=&gt;</strong> 之后为提供者地址列表的过滤条件，该条件中的所有参数会与提供者的 URL 进行对比，消费者最终只能到过滤后的地址列表</li>
+<li><strong>如果匹配条件为空，表示 =&gt; 之后的过滤条件对所有消费方生效</strong>，如： <code>=&gt; host!=10.20.153.11</code>，含义是所有的消费方都不能请求 <code>10.20.153.11</code> 这个提供者节点。</li>
+<li><strong>如果提供者过滤条件为空，表示禁止访问所提供者</strong>，如：<code>host = 10.20.153.10 =&gt;</code>，含义是 <code>10.20.153.10</code> 这个消费方不能访问任何提供者。</li>
+</ul>
+<h3 id="表达式"><a href="#表达式" class="headerlink" title="表达式"></a>表达式</h3><h4 id="参数支持"><a href="#参数支持" class="headerlink" title="参数支持"></a>参数支持</h4><ul>
+<li>服务调用信息，如：<code>method</code>、<code>argument</code> 等</li>
+<li>URL 本身的字段，如：<code>protocol</code>、<code>host</code>、<code>port</code> 等</li>
+<li>URL 上的所有参数，如：<code>application</code>、<code>organization</code> 等</li>
+</ul>
+<h4 id="条件支持"><a href="#条件支持" class="headerlink" title="条件支持"></a>条件支持</h4><ul>
+<li>等号 <code>=</code> 表示匹配，如：<code>host = 10.20.153.10</code></li>
+<li>不等号 <code>!=</code> 表示不匹配，如：<code>host != 10.20.153.10</code></li>
+</ul>
+<h4 id="值支持"><a href="#值支持" class="headerlink" title="值支持"></a>值支持</h4><ul>
+<li>以逗号 <code>,</code> 分隔多个值，如：<code>host != 10.20.153.10,10.20.153.11</code></li>
+<li>以星号 <code>*</code> 结尾，表示通配，如：<code>host != 10.20.*</code></li>
+<li>以美元符 <code>$</code> 开头，表示引用消费者参数，如：<code>host = $host</code></li>
+</ul>
+<h2 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ConditionRouter</span> <span class="keyword">implements</span> <span class="title">Router</span>, <span class="title">Comparable</span>&lt;<span class="title">Router</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(ConditionRouter<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 分组正则匹配，用于切分路由规则的正则表达式</span></span><br><span class="line"><span class="comment">     * 说明：</span></span><br><span class="line"><span class="comment">     * 第一个匹配组-分割符： 用于匹配 "&amp;", "!", "=" 和 "," 等符号，作为匹配规则的分隔符。允许匹配不到，使用了 * 通配符</span></span><br><span class="line"><span class="comment">     * 第二个匹配组-内容： 这里用于匹配 英文字母，数字等字符，【其实是匹配不是 &amp;!=,】作为匹配规则的匹配内容。 可能出现，这里匹配到了，但是第一匹配组没有匹配到。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Pattern ROUTE_PATTERN = Pattern.compile(<span class="string">"([&amp;!=,]*)\\s*([^&amp;!=,\\s]+)"</span>);</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 路由规则 URL，如： URL.valueOf("route://0.0.0.0/com.foo.BarService?category=routers&amp;dynamic=false&amp;rule=" + URL.encode("host = 10.20.153.10 =&gt; host = 10.20.153.11"))</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> URL url;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 路由规则优先级，用于排序，优先级越大越靠前。优先级越大越靠前执行。默认为0</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> priority;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 当路由结果为空时是否强制执行，如果不强制执行，路由匹配结果为空的路由规则将自动失效。如果强制执行，则直接返回空的路由结果。默认为false</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">boolean</span> force;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 消费者匹配的条件集合，通过解析条件表达式规则 '=&gt;' 之前的部分</span></span><br><span class="line"><span class="comment">     * key: 匹配项</span></span><br><span class="line"><span class="comment">     * value: 匹配项对应的匹配对 【包含匹配项对应的 匹配值集合/不匹配值集合 】</span></span><br><span class="line"><span class="comment">     * 效果：所有参数和消费者的 URL 进行对比，当消费者满足匹配条件时，对该消费者执行后面的过滤规则。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Map&lt;String, MatchPair&gt; whenCondition;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 提供者匹配的条件集合，通过解析条件表达式规则 '=&gt;' 之后的部分</span></span><br><span class="line"><span class="comment">     * key: 匹配项</span></span><br><span class="line"><span class="comment">     * value: 匹配项对应的匹配对 【包含匹配项对应的 匹配值集合/不匹配值集合 】</span></span><br><span class="line"><span class="comment">     * 效果：所有参数和提供者的 URL 进行对比，消费者最终只拿到过滤后的地址列表。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Map&lt;String, MatchPair&gt; thenCondition;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line">+--- ConditionRouter</span><br><span class="line"> <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将条件路由规则解析成预定格式</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url 条件规则 URL</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">ConditionRouter</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.url = url;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 获取 priority 和 force 配置</span></span><br><span class="line">        <span class="keyword">this</span>.priority = url.getParameter(Constants.PRIORITY_KEY, <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">this</span>.force = url.getParameter(Constants.FORCE_KEY, <span class="keyword">false</span>);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 2 获取路由规则URL中路由规则 rule 参数的值</span></span><br><span class="line">            String rule = url.getParameterAndDecoded(Constants.RULE_KEY);</span><br><span class="line">            <span class="keyword">if</span> (rule == <span class="keyword">null</span> || rule.trim().length() == <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"Illegal route rule!"</span>);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 3 剔除掉路由规则中的consumer.或者provider. ，如 consumer.host != 192.168.0.1 &amp; method = * =&gt; provider.host != 10.75.25.66</span></span><br><span class="line">            <span class="comment">// 剔除调前缀才是真正的规则</span></span><br><span class="line">            rule = rule.replace(<span class="string">"consumer."</span>, <span class="string">""</span>).replace(<span class="string">"provider."</span>, <span class="string">""</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 4 根据 "=&gt;" 拆分路由规则</span></span><br><span class="line">            <span class="keyword">int</span> i = rule.indexOf(<span class="string">"=&gt;"</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 5 分别获取消费者匹配规则的串 和 服务提供者过滤规则的串</span></span><br><span class="line">            String whenRule = i &lt; <span class="number">0</span> ? <span class="keyword">null</span> : rule.substring(<span class="number">0</span>, i).trim();</span><br><span class="line">            String thenRule = i &lt; <span class="number">0</span> ? rule.trim() : rule.substring(i + <span class="number">2</span>).trim();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 6 将路由规则串解析为key-value形式 ,key为路由规则匹配项，value为匹配对（包含了匹配项对应的 匹配值集合和不匹配值集合）</span></span><br><span class="line">            <span class="comment">// 6.1 解析消费方匹配规则</span></span><br><span class="line">            Map&lt;String, MatchPair&gt; when = StringUtils.isBlank(whenRule) || <span class="string">"true"</span>.equals(whenRule) ? <span class="keyword">new</span> HashMap&lt;String, MatchPair&gt;() : parseRule(whenRule);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 6.2 解析提供者过滤规则</span></span><br><span class="line">            Map&lt;String, MatchPair&gt; then = StringUtils.isBlank(thenRule) || <span class="string">"false"</span>.equals(thenRule) ? <span class="keyword">null</span> : parseRule(thenRule);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 6.3 赋值 消费方匹配条件集合、提供者过滤条件集合</span></span><br><span class="line">            <span class="keyword">this</span>.whenCondition = when;</span><br><span class="line">            <span class="keyword">this</span>.thenCondition = then;</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (ParseException e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(e.getMessage(), e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>在 <code>ConditionRouter</code> 的构造方法中，会根据 URL 中携带的相应参数初始化 <code>priority</code>、<code>force</code> 等属性。然后从条件路由 URL 的 rule 参数中获取路由规则并进行解析，最后得到匹配项集合，当需要进行匹配时，根据已经解析好的规则对消费方 URL 或提供者 URL 进行匹配即可。</p>
+<h2 id="匹配项"><a href="#匹配项" class="headerlink" title="匹配项"></a>匹配项</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line">+--- ConditionRouter</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">MatchPair</span> </span>&#123;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 匹配值集合，待匹配项存在于集合，则说明匹配成功</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">final</span> Set&lt;String&gt; matches = <span class="keyword">new</span> HashSet&lt;String&gt;();</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 不匹配值集合，待匹配项存在于集合，则说明匹配失败</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">final</span> Set&lt;String&gt; mismatches = <span class="keyword">new</span> HashSet&lt;String&gt;();</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 判断 value 是否匹配 matches + mismatches</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@param</span> value</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@param</span> param</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">isMatch</span><span class="params">(String value, URL param)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 1 只匹配 matches，没有匹配上则说明失败了，返回false</span></span><br><span class="line">            <span class="keyword">if</span> (!matches.isEmpty() &amp;&amp; mismatches.isEmpty()) &#123;</span><br><span class="line">                <span class="keyword">for</span> (String match : matches) &#123;</span><br><span class="line">                    <span class="comment">// 只要入参被 matches 集合中的任意一个元素匹配到，就匹配成功，返回true</span></span><br><span class="line">                    <span class="keyword">if</span> (UrlUtils.isMatchGlobPattern(match, value, param)) &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 如果所有匹配值都无法匹配到 value，则匹配失败,返回false</span></span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 2 只匹配 mismatches，没有匹配上，则说明成功了，返回true</span></span><br><span class="line">            <span class="keyword">if</span> (!mismatches.isEmpty() &amp;&amp; matches.isEmpty()) &#123;</span><br><span class="line">                <span class="keyword">for</span> (String mismatch : mismatches) &#123;</span><br><span class="line">                    <span class="comment">// 只要入参被 mismatches 集合中的任意一个元素匹配到，就匹配失败，返回false</span></span><br><span class="line">                    <span class="keyword">if</span> (UrlUtils.isMatchGlobPattern(mismatch, value, param)) &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// mismatches 集合中所有元素都无法匹配到入参，则匹配成功，返回 true</span></span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 3 匹配 mismatches + matches，优先去匹配 mismatches</span></span><br><span class="line">            <span class="keyword">if</span> (!matches.isEmpty() &amp;&amp; !mismatches.isEmpty()) &#123;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 只要 mismatches 集合中任意一个元素与入参匹配成功，则匹配失败，就立即返回 false</span></span><br><span class="line">                <span class="keyword">for</span> (String mismatch : mismatches) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (UrlUtils.isMatchGlobPattern(mismatch, value, param)) &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 只要 matches 集合中任意一个元素与入参匹配成功，则匹配成功，就立即返回 true</span></span><br><span class="line">                <span class="keyword">for</span> (String match : matches) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (UrlUtils.isMatchGlobPattern(match, value, param)) &#123;</span><br><span class="line">                        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 4 matches 和 mismatches 均为空，此时返回 false</span></span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>MatchPair</code> 表示一个匹配项，其中包含两个 <code>Set</code> 集合，匹配值集合和不匹配值集合。具体匹配逻辑如下：</p>
+<ol>
+<li>当 mismatches 集合为空时，会遍历 matches 集合中的匹配条件，匹配上任意一条即可返回 true。</li>
+<li>当 matches 集合为空时，会遍历 mismatches 集合中的匹配条件，匹配上任意一条即返回 false。</li>
+<li>当 matches 集合和 mismatches 集合同时不为空时，会优先匹配 mismatches 集合中的条件，匹配上任意一条规则即返回 false。若 mismatches 中的条件全部匹配失败，才会开始匹配 matches 集合，匹配上任意一条即返回 true。</li>
+<li>当以上 3 种情况都失败时，则返回 false</li>
+</ol>
+<p>其中具体的匹配逻辑都是在 <code>UrlUtils.isMatchGlobPattern</code> 方法中实现的，主要判断逻辑如下：</p>
+<ol>
+<li>如果匹配条件以 <code>$</code> 符号开头，表示从 URL 中获取相应的参数值进行匹配。</li>
+<li>对 <code>*</code> 通配符特别处理，会处理通配符在匹配条件开头、中间以及末尾三种情况。</li>
+<li>非通配符直接等值匹配</li>
+</ol>
+<h2 id="解析路由规则"><a href="#解析路由规则" class="headerlink" title="解析路由规则"></a>解析路由规则</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br></pre></td><td class="code"><pre><span class="line">+--- ConditionRouter</span><br><span class="line"> <span class="function"><span class="keyword">private</span> <span class="keyword">static</span> Map&lt;String, MatchPair&gt; <span class="title">parseRule</span><span class="params">(String rule)</span> <span class="keyword">throws</span> ParseException </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 定义条件映射集合，key：匹配项  value: 匹配对MatchPair 。</span></span><br><span class="line">        Map&lt;String, MatchPair&gt; condition = <span class="keyword">new</span> HashMap&lt;String, MatchPair&gt;();</span><br><span class="line">        <span class="keyword">if</span> (StringUtils.isBlank(rule)) &#123;</span><br><span class="line">            <span class="keyword">return</span> condition;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2 存储匹配对，即匹配和不匹配条件</span></span><br><span class="line">        MatchPair pair = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3 匹配对中的 匹配值集合/不匹配值集合的临时变量</span></span><br><span class="line">        Set&lt;String&gt; values = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4 按照 分组正则匹配 配整路由个条件表达式</span></span><br><span class="line">        <span class="keyword">final</span> Matcher matcher = ROUTE_PATTERN.matcher(rule);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 5 通过 ROUTE_PATTERN 正则匹配 rule ，遍历匹配结果，</span></span><br><span class="line"><span class="comment">         * 说明：</span></span><br><span class="line"><span class="comment">         * 1 find()方法是部分匹配，是查找输入串中与模式匹配的子串，如果该匹配的串有组还可以使用group()函数。当且仅当输入序列的子序列，匹配规则才会返回true，可能可以匹配多个子串</span></span><br><span class="line"><span class="comment">         * 2 matcher.group() 返回匹配到的子字符串</span></span><br><span class="line"><span class="comment">         * 例子：host = 2.2.2.2 &amp; host != 1.1.1.1 &amp; method = hello</span></span><br><span class="line"><span class="comment">         * 匹配结果：</span></span><br><span class="line"><span class="comment">         * 第一个子序列： host              分组一：""  分组二：host</span></span><br><span class="line"><span class="comment">         * 第二个子序列：= 2.2.2.2          分组一：=   分组二：2.2.2.2</span></span><br><span class="line"><span class="comment">         * 第三个子序列：&amp; host             分组一：&amp;   分组二：host</span></span><br><span class="line"><span class="comment">         * ...</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">while</span> (matcher.find()) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 5.1 获取匹配组一的匹配结果，即分隔符</span></span><br><span class="line">            String separator = matcher.group(<span class="number">1</span>);</span><br><span class="line">            <span class="comment">// 5.2 获取匹配组二的匹配结果，即匹配规则项</span></span><br><span class="line">            String content = matcher.group(<span class="number">2</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">            <span class="comment">// 6 匹配组一的匹配结果为空，则说明 content 为参数名称</span></span><br><span class="line">            <span class="keyword">if</span> (separator == <span class="keyword">null</span> || separator.length() == <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="comment">// 创建 MatchPair 对象</span></span><br><span class="line">                pair = <span class="keyword">new</span> MatchPair();</span><br><span class="line">                <span class="comment">// 存储 &lt;匹配项, MatchPair&gt; 键值对，比如 &lt;host, MatchPair&gt;</span></span><br><span class="line">                condition.put(content, pair);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 7 如果匹配组一的匹配结果是 '&amp;'，说明是多个表达式</span></span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (<span class="string">"&amp;"</span>.equals(separator)) &#123;</span><br><span class="line">                <span class="comment">// 先尝试从 condition 中获取content对应的MatchPair，不存在则新建并放入condition中</span></span><br><span class="line">                <span class="keyword">if</span> (condition.get(content) == <span class="keyword">null</span>) &#123;</span><br><span class="line">                    pair = <span class="keyword">new</span> MatchPair();</span><br><span class="line">                    condition.put(content, pair);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    pair = condition.get(content);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 8 如果分隔符为 '='，表示KV的分界线，值是匹配值</span></span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (<span class="string">"="</span>.equals(separator)) &#123;</span><br><span class="line">                <span class="keyword">if</span> (pair == <span class="keyword">null</span>) &#123;</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> ParseException(<span class="string">"Illegal route rule \""</span></span><br><span class="line">                            + rule + <span class="string">"\", The error char '"</span> + separator</span><br><span class="line">                            + <span class="string">"' at index "</span> + matcher.start() + <span class="string">" before \""</span></span><br><span class="line">                            + content + <span class="string">"\"."</span>, matcher.start());</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 匹配对中的匹配值集合，先取再放</span></span><br><span class="line">                values = pair.matches;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 将 content 存入到 MatchPair 的 matches 集合中</span></span><br><span class="line">                values.add(content);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 9 如果分隔符为 '!='，表示KV的分界线，值就是不匹配值</span></span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (<span class="string">"!="</span>.equals(separator)) &#123;</span><br><span class="line">                <span class="keyword">if</span> (pair == <span class="keyword">null</span>) &#123;</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> ParseException(<span class="string">"Illegal route rule \""</span></span><br><span class="line">                            + rule + <span class="string">"\", The error char '"</span> + separator</span><br><span class="line">                            + <span class="string">"' at index "</span> + matcher.start() + <span class="string">" before \""</span></span><br><span class="line">                            + content + <span class="string">"\"."</span>, matcher.start());</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 匹配对中的不匹配值集合，先取再放</span></span><br><span class="line">                values = pair.mismatches;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 将 content 存入到 MatchPair 的 mismatches 集合中</span></span><br><span class="line">                values.add(content);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">            <span class="comment">// 10 分隔符为 , 表示某个匹配项有多个值，它们以 ','分隔</span></span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (<span class="string">","</span>.equals(separator)) &#123;</span><br><span class="line">                <span class="keyword">if</span> (values == <span class="keyword">null</span> || values.isEmpty()) &#123;</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> ParseException(<span class="string">"Illegal route rule \""</span></span><br><span class="line">                            + rule + <span class="string">"\", The error char '"</span> + separator</span><br><span class="line">                            + <span class="string">"' at index "</span> + matcher.start() + <span class="string">" before \""</span></span><br><span class="line">                            + content + <span class="string">"\"."</span>, matcher.start());</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 将 content 存入到上一步获取到的 values 中，可能是 matches，也可能是 mismatches</span></span><br><span class="line">                values.add(content);</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 11 暂不支持的分割符</span></span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> ParseException(<span class="string">"Illegal route rule \""</span> + rule</span><br><span class="line">                        + <span class="string">"\", The error char '"</span> + separator + <span class="string">"' at index "</span></span><br><span class="line">                        + matcher.start() + <span class="string">" before \""</span> + content + <span class="string">"\"."</span>, matcher.start());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> condition;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>解析路由规则主要是根据正则表达式中的两个匹配组，第一个组用来匹配分割符，目前支持 <code>&amp;</code>、<code>!=</code>、<code>=</code> 以及 <code>,</code> 符号；第二个组用来匹配条件内容；其中两个匹配组中间允许有多个空白。</p>
+<p>在解析时，规则如下：</p>
+<blockquote>
+<ol>
+<li>第一个匹配组匹配为空或者匹配到 <code>&amp;</code> 符号时，说明第二个匹配项匹配到的是一个条件项，应该为其创建一个匹配项 <code>MatchPair</code> 对象，用于下一个匹配查找存放匹配值或不匹配值。</li>
+<li>第一个匹配组匹配为 <code>=</code>、<code>!=</code> 以及 <code>,</code> 时，说明本次查找到匹配的内容了，根据等值或不等值判断，将该内容记录到上一轮的 <code>MatchPair</code> 中的等值或不等值的集合中。</li>
+</ol>
+</blockquote>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/26e2f6a4/" title="集群容错 - Router" target="_blank" rel="external">https://gentryhuang.com/posts/26e2f6a4/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/751c0982/" title="Dubbo源码分析 - 本地暴露"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/e43ac0a6/" title="集群容错 - Directory"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
