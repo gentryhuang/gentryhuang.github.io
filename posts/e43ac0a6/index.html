@@ -25,13 +25,13 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述本篇文章对 Dubbo 集群模块中的 Directory 服务目录进行介绍。服务目录 RegistryDirectory 中存储了一些和服务提供者有关的信息（附加服务治理参数），通过服务目录消费者可获取到服务提供者的信息，比如 ip、端口、服务协议等。服务目录本质上是对注册中心上服务配置信息的整合结果，最终会结合配置信息以及消费端信息组装消费端的 Invoker 。服务目录可以看做是 Invo">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/e43ac0a6/dubbo-cluster-directory-uml.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-directory-uml.jpg">
 <meta property="article:published_time" content="2020-10-01T03:00:00.000Z">
-<meta property="article:modified_time" content="2021-03-22T08:07:27.401Z">
+<meta property="article:modified_time" content="2021-03-24T09:11:23.480Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/e43ac0a6/dubbo-cluster-directory-uml.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-directory-uml.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/e43ac0a6/index.html">
   
@@ -460,7 +460,7 @@
       
         <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>本篇文章对 Dubbo 集群模块中的 <code>Directory</code> 服务目录进行介绍。服务目录 <code>RegistryDirectory</code> 中存储了一些和服务提供者有关的信息（附加服务治理参数），通过服务目录消费者可获取到服务提供者的信息，比如 ip、端口、服务协议等。服务目录本质上是对注册中心上服务配置信息的整合结果，最终会结合配置信息以及消费端信息组装消费端的 <code>Invoker</code> 。服务目录可以看做是 Invoker 的集合，且这个集合中的元素会随注册中心的变化而进行动态调整。 </p>
 <h1 id="继承体系"><a href="#继承体系" class="headerlink" title="继承体系"></a>继承体系</h1><p>服务目录 <code>Directory</code> 继承关系如下图所示：</p>
-<p><img src="/posts/e43ac0a6/dubbo-cluster-directory-uml.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-directory-uml.jpg" alt></p>
 <p>服务目录内置实现分别为 <code>StaticDirectory</code> 和 <code>RegistryDirectory</code> ，前者用于将传入的 <code>Invoker</code> 集合封装成静态的 <code>Directory</code> 对象，后者是基于注册中心的动态 <code>Directory</code> 对象。下面我们从源码层面上分析服务目录的实现。</p>
 <h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><h2 id="Directory"><a href="#Directory" class="headerlink" title="Directory"></a>Directory</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Directory</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">Node</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获得服务接口类型，如：com.alibaba.dubbo.demo.DemoService</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> service type.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">Class&lt;T&gt; <span class="title">getInterface</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 根据传入的 Invocation 请求返回符合条件的 Invoker 集合</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> invokers</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    List&lt;Invoker&lt;T&gt;&gt; list(Invocation invocation) <span class="keyword">throws</span> RpcException;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 

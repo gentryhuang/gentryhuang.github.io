@@ -25,15 +25,15 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述为了保证服务的可靠性、吞吐量以及容错能力，通常会在多个服务器上运行相同的应用程序，然后以集群的形式对外提供服务。根据应用场景不同，每个集群中的服务实例个数也不尽相同。Dubbo 中的 Cluster 是外围概念，用于将多个 Invoker 伪装成一个 Invoker，这样调用方只需关注 Protocol 层 Invoker 即可，加上 Cluster 或者去掉 Cluster 对其它层都不会造">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/7aca9035/dubbo-cluster-outline.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/7aca9035/dubbo-cluster-frame.jpeg">
-<meta property="og:image" content="https://gentryhuang.com/posts/7aca9035/dubbo-cluster-code-outline.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-outline.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-frame.jpeg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-code-outline.jpg">
 <meta property="article:published_time" content="2020-09-30T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-03-19T03:24:25.511Z">
+<meta property="article:modified_time" content="2021-03-24T09:10:14.269Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/7aca9035/dubbo-cluster-outline.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-outline.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/7aca9035/index.html">
   
@@ -462,9 +462,9 @@
       
         <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>为了保证服务的可靠性、吞吐量以及容错能力，通常会在多个服务器上运行相同的应用程序，然后以集群的形式对外提供服务。根据应用场景不同，每个集群中的服务实例个数也不尽相同。Dubbo 中的 <code>Cluster</code> 是外围概念，<strong>用于将多个 Invoker 伪装成一个 Invoker</strong>，这样调用方只需关注 <strong>Protocol 层 Invoker</strong> 即可，加上 Cluster 或者去掉 Cluster 对其它层都不会造成影响，因为只有一个提供者时，是不需要 Cluster 的。</p>
 <p><strong>Cluster 层</strong> 在 Dubbo 架构中的位置如下图所示：</p>
-<p><img src="/posts/7aca9035/dubbo-cluster-outline.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-outline.jpg" alt></p>
 <h1 id="Cluster-架构"><a href="#Cluster-架构" class="headerlink" title="Cluster 架构"></a>Cluster 架构</h1><p>Dubbo 的集群模块主要功能是将多个服务提供者伪装成一个提供者供消费方调用，核心组件如下图所示：</p>
-<p><img src="/posts/7aca9035/dubbo-cluster-frame.jpeg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-frame.jpeg" alt></p>
 <p><strong>从上图可以看出，Dubbo 集群模块涉及以下 4 个核心组件：</strong></p>
 <ul>
 <li><strong><code>Directory</code> - 服务目录</strong><blockquote>
@@ -486,7 +486,7 @@
 </ul>
 <p><strong><code>Cluster</code> 层的核心流程：</strong> 当调用进入 Cluster 模块时，<code>Cluster</code> 会从 <code>Directory</code> 中获取当前 <code>Invoker</code> 集合；然后按照 <code>Router</code> 进行路由，从 <code>Directory</code> 中筛选出符合条件的 <code>Invoker</code> 子集；接着按照 <code>LoadBalance</code> 进行负载均衡，从 <code>Router</code> 子集中选出一个最终要调用的 <code>Invoker</code> 对象。</p>
 <h1 id="Cluster-模块"><a href="#Cluster-模块" class="headerlink" title="Cluster 模块"></a>Cluster 模块</h1><p>了解了 Dubbo 的 Cluster 架构，下面我们对 Dubbo 集群模块的实现简单说明下。</p>
-<p><img src="/posts/7aca9035/dubbo-cluster-code-outline.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-code-outline.jpg" alt></p>
 <p>Dubbo 的 Cluster 模块代码实现如上图所示。</p>
 <h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章相对比较轻松，简单介绍了 <code>Cluster</code> 层在 Dubbo 架构中所处的位置和其架构的组成。在后面几篇文章中，我们会分别介绍这些组件。</p>
 
