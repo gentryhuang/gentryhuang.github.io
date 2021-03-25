@@ -17,24 +17,21 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>Dubbo项目结构总览 | gentryhuang的博客</title>
-  <meta name="description" content="前言dubbo源码分析相关文章使用的dubbo版本为2.6.5，如使用其它版本会显示说明。参考文档以官方文档 为主【官网文档写的太好了】，参考书籍《深入理解Apache Dubbo与实战》。 框架设计由于dubbo官方文档写的非常好，这里会大量引用相关的图片及说明，点我 进入官方文档。 整体设计 图例说明：  图中左边淡蓝背景的为服务消费方使用的接口，右边淡绿色背景的为服务提供方使用的接口，位于中">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Dubbo项目结构总览">
-<meta property="og:url" content="https://gentryhuang.com/posts/e2577ca1/index.html">
+  <title>gentryhuang的博客</title>
+  <meta name="description" content="博客">
+<meta property="og:type" content="website">
+<meta property="og:title" content="gentryhuang‘s blog">
+<meta property="og:url" content="https://gentryhuang.com/page/11/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="前言dubbo源码分析相关文章使用的dubbo版本为2.6.5，如使用其它版本会显示说明。参考文档以官方文档 为主【官网文档写的太好了】，参考书籍《深入理解Apache Dubbo与实战》。 框架设计由于dubbo官方文档写的非常好，这里会大量引用相关的图片及说明，点我 进入官方文档。 整体设计 图例说明：  图中左边淡蓝背景的为服务消费方使用的接口，右边淡绿色背景的为服务提供方使用的接口，位于中">
+<meta property="og:description" content="博客">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-frame.jpg">
-<meta property="article:published_time" content="2020-03-07T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-10-17T05:29:32.637Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="Dubbo">
-<meta property="article:tag" content="RPC">
+<meta property="article:tag" content="求职">
+<meta property="article:tag" content="技术">
+<meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-frame.jpg">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/posts/e2577ca1/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/page/11/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -393,26 +390,18 @@
 </aside>
 
   
+  <main class="main" role="main">
   
-<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
-  <div class="slimContent">
-    <nav id="toc" class="article-toc">
-      <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#框架设计"><span class="toc-number">2.</span> <span class="toc-text">框架设计</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#整体设计"><span class="toc-number">2.1.</span> <span class="toc-text">整体设计</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#总体分层"><span class="toc-number">2.2.</span> <span class="toc-text">总体分层</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#dubbo核心组件"><span class="toc-number">2.3.</span> <span class="toc-text">dubbo核心组件</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#关系说明"><span class="toc-number">2.4.</span> <span class="toc-text">关系说明</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#领域模型"><span class="toc-number">2.5.</span> <span class="toc-text">领域模型</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#基本设计原则"><span class="toc-number">2.6.</span> <span class="toc-text">基本设计原则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#源码分析范围"><span class="toc-number">2.7.</span> <span class="toc-text">源码分析范围</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#小结"><span class="toc-number">2.8.</span> <span class="toc-text">小结</span></a></li></ol></li></ol>
-    </nav>
-  </div>
-</aside>
-
-<main class="main" role="main">
-  <div class="content">
-  <article id="post-rpc/dubbo项目结构总览" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+  
+    <div class="content">
+  <article id="post-design_pattern/uml" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
     <div class="article-header">
       
         
   
-    <h1 class="article-title" itemprop="name">
-      Dubbo项目结构总览
+    <h1 itemprop="name">
+      <a class="article-title" href="/posts/cadc5d6c/">uml基础</a>
     </h1>
   
 
@@ -420,20 +409,20 @@
       <div class="article-meta">
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
-	<a href="/posts/e2577ca1/" class="article-date">
-	  <time datetime="2020-03-07T16:00:00.000Z" itemprop="datePublished">2020-03-08</time>
+	<a href="/posts/cadc5d6c/" class="article-date">
+	  <time datetime="2019-08-27T16:00:00.000Z" itemprop="datePublished">2019-08-28</time>
 	</a>
 </span>
         
   <span class="article-category">
     <i class="icon icon-folder"></i>
-    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+    <a class="article-category-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a>
   </span>
 
         
   <span class="article-tag">
     <i class="icon icon-tags"></i>
-	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/RPC/" rel="tag">RPC</a>
+	<a class="article-tag-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a>
   </span>
 
 
@@ -446,105 +435,82 @@
 	</span>
 
 
-        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/e2577ca1/#comments" class="article-comment-link">评论</a></span>
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/cadc5d6c/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.9k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.3k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 6(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 4(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>dubbo源码分析相关文章使用的dubbo版本为2.6.5，如使用其它版本会显示说明。参考文档以<a href="http://dubbo.apache.org/zh-cn/index.html" target="_blank" rel="noopener">官方文档</a> 为主【官网文档写的太好了】，参考书籍《深入理解Apache Dubbo与实战》。</p>
-<h3 id="框架设计"><a href="#框架设计" class="headerlink" title="框架设计"></a>框架设计</h3><p>由于dubbo官方文档写的非常好，这里会大量引用相关的图片及说明，<a href="http://dubbo.apache.org/zh-cn/docs/dev/design.html" target="_blank" rel="noopener">点我</a> 进入官方文档。</p>
-<h4 id="整体设计"><a href="#整体设计" class="headerlink" title="整体设计"></a>整体设计</h4><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-frame.jpg" alt></p>
-<p><strong>图例说明：</strong></p>
-<ul>
-<li>图中左边淡蓝背景的为服务消费方使用的接口，右边淡绿色背景的为服务提供方使用的接口，位于中轴线上的为双方都用到的接口。</li>
-<li>图中从下至上分为十层，各层均为单向依赖，右边的黑色箭头代表层之间的依赖关系，每一层都可以剥离上层被复用，其中，Service 和 Config 层为 API，其它各层均为 SPI。</li>
-<li>图中绿色小块的为扩展接口，蓝色小块为实现类，图中只显示用于关联各层的实现类。</li>
-<li>图中蓝色虚线为初始化过程，即启动时组装链，红色实线为方法调用过程，即运行时调时链，紫色三角箭头为继承，可以把子类看作父类的同一个节点，线上的文字为调用的方法。</li>
-</ul>
-<h4 id="总体分层"><a href="#总体分层" class="headerlink" title="总体分层"></a>总体分层</h4><p>从整体设计设计图可知悉，dubbo的总体分为业务层(Business)、RPC层、Remote三层，每一层细分共可分成十层。Service和Config两层可以认为是API层，主要提供给API使用者，使用者无须关心底层的实现，只需要配置和完成业务代码即可。其它八层合在一起可以认为是SPI层，用于扩展，即开放者可以基于SPI层自定义一些组件来完成具体业务，也可以基于dubbo框架做定制性的二次开发。</p>
-<h4 id="dubbo核心组件"><a href="#dubbo核心组件" class="headerlink" title="dubbo核心组件"></a>dubbo核心组件</h4><p>dubbo中每层都代表了不同的逻辑实现，它们是一个个组件，这些组件构成了整个dubbo体系。对于使用方来说更多接触到的是配置，按照dubbo配置规则选择适合当前业务的配置项即可轻松实现rpc调用。正是由于dubbo的各个组件职责分明的设计，才使得dubbo框架能够做到高扩展性。dubbo核心组件如下表：</p>
-<table>
-<thead>
-<tr>
-<th align="left">分层名</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="left">service</td>
-<td>业务层：包括业务代码的接口与实现，即开发者实现的业务代码。</td>
-</tr>
-<tr>
-<td align="left">config</td>
-<td>配置层：主要围绕ServiceConfig（服务提供方配置）和ReferenceConfig（服务消费方）展开，初始化配置信息。可以理解为该层管理了整个dubbo的配置</td>
-</tr>
-<tr>
-<td align="left">proxy</td>
-<td>服务代理层：在dubbo中，无论提供者还是消费者，框架都会生成一个代理类，整个过程对上层是透明的。当调用一个远程接口时，看起来就像是调用了一个本地接口一样，代理层会自动做远程调用并返回结果，即让业务层对远程调用完全无感知</td>
-</tr>
-<tr>
-<td align="left">registry</td>
-<td>注册中心层：负责dubbo框架的服务注册与发现。当有新的服务加入或旧服务下线时，注册中心都会感知并通知给所有订阅方</td>
-</tr>
-<tr>
-<td align="left">cluster</td>
-<td>集群容错层：提供多种容错策略、封装多个提供者的路由及负载均衡，并桥接注册中心，以 <code>Invoker</code> 为中心，扩展接口为 <code>Cluster</code>, <code>Directory</code>, <code>Router</code>, <code>LoadBalance</code>以及<code>Mock</code></td>
-</tr>
-<tr>
-<td align="left">monitor</td>
-<td>监控层：RPC 调用次数和调用时间监控等</td>
-</tr>
-<tr>
-<td align="left">protocol</td>
-<td>远程调用层：封装RPC调用具体过程，以 <code>Invocation</code>, <code>Result</code> 为中心，是 Invoker 暴露和引用的主功能入口，它负责 Invoker 的生命周期管理。</td>
-</tr>
-<tr>
-<td align="left">exchange</td>
-<td>信息交换层：建立Request-Response模型，封装请求响应模式，以 <code>Request</code>, <code>Response</code> 为中心</td>
-</tr>
-<tr>
-<td align="left">transport</td>
-<td>网络传输层：把网络传输抽象为统一接口，以 <code>Message</code> 为中心，如Mina和Netty虽然接口不一样，但是Dubbo在它们上面封装了统一的接口。用户可以根据其扩展接口添加更多的网络传输方式。</td>
-</tr>
-<tr>
-<td align="left">serialize</td>
-<td>序列化层：如果数据要通过网络进行传输，则需要先做序列化，转成二进制流。序列化层负责管理整个框架网络传输时的序列化和反序列化工作</td>
-</tr>
-</tbody></table>
-<h4 id="关系说明"><a href="#关系说明" class="headerlink" title="关系说明"></a>关系说明</h4><ul>
-<li><p>在 RPC 中，Protocol 是核心层，也就是<strong>只要有 Protocol + Invoker + Exporter 就可以完成非透明的 RPC 调用</strong>，然后在 Invoker 的主过程上 Filter 拦截点。</p>
+        <h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><p>统一建模语言（缩写UML），非专利的第三代建模和规约语言</p>
+<h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><ol>
+<li>UML是一种开放的方法</li>
+<li>UML用于说明、可视化、构建和编写一个正在开发的面向对象的、软件密集系统的制品的开放方法</li>
+<li>UML展现了一系列最佳工程的实践，这些最佳实践在对大规模，复杂系统进行建模方面，特别是在软件架构层面已经被验证有效</li>
+</ol>
+<h2 id="UML分类"><a href="#UML分类" class="headerlink" title="UML分类"></a>UML分类</h2><ol>
+<li><p>结构式图形</p>
+<p>强调的是系统式的建模，具体包含静态图（<em>类图</em>、对象图、包图）、实现图（组件图、部署图）、剖面图以及复合结构图</p>
 </li>
-<li><p>图中的 Consumer 和 Provider 是抽象概念，只是想让看图者更直观的了解哪些类分属于客户端与服务器端，不用 Client 和 Server 的原因是 Dubbo 在很多场景下都使用 Provider, Consumer, Registry, Monitor 划分逻辑拓普节点，保持统一概念。</p>
+<li><p>行为式图形</p>
+<p> 强调系统模型中触发的事件，具体包含活动图、状态图以及用例图</p>
 </li>
-<li><p>而 Cluster 是外围概念，所以 Cluster 的目的是将多个 Invoker 伪装成一个 Invoker，这样其它人只要关注 Protocol 层 Invoker 即可，加上 Cluster 或者去掉 Cluster 对其它层都不会造成影响，因为只有一个提供者时，是不需要 Cluster 的。</p>
+<li><p>交互式图形</p>
+<p>属于行为式图形子集合，强调系统模型中资源流程。具体包含通信图、交互概念图、<em>时序图</em>  以及时间图</p>
+<p>​</p>
 </li>
-<li><p>Proxy 层封装了所有接口的透明化代理，而在其它层都以 Invoker 为中心，只有<strong>到了暴露给用户使用时，才用 Proxy 将 Invoker 转成接口，或将接口实现转成 Invoker，也就是去掉 Proxy 层 RPC 是可以 Run 的，只是不那么透明，不那么看起来像调本地服务一样调远程服务</strong>。</p>
+</ol>
+<h2 id="UML类图"><a href="#UML类图" class="headerlink" title="UML类图"></a>UML类图</h2><p>用于表示类、接口、实例等之间相互的静态关系。虽然名字叫类图，但类图中并不只有类，还可能包括权限、属性、方法等</p>
+<h2 id="UML记忆方式"><a href="#UML记忆方式" class="headerlink" title="UML记忆方式"></a>UML记忆方式</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">1. uml箭头：从子类指向父类，只有知道对方信息时才能指向对方方向</span><br><span class="line">2. 空心三角箭头：继承或实现，实线-继承：积极的，强关联，关联，通常一个类中有一个类的对象做属性；虚线-实现：消极的，弱关联，依赖</span><br><span class="line">3. 空心菱形：聚合，（注：可以看作一个盘子，可以放很多相同的东西（箭头方向所指的类），聚在一起。是has a的关系）弱关联</span><br><span class="line">4. 实心菱形：组合，（注：代表器皿里有实体结构存在，组合起来成为一个。是contains-a的关系）强关联</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><p>uml箭头：从子类指向父类，定义子类时需要通过<em>extends</em>关键字指定父类，只有知道对方信息时才能指向对方方向</p>
 </li>
-<li><p>而<strong>Remoting 实现是 Dubbo 协议的实现</strong>，如果你选择 RMI 协议，整个 Remoting 都不会用上，Remoting 内部再划为 Transport 传输层和 Exchange 信息交换层，Transport 层只负责单向消息传输，是对 Mina, Netty, Grizzly 的抽象，它也可以扩展 UDP 传输，而 Exchange 层是在传输层之上封装了 Request-Response 语义。</p>
+<li><p>实线-继承 | 虚线-实现</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sx.png" alt> ​</p>
 </li>
-<li><p>Registry 和 Monitor 实际上不算一层，而是一个独立的节点，只是为了全局概览，用层的方式画在一起。</p>
+<li><p>空心菱形-聚合</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/jh.png" alt></p>
 </li>
-</ul>
-<h4 id="领域模型"><a href="#领域模型" class="headerlink" title="领域模型"></a>领域模型</h4><blockquote>
-<p>Protocol 是服务域，它是 Invoker 暴露和引用的主功能入口，它负责 Invoker 的生命周期管理。</p>
-<p>Invoker 是实体域，它是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。</p>
-<p>Invocation 是会话域，它持有调用过程中的变量，比如方法名，参数等。</p>
-</blockquote>
-<p><font color="#c7254e">特别说明:</font> protocol是对数据格式的一种约定，它可以把我们对接口的配置，根据具体的协议转换成不同的Invoker对象。</p>
-<h4 id="基本设计原则"><a href="#基本设计原则" class="headerlink" title="基本设计原则"></a>基本设计原则</h4><ul>
-<li>Dubbo 自身的功能也是通过扩展点实现的，也就是 Dubbo 的所有功能点都可被用户自定义扩展所替换</li>
-<li>采用 URL 作为配置信息的统一格式，所有扩展点都通过传递 URL 携带配置信息</li>
-</ul>
-<h4 id="源码分析范围"><a href="#源码分析范围" class="headerlink" title="源码分析范围"></a>源码分析范围</h4><p>除了架构图中的Monitor模块不会详细分析，其它都会详细分析。</p>
-<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>本文主要简单介绍了dubbo的总体架构图和核心组件，这样在阅读源码之前有整体的概念。更详细的介绍可以参考官网文档。</p>
+<li><p>实心菱形-组合</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/zh.png" alt></p>
+<ol start="5">
+<li>组合关系中常见的数字表达</li>
+</ol>
+</li>
+</ol>
+<figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">◆常见数字表达及含义，假设有A类和B类，数字标记在A类侧</span><br><span class="line">◆0..1：0或1个实例    在系统某一时刻，b的实例可以与0个或1个A实例相关</span><br><span class="line">◆0..*：0或多个实例　  在系统某一时刻，b的实例可以与0个或多个A实例相关</span><br><span class="line">◆1..1：1个实例.       b的实例可以和1个A实例相关</span><br><span class="line">◆1只能有一个实例.     b的实例可以和1个A实例相关</span><br><span class="line">◆1..*：至少有一个实例.　　b实例可以与一个或多个A实例相关</span><br></pre></td></tr></table></figure>
+
+<h2 id="UML时序图"><a href="#UML时序图" class="headerlink" title="UML时序图"></a>UML时序图</h2><ol>
+<li><p>是显示对象之间交互的图，这些对象是按照时间顺序排列的</p>
+</li>
+<li><p>时序图中 包含的建模元素</p>
+<p>对象（Actor）、生命线（lifeline）、控制焦点（Focus of control）、消息（Message）等</p>
+</li>
+<li><p>时序图示例</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/sxt.png" alt></p>
+<figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">竖线代表生命线</span><br><span class="line"></span><br><span class="line">对象：c：client ，s：server，d：device 代表实例</span><br><span class="line"></span><br><span class="line">消息：箭头代表的元素(open,work等)</span><br><span class="line"></span><br><span class="line">竖矩形代表实例处于某种活动中，</span><br><span class="line"></span><br><span class="line">实线实心箭头：代表方法调用，同步调用</span><br><span class="line"></span><br><span class="line">实线非实心箭头：代表异步调用</span><br><span class="line"></span><br><span class="line">虚线：代表返回</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h2 id="UML类图讲解"><a href="#UML类图讲解" class="headerlink" title="UML类图讲解"></a>UML类图讲解</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">+　　　　公共方法</span><br><span class="line"></span><br><span class="line">-　　　　private权限</span><br><span class="line"></span><br><span class="line">#　　　　protected权限 包内和包外继承的子类都能引用</span><br><span class="line"></span><br><span class="line">~　　　　default权限（包权限）只有包内能引用</span><br><span class="line"></span><br><span class="line">下划线　  静态 Static</span><br><span class="line"></span><br><span class="line">斜体　　  抽象类（或抽象方法）（包含抽象方法的必是抽象类）（类和至少一个方法都是斜体）</span><br><span class="line"></span><br><span class="line">方法　　  可以带参，可以不带参</span><br><span class="line"></span><br><span class="line">　　　　  返回值写到冒号后边，void不用加</span><br></pre></td></tr></table></figure>
+
+<h2 id="UML整体讲解"><a href="#UML整体讲解" class="headerlink" title="UML整体讲解"></a>UML整体讲解</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">设计模式中的对象关系:</span><br><span class="line"></span><br><span class="line"> 依赖关系　　虚线箭头，箭头方向指向被依赖的部分</span><br><span class="line"> 组合关系　　实心菱形</span><br><span class="line"> 聚合关系　　空心菱形（想象成盘子，盛东西，盘子的多，另一方少）</span><br><span class="line"> 关联关系　　实线箭头，箭头指向被关联的部分  类与类的连接，（它使一个类知道另一个类的属性和方法，关联关  系一般用成员变量实现）</span><br><span class="line"> 继承　　　　空心三角形实线</span><br><span class="line"> 实现　　　　空心三角形虚线</span><br><span class="line">注意：</span><br><span class="line"> 实现接口有两种方式，一种是棒棒糖的形式，另一种是虚线空心三角形的方式</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/design-pattern/uml/umlqxj.png" alt></p>
+<h2 id="UML中部分对比"><a href="#UML中部分对比" class="headerlink" title="UML中部分对比"></a>UML中部分对比</h2><figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">1.1　　关联和依赖的对比</span><br><span class="line">关联是a类中存在b类对象，企鹅类中有气候类的属性</span><br><span class="line">依赖是a类成员方法中有b类的属性，动物新陈代谢方法中有水和空气的属性，只有调这个方法的时候，才可能临时用一下</span><br><span class="line">1.2　　组合和聚合的对比</span><br><span class="line">组合有相同的生命周期，鸟有翅膀，鸟死了，翅膀不复存在</span><br><span class="line">大雁群有大雁，一只大雁挂了，大雁群不会消失</span><br><span class="line">1.3　　继承和实现的对</span><br><span class="line">实线：继承</span><br><span class="line">虚线：实现</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
 
       
     </div>
@@ -554,7 +520,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.com/posts/e2577ca1/" title="Dubbo项目结构总览" target="_blank" rel="external">https://gentryhuang.com/posts/e2577ca1/</a>
+      <a href="https://gentryhuang.com/posts/cadc5d6c/" title="uml基础" target="_blank" rel="external">https://gentryhuang.com/posts/cadc5d6c/</a>
     </li>
     
     <li class="post-copyright-license">
@@ -590,47 +556,26 @@
     </div>
   </article>
   
-    
-
-  
 </div>
 
-  <nav class="bar bar-footer clearfix" data-stick-bottom>
-  <div class="bar-inner">
-  
-  <ul class="pager pull-left">
-    
-    <li class="prev">
-      <a href="/posts/ba7cbd3a/" title="Dubbo源码环境"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
-    </li>
-    
-    
-    <li class="next">
-      <a href="/posts/7202a9c0/" title="Dubbo示例 - 注解配置"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
-    </li>
-    
-    
-    <li class="toggle-toc">
-      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
-        <span>[&nbsp;</span><span>文章目录</span>
-        <i class="text-collapsed icon icon-anchor"></i>
-        <i class="text-in icon icon-close"></i>
-        <span>]</span>
-      </a>
-    </li>
-    
-  </ul>
-  
-  
-  
-  <div class="bar-right">
-    
-  </div>
-  </div>
-</nav>
   
 
-
+  
+    
+    <nav class="bar bar-footer clearfix" data-stick-bottom>
+        <div class="bar-inner">
+        <div class="pager pull-left">
+            
+            <a class="extend prev" rel="prev" href="/page/10/"><i class="icon icon-angle-left"></i> 上一页</a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/9/">9</a><a class="page-number" href="/page/10/">10</a><span class="page-number current">11</span>
+            
+            <a class="next disabled" href="javascript:;">下一页 <i class="icon icon-angle-right"></i></a>
+            
+        </div>
+        <div class="total-article bar-right">Page 11 of 11</div>
+        </div>
+    </nav>
+    
+ 
 </main>
 
   

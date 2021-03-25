@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>集群容错 - 动态配置 | gentryhuang的博客</title>
+  <meta name="description" content="概述在介绍动态服务目录 RegistryDirectory 相关内容时，提到了 RegistryDirectory 会监听注册中心的 providers、routers 和 configurators 三个目录，当配置变更时会做出相应的处理。此外在服务暴露过程中，服务提供者会向注册中心注册监听器，监听 configurators 目录下数据的变更。本篇文章对 Dubbo 动态配置进行分析，并对 C">
+<meta property="og:type" content="article">
+<meta property="og:title" content="集群容错 - 动态配置">
+<meta property="og:url" content="https://gentryhuang.com/posts/a965bdb8/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述在介绍动态服务目录 RegistryDirectory 相关内容时，提到了 RegistryDirectory 会监听注册中心的 providers、routers 和 configurators 三个目录，当配置变更时会做出相应的处理。此外在服务暴露过程中，服务提供者会向注册中心注册监听器，监听 configurators 目录下数据的变更。本篇文章对 Dubbo 动态配置进行分析，并对 C">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/a965bdb8/dubbo-cluster-configurator-uml.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/a965bdb8/dubbo-cluster-configurator-use.jpg">
+<meta property="article:published_time" content="2020-10-02T23:00:00.000Z">
+<meta property="article:modified_time" content="2021-03-25T03:32:09.909Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/a965bdb8/dubbo-cluster-configurator-uml.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/a965bdb8/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">61</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">57</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">12</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">7</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-20T11:33:59.000Z" itemprop="datePublished">2021-01-20</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-15T11:00:50.000Z" itemprop="datePublished">2021-01-15</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d38b32e5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d38b32e5/" class="title">Java基础 - JDK动态代理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-03T12:30:35.000Z" itemprop="datePublished">2021-01-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/9e3a7d05/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/9e3a7d05/" class="title">并发 - 线程池工具类</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-09T16:00:00.000Z" itemprop="datePublished">2020-12-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d7cef21d/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d7cef21d/" class="title">并发 - 线程池</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-12-02T16:00:00.000Z" itemprop="datePublished">2020-12-03</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#基础协议"><span class="toc-number">2.</span> <span class="toc-text">基础协议</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#源码分析"><span class="toc-number">3.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#ConfiguratorFactory"><span class="toc-number">3.1.</span> <span class="toc-text">ConfiguratorFactory</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#OverrideConfiguratorFactory"><span class="toc-number">3.1.1.</span> <span class="toc-text">OverrideConfiguratorFactory</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#AbsentConfiguratorFactory"><span class="toc-number">3.1.2.</span> <span class="toc-text">AbsentConfiguratorFactory</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Configurator"><span class="toc-number">3.2.</span> <span class="toc-text">Configurator</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#AbstractConfigurator"><span class="toc-number">3.2.1.</span> <span class="toc-text">AbstractConfigurator</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#获取配置规则"><span class="toc-number">3.2.1.1.</span> <span class="toc-text">获取配置规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#应用配置准备工作"><span class="toc-number">3.2.1.2.</span> <span class="toc-text">应用配置准备工作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#应用配置"><span class="toc-number">3.2.1.3.</span> <span class="toc-text">应用配置</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#配置排序"><span class="toc-number">3.2.1.4.</span> <span class="toc-text">配置排序</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OverrideConfigurator"><span class="toc-number">3.2.2.</span> <span class="toc-text">OverrideConfigurator</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#AbsentConfigurator"><span class="toc-number">3.2.3.</span> <span class="toc-text">AbsentConfigurator</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Configurator-集成"><span class="toc-number">4.</span> <span class="toc-text">Configurator 集成</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">5.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/集群容错之Dubbo动态配置" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      集群容错 - 动态配置
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/a965bdb8/" class="article-date">
+	  <time datetime="2020-10-02T23:00:00.000Z" itemprop="datePublished">2020-10-03</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/a965bdb8/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 2.8k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 11(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在介绍动态服务目录 <code>RegistryDirectory</code> 相关内容时，提到了 <code>RegistryDirectory</code> 会监听注册中心的 <code>providers</code>、<code>routers</code> 和 <code>configurators</code> 三个目录，当配置变更时会做出相应的处理。此外在服务暴露过程中，服务提供者会向注册中心注册监听器，监听 <code>configurators</code> 目录下数据的变更。本篇文章对 Dubbo 动态配置进行分析，并对 <code>Configurator</code> 的集成进行介绍。<code>Configurator</code> 相关类图如下：</p>
+<p><img src="/posts/a965bdb8/dubbo-cluster-configurator-uml.jpg" alt></p>
+<p>覆盖规则是 Dubbo 设计的在无需重启应用的情况下，动态调整 RPC 调用行为的一种能力。从 2.7.0 版本开始，支持从服务和应用两个粒度来调整动态配置。</p>
+<h1 id="基础协议"><a href="#基础协议" class="headerlink" title="基础协议"></a>基础协议</h1><p>在分析源码之前，我们先了解下动态配置的两种协议。下面以 <code>override</code> 协议为例：</p>
+<blockquote>
+<p>override://0.0.0.0/com.foo.BarService?category=configurators&amp;dynamic=false&amp;enabled=true&amp;application=foo&amp;timeout=1000</p>
+</blockquote>
+<p>下面对上述 URL 进行解析：</p>
+<ul>
+<li><code>override://</code> 表示数据采用覆盖方式，Dubbo 支持 <code>override</code> 和 <code>absent</code> 两种协议，可扩展，必填。</li>
+<li><code>0.0.0.0</code> 表示对所有 IP 地址生效，如果只想覆盖某个 IP 的数据，请填入具体 IP，必填。</li>
+<li><code>com.foo.BarService</code> 表示只对指定的服务生效，必填。</li>
+<li><code>category=configurators</code> 表示该 URL 为动态配置类型，必填。</li>
+<li><code>dynamic=false</code> 表示该 URL 为持久数据，即使注册该 URL 的节点退出，该 URL 依旧会保存在注册中心，必填。</li>
+<li><code>enabled=true</code> 表示该 URL 的覆盖规则生效，可不填，缺省生效。</li>
+<li><code>application=foo</code> 表示只对指定应用生效，可不填，表示对所有应用生效。</li>
+<li><code>timeout=1000</code> 表示将满足以上条件的 URL 中的 <code>timeout</code> 参数的值覆盖为 1000 。如果想覆盖其他配置，可以直接以参数的形式添加到 override URL 之上。</li>
+</ul>
+<p><strong>使用示例：</strong></p>
+<ol>
+<li>禁用某个提供者（通常用于临时剔除某个 Provider 节点）<blockquote>
+<p>override://10.20.153.10/com.foo.BarService?category=configurators&amp;dynamic=false&amp;disbaled=true</p>
+</blockquote>
+</li>
+<li>调整某个提供者的权重（通常用于容量评估，缺省权重为 100）<blockquote>
+<p>override://10.20.153.10/com.foo.BarService?category=configurators&amp;dynamic=false&amp;weight=200</p>
+</blockquote>
+</li>
+<li>调整负载均衡策略（缺省负载均衡策略为 random）<blockquote>
+<p>override://10.20.153.10/com.foo.BarService?category=configurators&amp;dynamic=false&amp;loadbalance=leastactive</p>
+</blockquote>
+</li>
+<li>服务降级（通常用于临时屏蔽某个出错的非关键服务）<blockquote>
+<p>override://0.0.0.0/com.foo.BarService?category=configurators&amp;dynamic=false&amp;application=foo&amp;mock=force:return+null</p>
+</blockquote>
+</li>
+</ol>
+<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><h2 id="ConfiguratorFactory"><a href="#ConfiguratorFactory" class="headerlink" title="ConfiguratorFactory"></a>ConfiguratorFactory</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ConfiguratorFactory</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 创建 Configurator 配置规则对象</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url - configurator url.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> configurator instance.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span>(<span class="string">"protocol"</span>)</span><br><span class="line">    <span class="function">Configurator <span class="title">getConfigurator</span><span class="params">(URL url)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>ConfiguratorFactory</code> 是 Dubbo 的一个扩展点，没有默认的扩展实现。作为 <code>Configurator</code> 工厂接口，其中的 <code>@Adaptive(&quot;protocol&quot;)</code> 注解会基于 Dubbo 自适应扩展机制获取 <code>ConfiguratorFactory</code> 具体实现，即根据配置规则 URL 的 <code>protocol</code> 属性获取 <code>Configurator</code> 实现。目前配置 URL 的协议支持 <code>override</code> 和 <code>absent</code> 两种，对应的实现分别为 <code>OverrideConfiguratorFactory</code> 和 <code>AbsentConfiguratorFactory</code> 。</p>
+<h3 id="OverrideConfiguratorFactory"><a href="#OverrideConfiguratorFactory" class="headerlink" title="OverrideConfiguratorFactory"></a>OverrideConfiguratorFactory</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OverrideConfiguratorFactory</span> <span class="keyword">implements</span> <span class="title">ConfiguratorFactory</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Configurator <span class="title">getConfigurator</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 创建 OverrideConfigurator 对象</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> OverrideConfigurator(url);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="AbsentConfiguratorFactory"><a href="#AbsentConfiguratorFactory" class="headerlink" title="AbsentConfiguratorFactory"></a>AbsentConfiguratorFactory</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AbsentConfiguratorFactory</span> <span class="keyword">implements</span> <span class="title">ConfiguratorFactory</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Configurator <span class="title">getConfigurator</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 创建 AbsentConfigurator</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> AbsentConfigurator(url);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="Configurator"><a href="#Configurator" class="headerlink" title="Configurator"></a>Configurator</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Configurator</span> <span class="keyword">extends</span> <span class="title">Comparable</span>&lt;<span class="title">Configurator</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获得配置URL，里面带有配置规则</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> configurator url.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">URL <span class="title">getUrl</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将 Configurator 应用到 URL</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url - old rovider url.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> new provider url.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">URL <span class="title">configure</span><span class="params">(URL url)</span></span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>Configurator</code> 接口抽象了一条配置信息，即一个 <code>Configurator</code> 对象对应一条配置规则。需要注意的是，该接口实现了 <code>Comparable</code> 接口，因为 <code>Configurator</code> 有优先级的要求。</p>
+<h3 id="AbstractConfigurator"><a href="#AbstractConfigurator" class="headerlink" title="AbstractConfigurator"></a>AbstractConfigurator</h3><p><code>AbstractConfigurator</code> 作为 <code>Configurator</code> 抽象实现类，实现了公用的配置规则的匹配、排序逻辑，将配置规则应用到目标 URL 上的工作交给了具体子类完成。</p>
+<h4 id="获取配置规则"><a href="#获取配置规则" class="headerlink" title="获取配置规则"></a>获取配置规则</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">AbstractConfigurator</span> <span class="keyword">implements</span> <span class="title">Configurator</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 配置规则url</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> URL configuratorUrl;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbstractConfigurator</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (url == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"configurator url == null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">this</span>.configuratorUrl = url;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获得配置规则URL</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> URL <span class="title">getUrl</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> configuratorUrl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="应用配置准备工作"><a href="#应用配置准备工作" class="headerlink" title="应用配置准备工作"></a>应用配置准备工作</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractConfigurator</span><br><span class="line">  <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 设置配置规则到指定URl中</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url 待应用配置规则的URL</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> URL <span class="title">configure</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 参数检查，配置规则中必须要有 ip</span></span><br><span class="line">        <span class="keyword">if</span> (configuratorUrl == <span class="keyword">null</span> || configuratorUrl.getHost() == <span class="keyword">null</span> || url == <span class="keyword">null</span> || url.getHost() == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> url;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  2 配置规则Url有端口，则说明这个配置规则Url是操作某个服务提供者的，可以通过配置Url的特性参数来控制服务提供者。配置成功后，既可以在服务提供者端生效也可以在服务消费端生效。</span></span><br><span class="line">        <span class="keyword">if</span> (configuratorUrl.getPort() != <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// 配置规则Url有端口，且和待处理的url的端口一致</span></span><br><span class="line">            <span class="keyword">if</span> (url.getPort() == configuratorUrl.getPort()) &#123;</span><br><span class="line">                <span class="comment">// 因为操作的是服务提供者，所以这里使用的是url的host</span></span><br><span class="line">                <span class="keyword">return</span> configureIfMatch(url.getHost(), url);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 3 配置规则Url没有端口</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">//  3.1 如果 url 是消费端地址，目的是控制一个特定的消费者实例，只在消费端生效，服务端收到后忽略</span></span><br><span class="line">            <span class="keyword">if</span> (url.getParameter(Constants.SIDE_KEY, Constants.PROVIDER).equals(Constants.CONSUMER)) &#123;</span><br><span class="line">                <span class="comment">// NetUtils.getLocalHost() 是消费端注册到注册中心的地址</span></span><br><span class="line">                <span class="keyword">return</span> configureIfMatch(NetUtils.getLocalHost(), url);</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 3.2 如果 url 是服务端地址，意图匹配全部服务提供者。【注意：这种情况暂不支持指定机器服务提供者】</span></span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (url.getParameter(Constants.SIDE_KEY, Constants.CONSUMER).equals(Constants.PROVIDER)) &#123;</span><br><span class="line">                <span class="comment">// 对所有服务端生效，因此地址必须是0.0.0.0，否则它将不会执行到此if分支</span></span><br><span class="line">                <span class="keyword">return</span> configureIfMatch(Constants.ANYHOST_VALUE, url);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> url;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>configure</code> 方法主要的逻辑如下：</p>
+<ol>
+<li>对配置规则和传入的URL进行校验，ip 都不能为空。配置规则决定是否应用到目标URL中，要看配置规则的 ip 是否匹配目标URL中的 ip 值。注意，配置规则URL中的 ip 值如果为 <code>0.0.0.0</code> 表示匹配所有 ip 。</li>
+<li>对配置规则进行判断，有以下三种情况：<ul>
+<li>配置规则URL中有 <code>port</code> ，且和待处理的URL的 <code>port</code> 一致。目的是匹配指定的一个服务提供者 ，因此 <code>ip</code> 使用提供者URL中的 <code>host</code> 属性值。</li>
+<li>配置规则URL中没有 <code>port</code>，传入的URL是消费端URL。目的是匹配指定的一个消费者，因此 <code>ip</code> 使用 <code>NetUtils.getLocalHost()</code> 的值。</li>
+<li>配置规则URL中没有 <code>port</code>，传入的URL是服务端URL。目的是匹配全部提供者，因此 <code>ip</code> 使用 <code>0.0.0.0</code> 。</li>
+</ul>
+</li>
+</ol>
+<p>确定好是对提供者还是消费者后应用配置后，接下来就是对不能动态修改属性的排除工作了，主要逻辑在 <code>configureIfMatch</code> 方法中。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractConfigurator</span><br><span class="line"> <span class="function"><span class="keyword">private</span> URL <span class="title">configureIfMatch</span><span class="params">(String host, URL url)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 匹配 host</span></span><br><span class="line">        <span class="comment">// 如果配置 url 的 host 为 0.0.0.0，或者配置 url 的 host 等于传入的 host，则继续匹配应用。否则直接返回url</span></span><br><span class="line">        <span class="keyword">if</span> (Constants.ANYHOST_VALUE.equals(configuratorUrl.getHost()) || host.equals(configuratorUrl.getHost())) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 2 获得配置url中的 application，即应用名</span></span><br><span class="line">            String configApplication = configuratorUrl.getParameter(Constants.APPLICATION_KEY, configuratorUrl.getUsername());</span><br><span class="line">            <span class="comment">// 3 获得传入 url 的application，即应用名</span></span><br><span class="line">            String currentApplication = url.getParameter(Constants.APPLICATION_KEY, url.getUsername());</span><br><span class="line"></span><br><span class="line">            <span class="comment">//4 匹配应用， 如果配置url的应用名为null，或者为 "*"，或者和url的应用名相同，则执行配置规则逻辑。</span></span><br><span class="line">            <span class="keyword">if</span> (configApplication == <span class="keyword">null</span> || Constants.ANY_VALUE.equals(configApplication) || configApplication.equals(currentApplication)) &#123;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 5 排除不能动态修改的属性，除了四个内置的，还可以包括  带有"～"开头的key、"application" 、 "side"</span></span><br><span class="line">                Set&lt;String&gt; conditionKeys = <span class="keyword">new</span> HashSet&lt;String&gt;();</span><br><span class="line">                <span class="comment">// category</span></span><br><span class="line">                conditionKeys.add(Constants.CATEGORY_KEY);</span><br><span class="line">                <span class="comment">// check</span></span><br><span class="line">                conditionKeys.add(Constants.CHECK_KEY);</span><br><span class="line">                <span class="comment">// dynamic</span></span><br><span class="line">                conditionKeys.add(Constants.DYNAMIC_KEY);</span><br><span class="line">                <span class="comment">// enabled</span></span><br><span class="line">                conditionKeys.add(Constants.ENABLED_KEY);</span><br><span class="line"></span><br><span class="line">                <span class="comment">/**</span></span><br><span class="line"><span class="comment">                 * 遍历配置url的 parameter 参数集合</span></span><br><span class="line"><span class="comment">                 * 1 把符合要求的条件加入到 conditionKeys 中，即：带有"～"开头的key、"application" 、 "side"</span></span><br><span class="line"><span class="comment">                 * 2 判断传入的url是否匹配配置规则Url的条件，注意是parameter部分比较，并且不是整个parameter集合的比较，只是  "～"开头的key 或 "application" 或 "side" 这个三个key/valu的比较</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                <span class="keyword">for</span> (Map.Entry&lt;String, String&gt; entry : configuratorUrl.getParameters().entrySet()) &#123;</span><br><span class="line">                    <span class="comment">// 参数key</span></span><br><span class="line">                    String key = entry.getKey();</span><br><span class="line">                    <span class="comment">// 参数key对应的value</span></span><br><span class="line">                    String value = entry.getValue();</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 如果 配置url的parameter参数的key是： "～" 或 "application" 或 "side"，那么也加入到配置Url的条件集合中，需要剔除，不能参与应用到目标URL</span></span><br><span class="line">                    <span class="keyword">if</span> (key.startsWith(<span class="string">"~"</span>) || Constants.APPLICATION_KEY.equals(key) || Constants.SIDE_KEY.equals(key)) &#123;</span><br><span class="line">                        <span class="comment">// 把key加入到条件集合中，用于剔除</span></span><br><span class="line">                        conditionKeys.add(key);</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// 如果目标URL中不存在配置URL中的剔除参数值（以 ～ 开头的参数），则说明url不匹配配置规则，直接返回url</span></span><br><span class="line">                        <span class="keyword">if</span> (value != <span class="keyword">null</span> &amp;&amp; !Constants.ANY_VALUE.equals(value) &amp;&amp; !value.equals(url.getParameter(key.startsWith(<span class="string">"~"</span>) ? key.substring(<span class="number">1</span>) : key))) &#123;</span><br><span class="line">                            <span class="keyword">return</span> url;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 从配置Url中排除不能动态修改的属性，然后把剩余的属性配置到URL中</span></span><br><span class="line">                <span class="keyword">return</span> doConfigure(url, configuratorUrl.removeParameters(conditionKeys));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> url;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>configureIfMatch</code> 方法主要做了三件事：</p>
+<ol>
+<li>通过 <code>ip</code> 判断配置URL是否能够应用到目标URL上，配置URL中的ip支持 <code>0.0.0.0</code> 表示匹配所有ip。</li>
+<li>通过 <code>application</code> 应用名判断配置URL是否能够应用到目标URL上，配置URL中的 application 允许为空或 <code>*</code> ，表示匹配所有应用。</li>
+<li>剔除配置URL中不能动态修改的属性。</li>
+</ol>
+<h4 id="应用配置"><a href="#应用配置" class="headerlink" title="应用配置"></a>应用配置</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractConfigurator</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将配置规则配置到url中</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> currentUrl 目标url</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> configUrl  配置url</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">abstract</span> URL <span class="title">doConfigure</span><span class="params">(URL currentUrl, URL configUrl)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>应用配置规则是一个抽象方法，具体实现交给具体子类实现。</p>
+<h4 id="配置排序"><a href="#配置排序" class="headerlink" title="配置排序"></a>配置排序</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">+--- AbstractConfigurator</span><br><span class="line">  <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">compareTo</span><span class="params">(Configurator o)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (o == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 根据 ip 升序</span></span><br><span class="line">        <span class="keyword">int</span> ipCompare = getUrl().getHost().compareTo(o.getUrl().getHost());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2 如果 ip 相同，则按照 priority 降序</span></span><br><span class="line">        <span class="keyword">if</span> (ipCompare == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">int</span> i = getUrl().getParameter(Constants.PRIORITY_KEY, <span class="number">0</span>),</span><br><span class="line">                    j = o.getUrl().getParameter(Constants.PRIORITY_KEY, <span class="number">0</span>);</span><br><span class="line">            <span class="keyword">return</span> i &lt; j ? -<span class="number">1</span> : (i == j ? <span class="number">0</span> : <span class="number">1</span>);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> ipCompare;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>Configurator</code> 排序首先按照 <code>ip</code> 进行排序，所有 <code>ip</code> 的优先级都高于 <code>0.0.0.0</code>，当 <code>ip</code> 相同时，会按照 <code>priority</code> 参数值进行排序。</p>
+<h3 id="OverrideConfigurator"><a href="#OverrideConfigurator" class="headerlink" title="OverrideConfigurator"></a>OverrideConfigurator</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">OverrideConfigurator</span> <span class="keyword">extends</span> <span class="title">AbstractConfigurator</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 构造方法会调用父类的构造方法</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">OverrideConfigurator</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(url);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> URL <span class="title">doConfigure</span><span class="params">(URL currentUrl, URL configUrl)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 覆盖添加，即直接用配置URL中剩余的全部参数，覆盖原始 URL 中相应参数</span></span><br><span class="line">        <span class="keyword">return</span> currentUrl.addParameters(configUrl.getParameters());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>OverrideConfigurator</code> 是一种直接覆盖策略，即直接使用配置URL中剩余的全部参数（在父类中已经剔除了不能动态修改的参数），覆盖原始 URL 中相应参数。</p>
+<h3 id="AbsentConfigurator"><a href="#AbsentConfigurator" class="headerlink" title="AbsentConfigurator"></a>AbsentConfigurator</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AbsentConfigurator</span> <span class="keyword">extends</span> <span class="title">AbstractConfigurator</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 构造方法会调用父类的构造方法</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> url</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AbsentConfigurator</span><span class="params">(URL url)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(url);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> URL <span class="title">doConfigure</span><span class="params">(URL currentUrl, URL configUrl)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 尝试用配置 URL 中的参数添加到原始 URL 中，如果原始 URL 中已经有了该参数是不会被覆盖的</span></span><br><span class="line">        <span class="keyword">return</span> currentUrl.addParametersIfAbsent(configUrl.getParameters());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>AbsentConfigurator</code> 是一种选择性覆盖策略，当目标URL中不存参数时才会使用配置中的参数。</p>
+<h1 id="Configurator-集成"><a href="#Configurator-集成" class="headerlink" title="Configurator 集成"></a>Configurator 集成</h1><p>Dubbo 框架中集成 <code>Configurator</code> 如下：</p>
+<p><img src="/posts/a965bdb8/dubbo-cluster-configurator-use.jpg" alt></p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章介绍了 Dubbo 中配置相关实现。首先对配置协议 <code>override</code> 和 <code>absent</code> URL 进行了介绍，然后分析了 <code>Configurator</code> 覆盖目标 URL 的实现，最后列出了 Dubbo 中对 <code>Configuratgor</code> 的集成代码片段。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/a965bdb8/" title="集群容错 - 动态配置" target="_blank" rel="external">https://gentryhuang.com/posts/a965bdb8/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/26e2f6a4/" title="集群容错 - Router"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/e43ac0a6/" title="集群容错 - Directory"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
