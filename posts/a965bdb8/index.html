@@ -25,14 +25,14 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述在介绍动态服务目录 RegistryDirectory 相关内容时，提到了 RegistryDirectory 会监听注册中心的 providers、routers 和 configurators 三个目录，当配置变更时会做出相应的处理。此外在服务暴露过程中，服务提供者会向注册中心注册监听器，监听 configurators 目录下数据的变更。本篇文章对 Dubbo 动态配置进行分析，并对 C">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/a965bdb8/dubbo-cluster-configurator-uml.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/a965bdb8/dubbo-cluster-configurator-use.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-configurator-uml.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-configurator-use.jpg">
 <meta property="article:published_time" content="2020-10-02T23:00:00.000Z">
-<meta property="article:modified_time" content="2021-03-25T03:32:09.909Z">
+<meta property="article:modified_time" content="2021-03-31T03:27:57.583Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/a965bdb8/dubbo-cluster-configurator-uml.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-configurator-uml.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/a965bdb8/index.html">
   
@@ -460,7 +460,7 @@
     <div class="article-entry marked-body" itemprop="articleBody">
       
         <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在介绍动态服务目录 <code>RegistryDirectory</code> 相关内容时，提到了 <code>RegistryDirectory</code> 会监听注册中心的 <code>providers</code>、<code>routers</code> 和 <code>configurators</code> 三个目录，当配置变更时会做出相应的处理。此外在服务暴露过程中，服务提供者会向注册中心注册监听器，监听 <code>configurators</code> 目录下数据的变更。本篇文章对 Dubbo 动态配置进行分析，并对 <code>Configurator</code> 的集成进行介绍。<code>Configurator</code> 相关类图如下：</p>
-<p><img src="/posts/a965bdb8/dubbo-cluster-configurator-uml.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-configurator-uml.jpg" alt></p>
 <p>覆盖规则是 Dubbo 设计的在无需重启应用的情况下，动态调整 RPC 调用行为的一种能力。从 2.7.0 版本开始，支持从服务和应用两个粒度来调整动态配置。</p>
 <h1 id="基础协议"><a href="#基础协议" class="headerlink" title="基础协议"></a>基础协议</h1><p>在分析源码之前，我们先了解下动态配置的两种协议。下面以 <code>override</code> 协议为例：</p>
 <blockquote>
@@ -543,7 +543,7 @@
 
 <p><code>AbsentConfigurator</code> 是一种选择性覆盖策略，当目标URL中不存参数时才会使用配置中的参数。</p>
 <h1 id="Configurator-集成"><a href="#Configurator-集成" class="headerlink" title="Configurator 集成"></a>Configurator 集成</h1><p>Dubbo 框架中集成 <code>Configurator</code> 如下：</p>
-<p><img src="/posts/a965bdb8/dubbo-cluster-configurator-use.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-configurator-use.jpg" alt></p>
 <h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章介绍了 Dubbo 中配置相关实现。首先对配置协议 <code>override</code> 和 <code>absent</code> URL 进行了介绍，然后分析了 <code>Configurator</code> 覆盖目标 URL 的实现，最后列出了 Dubbo 中对 <code>Configuratgor</code> 的集成代码片段。</p>
 
       
