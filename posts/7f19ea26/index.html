@@ -17,21 +17,23 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>Redis原理 - 简单动态字符串 | gentryhuang的博客</title>
-  <meta name="description" content="简单动态字符串 初识动态字符串 redis没有直接使用C语言传统的字符串表示（以空字符结尾的字符数组），而是自己构建了一种名为简单动态字符串（simple dynamic string，SDS）的抽象类型，并将SDS作为redis的默认字符串表示。 在redis中，c字符串只会作为字符串字面量用在一些无须对字符串值进行修改的地方，比如日志。当Redis需要的不仅仅是一个字符串字面量，而是一个可以被">
+  <title>集群容错 - Cluster | gentryhuang的博客</title>
+  <meta name="description" content="前言前面的几篇文章分别对服务目录 Directory、路由 Router、负载均衡 LoadBalance 以及动态配置进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。 概述为了避免单点故障，现在的应用通常至少会部署在两台服务器上，对一些负载比较高的服务，会部署更多的服务器。这样，在同一环境下的服务提供者就会有多台，对于服务消费者来说，需要选择一个服务">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Redis原理 - 简单动态字符串">
-<meta property="og:url" content="https://gentryhuang.com/posts/aa1d8127/index.html">
+<meta property="og:title" content="集群容错 - Cluster">
+<meta property="og:url" content="https://gentryhuang.com/posts/7f19ea26/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="简单动态字符串 初识动态字符串 redis没有直接使用C语言传统的字符串表示（以空字符结尾的字符数组），而是自己构建了一种名为简单动态字符串（simple dynamic string，SDS）的抽象类型，并将SDS作为redis的默认字符串表示。 在redis中，c字符串只会作为字符串字面量用在一些无须对字符串值进行修改的地方，比如日志。当Redis需要的不仅仅是一个字符串字面量，而是一个可以被">
+<meta property="og:description" content="前言前面的几篇文章分别对服务目录 Directory、路由 Router、负载均衡 LoadBalance 以及动态配置进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。 概述为了避免单点故障，现在的应用通常至少会部署在两台服务器上，对一些负载比较高的服务，会部署更多的服务器。这样，在同一环境下的服务提供者就会有多台，对于服务消费者来说，需要选择一个服务">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2021-03-13T11:00:50.000Z">
-<meta property="article:modified_time" content="2021-04-06T08:37:12.759Z">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-frame.jpeg">
+<meta property="article:published_time" content="2020-10-02T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-04-06T15:40:57.574Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="Redis数据结构">
+<meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-frame.jpeg">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/posts/aa1d8127/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/7f19ea26/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -395,21 +397,21 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#简单动态字符串"><span class="toc-number">1.</span> <span class="toc-text">简单动态字符串</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#集群容错"><span class="toc-number">3.</span> <span class="toc-text">集群容错</span></a></li></ol>
     </nav>
   </div>
 </aside>
 
 <main class="main" role="main">
   <div class="content">
-  <article id="post-redis_theory/data_structure/简单动态字符串" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+  <article id="post-rpc/集群容错之Cluster" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
     <div class="article-header">
       
         
   
     <h1 class="article-title" itemprop="name">
-      Redis原理 - 简单动态字符串
+      集群容错 - Cluster
     </h1>
   
 
@@ -417,20 +419,20 @@
       <div class="article-meta">
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
-	<a href="/posts/aa1d8127/" class="article-date">
-	  <time datetime="2021-03-13T11:00:50.000Z" itemprop="datePublished">2021-03-13</time>
+	<a href="/posts/7f19ea26/" class="article-date">
+	  <time datetime="2020-10-02T16:00:00.000Z" itemprop="datePublished">2020-10-03</time>
 	</a>
 </span>
         
   <span class="article-category">
     <i class="icon icon-folder"></i>
-    <a class="article-category-link" href="/categories/Redis/">Redis</a>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
   </span>
 
         
   <span class="article-tag">
     <i class="icon icon-tags"></i>
-	<a class="article-tag-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
   </span>
 
 
@@ -443,71 +445,73 @@
 	</span>
 
 
-        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/aa1d8127/#comments" class="article-comment-link">评论</a></span>
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/7f19ea26/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 2.2k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.1k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 8(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 3(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h3 id="简单动态字符串"><a href="#简单动态字符串" class="headerlink" title="简单动态字符串"></a>简单动态字符串</h3><ol>
-<li><p>初识动态字符串</p>
-<p>redis没有直接使用C语言传统的字符串表示（以空字符结尾的字符数组），而是自己构建了一种名为简单动态字符串（simple dynamic string，SDS）的抽象类型，并将SDS作为redis的默认字符串表示。 <code>在redis中，c字符串只会作为字符串字面量用在一些无须对字符串值进行修改的地方，比如日志。当Redis需要的不仅仅是一个字符串字面量，而是一个可以被修改的字符串值时，redis就会使用SDS来表示字符串值。</code> 值的注意的是，对于redis中的key都是使用SDS来实现的。此外，SDS除了用来保存Redis数据库中的字符串值之外，SDS还被用作缓冲区（buffer）: AOF模块中的AOF缓冲区，以及客户端状态中的输入缓冲区。</p>
-</li>
-<li><p>sds的结构</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sdshdr</span>&#123;</span></span><br><span class="line">  <span class="comment">// 记录buf数组中已使用字节的数量等价于sds所保存字符串的长度</span></span><br><span class="line">  <span class="keyword">int</span> len;</span><br><span class="line">  <span class="comment">// 记录buf数组中未使用字节的数量</span></span><br><span class="line">  <span class="keyword">int</span> <span class="built_in">free</span>;</span><br><span class="line">  <span class="comment">// 字节数组，用于保存字符串</span></span><br><span class="line">  <span class="keyword">char</span> buf[];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>注意：</strong></p>
-<p>sds遵循c字符串以空字符结尾的惯例，保存空字符的1字节空间不计算在sds的len属性中，并且为空字符分配额外的1字节空间，以及添加空字符到字符串末尾等操作，都是由sds函数自动完成的。遵循空字符结尾的好处是，sds可以直接使用一部分C字符串函数库里面的函数。</p>
-</li>
-<li><p>sds与c字符串的区别</p>
-<p>c语言使用的简单字符串表示方式，并不能满足redis对字符串在安全性、效率以及功能方面的要求。</p>
-<p>3.1  常数复杂度获取字符串长度</p>
-<blockquote>
-<p>因为c字符串并不记录自身的长度信息，所以要获取长度就必须遍历整个字符串，故获取字符串长度的复杂度为O(N)。而redis的sds结构中通过len属性记录了sds的长度，故获取字符串长度的复杂度为O(1)。注意，设置和更新sds长度的工作是由sds的API在执行时自动完成的，使用sds无须进行任何手动修改长度的操作。</p>
-</blockquote>
-<p>3.2 避免缓冲区溢出</p>
-<blockquote>
-<p>c字符串不记录自身长度，很容易造成缓冲区溢出。与c字符串不同，sds的空间分配策略完全杜绝了发生缓冲区溢出的可能性，当sds api需要对sds进行修改时，api会先检查sds的空间是否满足需要，如果不满足的话，api会自动将sds的空间扩展至执行所需的大小，然后才执行实际的修改操作，因此使用sds既不需要手动修改sds的空间大小，也不会出现c字符串中可能出现的缓冲区溢出问题。</p>
-</blockquote>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">sds <span class="title">sdscatlen</span><span class="params">(sds s, <span class="keyword">const</span> <span class="keyword">void</span> *t, <span class="keyword">size_t</span> len)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">size_t</span> curlen = sdslen(s);</span><br><span class="line">    <span class="comment">//追加时先进行扩容，后面详细说明</span></span><br><span class="line">    s = sdsMakeRoomFor(s,len);</span><br><span class="line">    <span class="keyword">if</span> (s == <span class="literal">NULL</span>) <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    <span class="comment">//拼接字符串</span></span><br><span class="line">    <span class="built_in">memcpy</span>(s+curlen, t, len);</span><br><span class="line">    sdssetlen(s, curlen+len);</span><br><span class="line">    s[curlen+len] = <span class="string">'\0'</span>;</span><br><span class="line">    <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// s:原数组     </span></span><br><span class="line"><span class="comment">//strlen(t) 需拼接的目标数组的长度</span></span><br><span class="line"><span class="function">sds <span class="title">sdscat</span><span class="params">(sds s, <span class="keyword">const</span> <span class="keyword">char</span> *t)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> sdscatlen(s, t, <span class="built_in">strlen</span>(t));</span><br><span class="line">&#125;</span><br><span class="line">​</span><br></pre></td></tr></table></figure>
-
-<p>3.3 内存分配与释放</p>
-<p>因为c字符串的长度和底层数组的长度之间存在着关联性，所以<code>每次增加或者缩短一个c字符串，程序都总要对保存这个c字符串的数字进行一次分配操作</code>，但是内存分配操作涉及到复杂的算法，并且可能需要执行系统调用，所以通常是一个比较耗时的操作。redis作为数据库，经常被用于速度要求严苛、数据被频繁修改的场合，为了避免c字符串的这种缺陷，sds通过未使用空间解除了字符串长度和底层数组长度之间的关联，通过未使用空间，sds实现了空间预分配和惰性空间释放两种优化策略。</p>
-<ul>
-<li><p>空间预分配</p>
-<p>空间预分配用于优化sds的字符串增长操作：当sds的api对一个sds进行修改，并且需要对sds进行空间扩展的时候，程序不仅会为sds分配修改所必须要的空间，还会为sds分配额外的未使用空间。通过空间预分配策略，redis可以减少连续执行字符串增长操作所需的内存重新分配次数，在扩展sds空间之前，sds api 会先检查未使用空间是否足够，如果足够就直接使用未使用空间，而不需要执行内存重新分配。</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// redis 扩容源码</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 对 sds 中 buf 的长度进行扩展，确保在函数执行之后，</span></span><br><span class="line"><span class="comment"> * buf 至少会有 addlen + 1 长度的空余空间</span></span><br><span class="line"><span class="comment"> * （额外的 1 字节是为 \0 准备的）</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 返回值</span></span><br><span class="line"><span class="comment"> *  sds ：扩展成功返回扩展后的 sds</span></span><br><span class="line"><span class="comment"> *        扩展失败返回 NULL</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 复杂度</span></span><br><span class="line"><span class="comment"> *  T = O(N)</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function">sds <span class="title">sdsMakeRoomFor</span><span class="params">(sds s, <span class="keyword">size_t</span> addlen)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sdshdr</span> *<span class="title">sh</span>, *<span class="title">newsh</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取 s 目前的空余空间长度</span></span><br><span class="line">    <span class="keyword">size_t</span> <span class="built_in">free</span> = sdsavail(s);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">size_t</span> len, newlen;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// s 目前的空余空间已经足够，无须再进行扩展，直接返回</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">free</span> &gt;= addlen) <span class="keyword">return</span> s;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取 s 目前已占用空间的长度</span></span><br><span class="line">    len = sdslen(s);</span><br><span class="line">    sh = (<span class="keyword">void</span>*) (s-(<span class="keyword">sizeof</span>(struct sdshdr)));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// s 最少需要的长度</span></span><br><span class="line">    newlen = (len+addlen);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 根据新长度，为 s 分配新空间所需的大小</span></span><br><span class="line">    <span class="keyword">if</span> (newlen &lt; SDS_MAX_PREALLOC)</span><br><span class="line">        <span class="comment">// 如果新长度小于 SDS_MAX_PREALLOC </span></span><br><span class="line">        <span class="comment">// 那么为它分配两倍于所需长度的空间</span></span><br><span class="line">        newlen *= <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="comment">// 否则，分配长度为目前长度加上 SDS_MAX_PREALLOC</span></span><br><span class="line">        newlen += SDS_MAX_PREALLOC;</span><br><span class="line">    <span class="comment">// T = O(N)</span></span><br><span class="line">    newsh = zrealloc(sh, <span class="keyword">sizeof</span>(struct sdshdr)+newlen+<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 内存不足，分配失败，返回</span></span><br><span class="line">    <span class="keyword">if</span> (newsh == <span class="literal">NULL</span>) <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新 sds 的空余长度</span></span><br><span class="line">    newsh-&gt;<span class="built_in">free</span> = newlen - len;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回 sds</span></span><br><span class="line">    <span class="keyword">return</span> newsh-&gt;buf;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>额外分配未使用空间数量的计算策略：</p>
-<blockquote>
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>前面的几篇文章分别对服务目录 <code>Directory</code>、路由 <code>Router</code>、负载均衡 <code>LoadBalance</code> 以及动态配置进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。</p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>为了避免单点故障，现在的应用通常至少会部署在两台服务器上，对一些负载比较高的服务，会部署更多的服务器。这样，在同一环境下的服务提供者就会有多台，对于服务消费者来说，需要选择一个服务提供者进行调用，如果调用失败还需要进行失败处理，如重试、抛出异常或者记录异常日志等。为了处理这些问题，Dubbo 定义了集群接口 <code>Cluster</code> 以及 <code>Cluster Invoker</code> 。<strong>Cluster 用途是将多个服务提供者合并为一个 Cluster Invoker，并将这个 Invoker 暴露给服务消费者</strong>。这样一来，服务消费者只需通过这个 Invoker 进行远程调用即可，至于具体调用哪个服务提供者，以及调用失败后如何处理等问题，现在都交给集群模块去处理。集群模块是服务提供者和服务消费者的中间层，为服务消费者屏蔽了服务提供者的情况，这样服务消费者就可以专心处理远程调用相关事宜。比如发请求，接受服务提供者返回的数据等。这就是集群的作用。</p>
+<p>Dubbo 默认内置了若干容错策略，每种容错策略都有独特的应用场景，使用方可以通过配置不同的容错策略，如果这些内置容错策略不能满足需求，还可以自定义容错策略。</p>
+<h1 id="集群容错"><a href="#集群容错" class="headerlink" title="集群容错"></a>集群容错</h1><p>在分析集群容错相关代码之前，先对涉及的组件进行介绍，主要包括了 <code>Cluster</code>、<code>Cluster Invoker</code>、<code>Directory</code>、<code>Router</code> 和 <code>LoadBalance</code> 。</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-frame.jpeg" alt></p>
+<p><strong>集群工作过程可分为两个阶段，具体如下：</strong></p>
 <ol>
-<li>对sds修改后，sds的长度（即len属性的值）小于1MB，那么程序分配和len属性同样大小的未使用空间，这时sds的len属性的值将和free属性的值相同。例如：修改后sds的len变成10字节，那么程序也会分配10字节的未使用空间，sds的buf数组的实际长度：10 + 10 + 1 = 21字节</li>
-<li>对sds修改后，sds的长度大于等于1MB，那么程序会分配1MB的未使用空间。例如：修改后sds的len变成30MB，那么程序会分配1MB的未使用空间，sds的buf数组的时间长度：30MB + 1MB + 1byte</li>
-</ol>
+<li>创建 <code>Cluster Invoker</code> 实例<blockquote>
+<p>在服务消费者初始化期间，集群 Cluster 实现类为服务消费者创建 Cluster Invoker 实例，及上图中的 merge 操作。</p>
 </blockquote>
 </li>
-<li><p>惰性空间释放</p>
-<p>惰性空间释放用于优化sds的字符串缩短操作：当sds的api需要缩短sds保存的字符串时，程序并不立即使用内存重分配来回收缩短后多来的字节，而是使用free属性将这些字节的数量纪录起来，用于将来对sds进行增长操作时，这些未使用空间可能就派上用场了。注意，sds也提供了相应的api，可以真正地释放sds的未使用空间，所以不用担心惰性空间释放策略会造成内存浪费。</p>
+<li>使用 <code>Cluster Invoker</code> 实例<blockquote>
+<p>在服务消费者发起远程调用请求时，<code>Cluster Invoker</code> 会依赖 <code>Directory</code>、<code>Router</code>、<code>LoadBalance</code> 等组件得到最终要调用的 Invoker 对象。</p>
+</blockquote>
+</li>
+</ol>
+<p><strong>其中使用 <code>Cluster Invoker</code> 获取目标 Invoker 的具体流程如下：</strong></p>
+<ol>
+<li>通过服务目录 Directory 获取消费端 Invoker 列表（提供者对应的 Invoker 列表），其中的 RegistryDirectory 会感知注册中心的动态变化，实时获取提供者对应的 Invoker 对象。</li>
+<li>使用 Router 对服务目录中的提供者对应的 Invoker 列表进行路由，过滤掉不符合路由规则的 Invoker 对象。</li>
+<li>使用 LoadBalance 从路由后的 Invoker 列表中选择一个 Invoker。</li>
+<li>ClusterInvoker 会将请求信息传给负载均衡选出的 Invoker 实例，进行真正的远程调用。</li>
+</ol>
+<p>以上就是集群工作的正常流程，没有涉及到容错处理，容错处理逻辑是在 <code>Cluster Invoker</code> 中封装的。Dubbo 主要提供了以下的容错方式：</p>
+<ul>
+<li><strong>Failover Cluster - 失败自动切换</strong> <blockquote>
+<p>失败自动切换，是 Dubbo 默认的容错机制。在请求一个提供者节点失败时，自动切换到其他提供者节点，默认执行 3 次，也就是重试 2 次，适合幂等操作。</p>
+</blockquote>
+</li>
+<li><strong>Failfast Cluster - 快速失败</strong><blockquote>
+<p>快速失败。请求失败后返回异常，不进行任务重试。</p>
+</blockquote>
+</li>
+<li><strong>Failsafe Cluster - 失败安全</strong><blockquote>
+<p>失败安全。请求失败后忽略异常，不进行任何重试。</p>
+</blockquote>
+</li>
+<li><strong>Failback Cluster - 失败自动恢复</strong><blockquote>
+<p>失败自动恢复。失败后记录到队列，会定时重试。</p>
+</blockquote>
+</li>
+<li><strong>Forking Cluster - 并行调用多个提供者</strong><blockquote>
+<p>并行调用多个提供者，只要有一个成功就返回。</p>
+</blockquote>
+</li>
+<li><strong>Broadcast Cluster - 广播多个提供者</strong><blockquote>
+<p>广播多个提供者，只要有一个失败就失败。</p>
+</blockquote>
+</li>
+<li><strong>Availabel Cluster - 调用首个可用的提供者</strong><blockquote>
+<p>遍历所有的 Provider 节点，找到每一个可用的节点，就直接调用。如果没有可用的 Provider 节点，则直接抛出异常。</p>
+</blockquote>
 </li>
 </ul>
-<p>3.4 二进制安全</p>
-<blockquote>
-<p>c字符串中的字符必须符合某种编码，并且除了字符串的末尾之外，字符串里不能包含空字符，否则在读取的时候会被默认为结束字符，这些限制使得c字符串只能保存文本数据，不能保存图片、音视频、压缩文件这类的二进制数据。sds的api都是二进制安全的，所有的sds api都会以<code>二进制的方式处理sds存放在buf数组里的数据</code>,程序不会对其中的数据做任何限制、过滤，数据写入时是什么样，它被读取时就是什么样。<code>这也是将sds的buf属性称为字节数组的原因，redis不是用这个数组来保存字符，而是用它来保存一系列二进制数据</code>。</p>
-</blockquote>
-</li>
-<li><p>c字符串和sds之间的区别</p>
-<figure class="highlight tex"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">         C字符串                                    SDS</span><br><span class="line">- 获取字符串长度的复杂度为O（n）                 获取字符串长度的复杂度O（1）</span><br><span class="line">- API是不安全的，可能造成缓冲区溢出                      API是安全的</span><br><span class="line">- 修改字符串长度N次，必然要执行N次内存重分配     修改字符长度N次，最多执行N次内存重分配</span><br><span class="line">- 只能保存文本数据                                 可以保存文本或者二进制数据</span><br><span class="line">- 可使用&lt;string.h&gt;库中的函数                   可使用一部分&lt;string.h&gt;库中的函数</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>sds更多的api可参考源码</p>
-</li>
-</ol>
 
       
     </div>
@@ -517,7 +521,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.com/posts/aa1d8127/" title="Redis原理 - 简单动态字符串" target="_blank" rel="external">https://gentryhuang.com/posts/aa1d8127/</a>
+      <a href="https://gentryhuang.com/posts/7f19ea26/" title="集群容错 - Cluster" target="_blank" rel="external">https://gentryhuang.com/posts/7f19ea26/</a>
     </li>
     
     <li class="post-copyright-license">
@@ -564,12 +568,12 @@
   <ul class="pager pull-left">
     
     <li class="prev">
-      <a href="/posts/2362a8ea/" title="Redis原理 - 链表"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+      <a href="/posts/946483bd/" title="Dubbo源码分析 - 领域模型扩展"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
     </li>
     
     
     <li class="next">
-      <a href="/posts/c812f120/" title="Dubbo源码分析 - 异步改造"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+      <a href="/posts/9966fbd5/" title="集群容错 - LoadBalance"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
     </li>
     
     
