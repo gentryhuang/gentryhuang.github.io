@@ -18,19 +18,19 @@
   
   
   <title>集群容错 - Cluster | gentryhuang的博客</title>
-  <meta name="description" content="前言前面的几篇文章分别对服务目录 Directory、路由 Router、负载均衡 LoadBalance 以及动态配置进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。考虑到 Dubbo 2.7.x 集群容错部分发生了一定的变化，因此本篇文章基于 Dubbo 2.7.x 版本的源代码进行分析。 概述为了避免单点故障，现在的应用通常至少会部署在两台服务器">
+  <meta name="description" content="前言前面的几篇文章分别对服务目录 Directory、路由 Router、负载均衡 LoadBalance 以及动态配置 Configurator 进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。考虑到 Dubbo 2.7.x 集群容错部分新增了一些内容，因此本篇文章基于 Dubbo 2.7.x 版本的源代码进行分析。 概述为了避免单点故障，现在的应用">
 <meta property="og:type" content="article">
 <meta property="og:title" content="集群容错 - Cluster">
 <meta property="og:url" content="https://gentryhuang.com/posts/7f19ea26/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="前言前面的几篇文章分别对服务目录 Directory、路由 Router、负载均衡 LoadBalance 以及动态配置进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。考虑到 Dubbo 2.7.x 集群容错部分发生了一定的变化，因此本篇文章基于 Dubbo 2.7.x 版本的源代码进行分析。 概述为了避免单点故障，现在的应用通常至少会部署在两台服务器">
+<meta property="og:description" content="前言前面的几篇文章分别对服务目录 Directory、路由 Router、负载均衡 LoadBalance 以及动态配置 Configurator 进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。考虑到 Dubbo 2.7.x 集群容错部分新增了一些内容，因此本篇文章基于 Dubbo 2.7.x 版本的源代码进行分析。 概述为了避免单点故障，现在的应用">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-frame.jpeg">
 <meta property="og:image" content="https://gentryhuang.com/posts/7f19ea26/dubbo-cluster-cluster-uml.jpg">
 <meta property="og:image" content="https://gentryhuang.com/posts/7f19ea26/dubbo-cluster-cluster-invoker-uml.jpg">
 <meta property="og:image" content="https://gentryhuang.com/posts/7f19ea26/dubbo-cluster-interceptor-uml.jpg">
 <meta property="article:published_time" content="2020-10-02T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-04-07T15:25:49.269Z">
+<meta property="article:modified_time" content="2021-04-07T15:58:50.444Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
@@ -451,25 +451,25 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/7f19ea26/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 9.3k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 9.5k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 42(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 43(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>前面的几篇文章分别对服务目录 <code>Directory</code>、路由 <code>Router</code>、负载均衡 <code>LoadBalance</code> 以及动态配置进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。考虑到 Dubbo 2.7.x 集群容错部分发生了一定的变化，因此本篇文章基于 Dubbo 2.7.x 版本的源代码进行分析。</p>
-<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>为了避免单点故障，现在的应用通常至少会部署在两台服务器上，对一些负载比较高的服务，会部署更多的服务器。这样，在同一环境下的服务提供者就会有多台，对于服务消费者来说，需要选择一个服务提供者进行调用，如果调用失败还需要进行失败处理，如重试、抛出异常或者记录异常日志等。为了处理这些问题，Dubbo 定义了集群接口 <code>Cluster</code> 以及 <code>Cluster Invoker</code> 。<strong>Cluster 用途是将多个服务提供者合并为一个 Cluster Invoker，并将这个 Invoker 暴露给服务消费者</strong>。这样一来，服务消费者只需通过这个 Invoker 进行远程调用即可，至于具体调用哪个服务提供者，以及调用失败后如何处理等问题，现在都交给集群模块去处理。集群模块是服务提供者和服务消费者的中间层，为服务消费者屏蔽了服务提供者的情况，这样服务消费者就可以专心处理远程调用相关事宜。比如发请求，接受服务提供者返回的数据等。这就是集群的作用。</p>
-<p>Dubbo 默认内置了若干容错策略，每种容错策略都有独特的应用场景，使用方可以通过配置不同的容错策略，如果这些内置容错策略不能满足需求，还可以自定义容错策略。</p>
-<h1 id="集群容错"><a href="#集群容错" class="headerlink" title="集群容错"></a>集群容错</h1><p>在分析集群容错相关代码之前，先对涉及的组件进行介绍，主要包括了 <code>Cluster</code>、<code>Cluster Invoker</code>、<code>Directory</code>、<code>Router</code> 和 <code>LoadBalance</code> 。</p>
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>前面的几篇文章分别对服务目录 <code>Directory</code>、路由 <code>Router</code>、负载均衡 <code>LoadBalance</code> 以及动态配置 <code>Configurator</code> 进行了介绍，本篇文章将对 Dubbo 的集群容错进行分析，集群容错是基于前面几部分内容实现的。考虑到 Dubbo 2.7.x 集群容错部分新增了一些内容，因此本篇文章基于 Dubbo 2.7.x 版本的源代码进行分析。</p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>为了避免单点故障，现在的应用通常至少会部署在两台服务器上，对一些负载比较高的服务，会部署更多的服务器。这样，在同一环境下的服务提供者就会有多台，对于服务消费者来说，需要选择一个服务提供者进行调用，如果调用失败还需要进行失败处理，如重试、抛出异常或者记录异常日志等。为了处理这些问题，Dubbo 定义了集群接口 <code>Cluster</code> 以及 <code>Cluster Invoker</code> 。<strong>Cluster 用途是将多个服务提供者对应的 Invoker 合并为一个 Cluster Invoker，并将这个 Invoker 暴露给服务消费者</strong>。这样一来，服务消费者只需通过这个 Invoker 进行远程调用即可，至于具体调用哪个服务提供者，以及调用失败后如何处理等问题，现在都交给集群模块去处理。集群模块是服务提供者和服务消费者的中间层，为服务消费者屏蔽了服务提供者的情况，这样服务消费者就可以专心处理远程调用相关事宜。比如发请求，接受服务提供者返回的数据等。这就是集群的作用。</p>
+<p>Dubbo 默认内置了若干容错策略，每种容错策略都有独特的应用场景，使用方可以根据具体需要配置不同的容错策略，如果这些内置容错策略不能满足需求，还可以自定义容错策略。</p>
+<h1 id="集群容错"><a href="#集群容错" class="headerlink" title="集群容错"></a>集群容错</h1><p>在分析集群容错相关代码之前，先对涉及的组件进行介绍，主要包括了 <code>Cluster</code>、<code>Cluster Invoker</code>、<code>Directory</code>、<code>Router</code> 和 <code>LoadBalance</code> 等。</p>
 <p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-frame.jpeg" alt></p>
 <p><strong>集群工作过程可分为两个阶段，具体如下：</strong></p>
 <ol>
 <li>创建 <code>Cluster Invoker</code> 实例<blockquote>
-<p>在服务消费者初始化期间，集群 Cluster 实现类为服务消费者创建 Cluster Invoker 实例，及上图中的 merge 操作。</p>
+<p>在服务消费者初始化期间（服务引用过程），集群 Cluster 实现类为服务消费者创建 Cluster Invoker 实例，即上图中的 merge 操作。</p>
 </blockquote>
 </li>
 <li>使用 <code>Cluster Invoker</code> 实例<blockquote>
@@ -480,45 +480,49 @@
 <p><strong>其中使用 <code>Cluster Invoker</code> 获取目标 Invoker 的具体流程如下：</strong></p>
 <ol>
 <li>通过服务目录 Directory 获取消费端 Invoker 列表（提供者对应的 Invoker 列表），其中的 RegistryDirectory 会感知注册中心的动态变化，实时获取提供者对应的 Invoker 对象。</li>
-<li>使用 Router 对服务目录中的提供者对应的 Invoker 列表进行路由，过滤掉不符合路由规则的 Invoker 对象。</li>
-<li>使用 LoadBalance 从路由后的 Invoker 列表中选择一个 Invoker。</li>
+<li>使用 Router 对服务目录中提供者对应的 Invoker 列表进行路由，过滤掉不符合路由规则的 Invoker 对象。</li>
+<li>使用 LoadBalance 从路由后的 Invoker 列表中选择一个目标 Invoker。</li>
 <li>ClusterInvoker 会将请求信息传给负载均衡选出的 Invoker 实例，进行真正的远程调用。</li>
 </ol>
 <p>以上就是集群工作的正常流程，没有涉及到容错处理，容错处理逻辑是在 <code>Cluster Invoker</code> 中封装的。Dubbo 主要提供了以下的容错方式：</p>
 <ul>
 <li><strong>Failover Cluster - 失败自动切换</strong> <blockquote>
-<p>失败自动切换，是 Dubbo 默认的容错机制。当请求一个提供者节点失败时，会自动切换到其他提供者节点，默认执行 3 次，也就是重试 2 次，适合幂等操作。</p>
+<p>失败自动切换，是 Dubbo 默认的容错机制。当请求一个提供者节点失败时，会自动切换到其他提供者节点，默认执行 3 次，也就是重试 2 次，适合幂等场景操作。</p>
 </blockquote>
 </li>
 <li><strong>Failfast Cluster - 快速失败</strong><blockquote>
-<p>快速失败。请求失败后返回异常，不进行任务重试。</p>
+<p>快速失败。请求失败后返回异常，不进行任务重试。适合非幂等的操作</p>
 </blockquote>
 </li>
 <li><strong>Failsafe Cluster - 失败安全</strong><blockquote>
-<p>失败安全。请求失败后忽略异常，不进行任何重试。</p>
+<p>失败安全。请求失败后忽略异常，不进行任何重试，返回一个空结果。</p>
 </blockquote>
 </li>
 <li><strong>Failback Cluster - 失败自动恢复</strong><blockquote>
-<p>失败自动恢复。失败后记录到队列，会定时重试。</p>
+<p>失败自动恢复。失败后记录到队列，并返回一个空结果，对于失败的调用会定时重试，重试是不关心结果的。</p>
 </blockquote>
 </li>
 <li><strong>Forking Cluster - 并行调用多个提供者</strong><blockquote>
-<p>并行调用多个提供者，只要有一个成功就返回。</p>
+<p>并行调用多个提供者，只要有一个成功就返回。主要应用在一些对实时性要求比较高的读操作下使用，但这将会耗费更多的资源。</p>
 </blockquote>
 </li>
 <li><strong>Broadcast Cluster - 广播多个提供者</strong><blockquote>
-<p>广播多个提供者，只要有一个失败就失败。</p>
+<p>广播多个提供者，只要有一个失败就失败。通常用于通知类的操作，如通知所有提供者更新缓存或日志等本地资源信息。</p>
 </blockquote>
 </li>
 <li><strong>Availabel Cluster - 调用首个可用的提供者</strong><blockquote>
 <p>遍历所有的 Provider 节点，找到每一个可用的节点，就直接调用。如果没有可用的 Provider 节点，则直接抛出异常。</p>
 </blockquote>
 </li>
+<li><strong>ZoneAware Cluster - 优先多注册中心选择提供者</strong><blockquote>
+<p>在 Dubbo 中使用多个注册中心的情况，服务消费端可以使用 ZoneAwareClusterInvoker 先在多个注册中心之间选择，确定注册中心之后，再选择服务提供者节点。</p>
+</blockquote>
+</li>
 </ul>
-<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><p>集群容错有两个概念，分别是集群接口 <code>Cluster</code> 和 <code>Cluster Invoker</code> ，这两者是不同的。<code>Cluster</code> 是扩展接口，它的扩展实现仅用于创建 <code>Cluster Invoker</code> 。<code>Cluster Invoker</code> 是一种特殊的 Invoker ，服务提供者的选择逻辑，以及远程调用失败后的处理逻辑都是封装在 <code>Cluster Invoker</code> 中。</p>
+<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><p>集群容错有两个概念，分别是集群接口 <code>Cluster</code> 和封装集群容错功能的 <code>Cluster Invoker</code> ，这两者是不同的。<code>Cluster</code> 是扩展接口，它的扩展实现仅用于创建 <code>Cluster Invoker</code> 。<code>Cluster Invoker</code> 是一种特殊的 Invoker ，服务提供者的选择逻辑，以及远程调用失败后的处理逻辑都是封装在 <code>Cluster Invoker</code> 中。</p>
 <h2 id="Cluster"><a href="#Cluster" class="headerlink" title="Cluster"></a>Cluster</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span>(FailoverCluster.NAME)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Cluster</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Merge the directory invokers to a virtual invoker.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> directory</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> cluster invoker</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Adaptive</span></span><br><span class="line">    &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">join</span><span class="params">(Directory&lt;T&gt; directory)</span> <span class="keyword">throws</span> RpcException</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p><code>Cluster</code> 接口是一个扩展接口，通过 <strong>@SPI</strong> 注解的参数可知其默认实现是 <code>FailoverCluster</code>。它只定义了一个 <code>join</code> 方法，在其上添加了 <strong>@Adaptive</strong> 注解，会动态生成适配器类，其中会优先根据 <strong>Directory.getUrl</strong> 方法返回的 URL 中的 <strong>cluster</strong> 参数值选择扩展实现，若无 <strong>cluster</strong> 参数则使用默认的 <code>FailoverCluster</code> 实现。</p>
+<p><code>Cluster</code> 接口是一个扩展接口，通过 <strong>@SPI</strong> 注解的参数可知其默认实现是 <code>FailoverCluster</code>。它只定义了一个 <code>join</code> 方法，其上添加了 <strong>@Adaptive</strong> 注解，会动态生成适配器类，其中会优先根据 <strong>Directory.getUrl</strong> 方法返回的 URL 中的 <strong>cluster</strong> 参数值选择扩展实现，若无 <strong>cluster</strong> 参数则使用默认的 <code>FailoverCluster</code> 实现。</p>
 <p><code>Cluster</code> 的继承体系如下图所示：</p>
 <p><img src="/posts/7f19ea26/dubbo-cluster-cluster-uml.jpg" alt></p>
 <p>在每个 Cluster 接口实现中，都会创建对应的 Invoker 对象，它们都继续自 <code>AbstractClusterInvoker</code> 抽象类，继承体系如下图所示：</p>
