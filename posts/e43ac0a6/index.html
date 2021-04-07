@@ -27,7 +27,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-directory-uml.jpg">
 <meta property="article:published_time" content="2020-09-18T03:00:00.000Z">
-<meta property="article:modified_time" content="2021-04-06T08:31:55.022Z">
+<meta property="article:modified_time" content="2021-04-07T11:16:58.607Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
@@ -490,10 +490,17 @@
 
 <p><code>RegistryDirectory</code> 中的部分属性会根据注册中心URL初始化。下面对较为重要的属性进行说明：</p>
 <ol>
-<li><strong>this.queryMap:</strong><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Consumer 端的 URL 的参数配置项 parameters 的值</span><br></pre></td></tr></table></figure></li>
-<li><strong>this.directoryUrl:</strong><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">传入的注册中心 URL 的主干部分 + Consumer 端的 URL 的 parameters（this.queryMap）</span><br></pre></td></tr></table></figure></li>
-<li><strong>this.overrideDirectoryUrl</strong><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">初始值为 this.directoryUrl，在接收注册中心目录（某个服务接口下的目录，其中一服务接口对应一个服务目录）变更通知时会先结合配置规则 Configurator 重写 this.directoryUrl。</span><br></pre></td></tr></table></figure>
-
+<li><strong>this.queryMap:</strong><blockquote>
+<p>Consumer 端的 URL 的参数配置项 parameters 的值</p>
+</blockquote>
+</li>
+<li><strong>this.directoryUrl:</strong><blockquote>
+<p>传入的注册中心 URL 的主干部分 + Consumer 端的 URL 的 parameters（this.queryMap）</p>
+</blockquote>
+</li>
+<li><strong>this.overrideDirectoryUrl</strong><blockquote>
+<p>初始值为 this.directoryUrl，在接收注册中心目录（某个服务接口下的目录，其中一服务接口对应一个服务目录）变更通知时会先结合配置规则 Configurator 重写 this.directoryUrl。</p>
+</blockquote>
 </li>
 </ol>
 <h3 id="InvokerDelegate"><a href="#InvokerDelegate" class="headerlink" title="InvokerDelegate"></a>InvokerDelegate</h3><p><code>InvokerDelegate</code> 是 <code>RegistryDirectory</code> 的内部类，继承了 <code>InvokerWrapper</code> 这个 Invoker 的包装类。这个代理类主要用于存储注册中心下发的服务提供者的URL以及服务引用创建的 Invoker 。</p>
