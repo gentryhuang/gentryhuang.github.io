@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>集群容错 - Merger | gentryhuang的博客</title>
+  <meta name="description" content="概述Dubbo 支持通过分组聚合按照 组 合并返回结果。比如菜单服务，服务接口一样，但暴露多种实现，使用 group 区分，消费方需要从每种 group 中调用一次并返回结果，最后合并这些结果后返回。关于分组 Invoker 的组装逻辑是在服务目录 Directory 中完成的，而分组聚合逻辑是在服务引用的过程中，当引用多个服务分组时会自动使用分组聚合的特性，即使用 MergeableCluste">
+<meta property="og:type" content="article">
+<meta property="og:title" content="集群容错 - Merger">
+<meta property="og:url" content="https://gentryhuang.com/posts/1d657bdb/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述Dubbo 支持通过分组聚合按照 组 合并返回结果。比如菜单服务，服务接口一样，但暴露多种实现，使用 group 区分，消费方需要从每种 group 中调用一次并返回结果，最后合并这些结果后返回。关于分组 Invoker 的组装逻辑是在服务目录 Directory 中完成的，而分组聚合逻辑是在服务引用的过程中，当引用多个服务分组时会自动使用分组聚合的特性，即使用 MergeableCluste">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/1d657bdb/dubbo-cluster-merger-uml.jpg">
+<meta property="article:published_time" content="2020-10-04T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-04-11T09:39:50.576Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/1d657bdb/dubbo-cluster-merger-uml.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/1d657bdb/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">64</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">60</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">12</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">三月 2021</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">二月 2021</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">7</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">5</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-03-16T11:33:59.000Z" itemprop="datePublished">2021-03-16</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-03-13T11:00:50.000Z" itemprop="datePublished">2021-03-13</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/c812f120/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/c812f120/" class="title">Dubbo源码分析 - 异步改造</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-02-13T16:00:00.000Z" itemprop="datePublished">2021-02-14</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/13d5a11a/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/13d5a11a/" class="title">Dubbo源码分析 - 线程模型改造</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-02-05T16:00:00.000Z" itemprop="datePublished">2021-02-06</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d38b32e5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d38b32e5/" class="title">Java基础 - JDK动态代理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-01-03T12:30:35.000Z" itemprop="datePublished">2021-01-03</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#配置"><span class="toc-number">2.</span> <span class="toc-text">配置</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#使用-Dubbo-默认合并策略"><span class="toc-number">2.1.</span> <span class="toc-text">使用 Dubbo 默认合并策略</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#指定合并策略"><span class="toc-number">2.2.</span> <span class="toc-text">指定合并策略</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#源码分析"><span class="toc-number">3.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Merger"><span class="toc-number">3.1.</span> <span class="toc-text">Merger</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ShortArrayMerger"><span class="toc-number">3.1.1.</span> <span class="toc-text">ShortArrayMerger</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#自定义-Merger"><span class="toc-number">3.1.2.</span> <span class="toc-text">自定义 Merger</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MergerFactory"><span class="toc-number">3.1.3.</span> <span class="toc-text">MergerFactory</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MergeableCluster-amp-MergeableClusterInvoker"><span class="toc-number">3.2.</span> <span class="toc-text">MergeableCluster &amp; MergeableClusterInvoker</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#MergeableCluster"><span class="toc-number">3.2.1.</span> <span class="toc-text">MergeableCluster</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MergeableClusterInvoker"><span class="toc-number">3.2.2.</span> <span class="toc-text">MergeableClusterInvoker</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/集群容错之分组聚合" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      集群容错 - Merger
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/1d657bdb/" class="article-date">
+	  <time datetime="2020-10-04T16:00:00.000Z" itemprop="datePublished">2020-10-05</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/1d657bdb/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.1k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 14(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Dubbo 支持通过<strong>分组聚合</strong>按照 <strong>组</strong> 合并返回结果。比如菜单服务，服务接口一样，但暴露多种实现，使用 <code>group</code> 区分，消费方需要从每种 <code>group</code> 中调用一次并返回结果，最后合并这些结果后返回。关于分组 Invoker 的组装逻辑是在服务目录 <code>Directory</code> 中完成的，而分组聚合逻辑是在服务引用的过程中，当引用多个服务分组时会自动使用分组聚合的特性，即使用 <code>MergeableCluster</code> 对象。</p>
+<p><code>Merger</code> 相关 UML 图如下：</p>
+<p><img src="/posts/1d657bdb/dubbo-cluster-merger-uml.jpg" alt></p>
+<p><strong>Dubbo 中的 <code>Merger</code> 实现目前包括两部分内容：</strong></p>
+<blockquote>
+<ol>
+<li>Merger 实现，其中包括 12 个 Dubbo 内置的 Merger ，Dubbo 还支持自定义 Merger 实现。</li>
+<li>MergerCluster 以及对应的 MergerClusterInvoker。MergerCluster 是分组聚合 Cluster 实现类，其创建的 MergerClusterInvoker 封装了分组聚合具体实现逻辑，是对 Merger 的使用。</li>
+</ol>
+</blockquote>
+<h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><h2 id="使用-Dubbo-默认合并策略"><a href="#使用-Dubbo-默认合并策略" class="headerlink" title="使用 Dubbo 默认合并策略"></a>使用 Dubbo 默认合并策略</h2><p>Dubbo 内置多个默认合并策略，具体使用哪种缺省根据返回值类型自动匹配。</p>
+<ul>
+<li><strong>合并所有分组</strong><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 这里指定了group为*，即可以引用任何group的Provider，同时merger设置为true，即需要对结果进行合并 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:reference</span> <span class="attr">interface</span>=<span class="string">"com.xxx.MenuService"</span> <span class="attr">group</span>=<span class="string">"*"</span> <span class="attr">merger</span>=<span class="string">"true"</span> /&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li><strong>合并指定分组</strong><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 这里指定了group为 aaa,bbb，即可以引用aaa和bbb group的Provider，同时merger设置为true，即需要对结果进行合并 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:reference</span> <span class="attr">interface</span>=<span class="string">"com.xxx.MenuService"</span> <span class="attr">group</span>=<span class="string">"aaa,bbb"</span> <span class="attr">merger</span>=<span class="string">"true"</span> /&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li><strong>合并指定分组下指定服务方法</strong><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:reference</span> <span class="attr">interface</span>=<span class="string">"com.xxx.MenuService"</span> <span class="attr">group</span>=<span class="string">"*"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dubbo:method</span> <span class="attr">name</span>=<span class="string">"getMenuItems"</span> <span class="attr">merger</span>=<span class="string">"true"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dubbo:reference</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li><strong>某个方法不合并结果，其它都合并结果</strong><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:reference</span> <span class="attr">interface</span>=<span class="string">"com.xxx.MenuService"</span> <span class="attr">group</span>=<span class="string">"*"</span> <span class="attr">merger</span>=<span class="string">"true"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dubbo:method</span> <span class="attr">name</span>=<span class="string">"getMenuItems"</span> <span class="attr">merger</span>=<span class="string">"false"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dubbo:reference</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h2 id="指定合并策略"><a href="#指定合并策略" class="headerlink" title="指定合并策略"></a>指定合并策略</h2><p>Dubbo 支持指定合并策略以及指定合并方法</p>
+<ul>
+<li><p><strong>指定合并策略</strong></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:reference</span> <span class="attr">interface</span>=<span class="string">"com.xxx.MenuService"</span> <span class="attr">group</span>=<span class="string">"*"</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- mymerge 是自定义的合并策略--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dubbo:method</span> <span class="attr">name</span>=<span class="string">"getMenuItems"</span> <span class="attr">merger</span>=<span class="string">"mymerge"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dubbo:reference</span>&gt;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>指定合并方法</strong></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dubbo:reference</span> <span class="attr">interface</span>=<span class="string">"com.xxx.MenuService"</span> <span class="attr">group</span>=<span class="string">"*"</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- 使用调用返回结果类型的指定方法进行合并，合并方法的参数类型必须是返回结果类型本身 --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dubbo:method</span> <span class="attr">name</span>=<span class="string">"getMenuItems"</span> <span class="attr">merger</span>=<span class="string">".addAll"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dubbo:reference</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><p>下面分别对 Merger 的两部分实现进行源码分析。 </p>
+<h2 id="Merger"><a href="#Merger" class="headerlink" title="Merger"></a>Merger</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SPI</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Merger</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 合并 T 数组，返回合并后的 T 对象</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> items</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function">T <span class="title">merge</span><span class="params">(T... items)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>Merger</code> 是 Dubbo 的一个扩展点，没有默认扩展实现。用于将<strong>对象数组</strong>合并成一个对象。Dubbo 内置了 12 个扩展实现，当内置的扩展实现不满足场景时，可以自定义扩展实现。Dubbo 的 Merger 相对比较简单，下面分别介绍 <code>ShortArrayMerger</code> 和自定义 Merger 实现。</p>
+<h3 id="ShortArrayMerger"><a href="#ShortArrayMerger" class="headerlink" title="ShortArrayMerger"></a>ShortArrayMerger</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">public class ShortArrayMerger implements Merger&lt;short[]&gt; &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 将多个 short[] 合并为一个 short[]</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> items</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">short</span>[] merge(<span class="keyword">short</span>[]... items) &#123;</span><br><span class="line">        <span class="keyword">if</span> (ArrayUtils.isEmpty(items)) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> <span class="keyword">short</span>[<span class="number">0</span>];</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 计算合并后的数组大小</span></span><br><span class="line">        <span class="keyword">int</span> total = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">short</span>[] array : items) &#123;</span><br><span class="line">            <span class="keyword">if</span> (array != <span class="keyword">null</span>) &#123;</span><br><span class="line">                total += array.length;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 创建结果数组</span></span><br><span class="line">        <span class="keyword">short</span>[] result = <span class="keyword">new</span> <span class="keyword">short</span>[total];</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 合并多个数组</span></span><br><span class="line">        <span class="keyword">int</span> index = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">short</span>[] array : items) &#123;</span><br><span class="line">            <span class="keyword">if</span> (array != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">for</span> (<span class="keyword">short</span> item : array) &#123;</span><br><span class="line">                    result[index++] = item;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="自定义-Merger"><a href="#自定义-Merger" class="headerlink" title="自定义 Merger"></a>自定义 Merger</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">StringMerger</span> <span class="keyword">implements</span> <span class="title">Merger</span>&lt;<span class="title">String</span>&gt; </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">merge</span><span class="params">(String... items)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (ArrayUtils.isEmpty(items)) &#123; </span><br><span class="line">            <span class="keyword">return</span> <span class="string">""</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        String result = <span class="string">""</span>;</span><br><span class="line">        <span class="keyword">for</span> (String item : items) &#123; </span><br><span class="line">            result += item + <span class="string">"|"</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>StringMerger</code> 用于将多个服务返回的 String 结果通过竖线拼接起来，即将 String[] 对象合并成一个 String 对象。</p>
+<p>其它类型的 <code>Merger</code> 实现逻辑类似，这里就不再展开说明。Dubbo 内置的 <code>Merger</code> 扩展配置如下：</p>
+<blockquote>
+<p>map=org.apache.dubbo.rpc.cluster.merger.MapMerger<br>set=org.apache.dubbo.rpc.cluster.merger.SetMerger<br>list=org.apache.dubbo.rpc.cluster.merger.ListMerger<br>byte=org.apache.dubbo.rpc.cluster.merger.ByteArrayMerger<br>char=org.apache.dubbo.rpc.cluster.merger.CharArrayMerger<br>short=org.apache.dubbo.rpc.cluster.merger.ShortArrayMerger<br>int=org.apache.dubbo.rpc.cluster.merger.IntArrayMerger<br>long=org.apache.dubbo.rpc.cluster.merger.LongArrayMerger<br>float=org.apache.dubbo.rpc.cluster.merger.FloatArrayMerger<br>double=org.apache.dubbo.rpc.cluster.merger.DoubleArrayMerger<br>boolean=org.apache.dubbo.rpc.cluster.merger.BooleanArrayMerger</p>
+</blockquote>
+<h3 id="MergerFactory"><a href="#MergerFactory" class="headerlink" title="MergerFactory"></a>MergerFactory</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MergerFactory</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Merger 实现缓存</span></span><br><span class="line"><span class="comment">     * key: 服务接口返回值类型</span></span><br><span class="line"><span class="comment">     * value: Merger 实现</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ConcurrentMap&lt;Class&lt;?&gt;, Merger&lt;?&gt;&gt; MERGER_CACHE = <span class="keyword">new</span> ConcurrentHashMap&lt;Class&lt;?&gt;, Merger&lt;?&gt;&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 根据返回值类型获取 Merger ，用于将一个 returnType 数组合并为一个</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> returnType the merger will return this type</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> the merger which merges an array of returnType into one, return null if not exist</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> IllegalArgumentException if returnType is null</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> &lt;T&gt; <span class="function">Merger&lt;T&gt; <span class="title">getMerger</span><span class="params">(Class&lt;T&gt; returnType)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (returnType == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"returnType is null"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Merger result;</span><br><span class="line">        <span class="comment">// returnType 为数组类型</span></span><br><span class="line">        <span class="keyword">if</span> (returnType.isArray()) &#123;</span><br><span class="line">            <span class="comment">// 获取数组中元素的类型</span></span><br><span class="line">            Class type = returnType.getComponentType();</span><br><span class="line">            <span class="comment">// 获取元素类型对应的 Merger 实现</span></span><br><span class="line">            result = MERGER_CACHE.get(type);</span><br><span class="line">            <span class="keyword">if</span> (result == <span class="keyword">null</span>) &#123;</span><br><span class="line">                loadMergers();</span><br><span class="line">                result = MERGER_CACHE.get(type);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 如果Dubbo 没有提供元素类型对应的Merger实现，则使用 ArrayMerger</span></span><br><span class="line">            <span class="keyword">if</span> (result == <span class="keyword">null</span> &amp;&amp; !type.isPrimitive()) &#123;</span><br><span class="line">                result = ArrayMerger.INSTANCE;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 如果returnType不是数组类型，则直接从MERGER_CACHE缓存查找对应的Merger实例</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            result = MERGER_CACHE.get(returnType);</span><br><span class="line">            <span class="keyword">if</span> (result == <span class="keyword">null</span>) &#123;</span><br><span class="line">                loadMergers();</span><br><span class="line">                result = MERGER_CACHE.get(returnType);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 通过 Dubbo SPI 的方式 加载 Merger 接口全部扩展实现</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">loadMergers</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 获取 Merger 接口的所有扩展名称</span></span><br><span class="line">        Set&lt;String&gt; names = ExtensionLoader.getExtensionLoader(Merger<span class="class">.<span class="keyword">class</span>)</span></span><br><span class="line"><span class="class">                .<span class="title">getSupportedExtensions</span>()</span>;</span><br><span class="line">        <span class="comment">// 遍历所有 Merger 扩展实现</span></span><br><span class="line">        <span class="keyword">for</span> (String name : names) &#123;</span><br><span class="line">            Merger m = ExtensionLoader.getExtensionLoader(Merger<span class="class">.<span class="keyword">class</span>).<span class="title">getExtension</span>(<span class="title">name</span>)</span>;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 将 Merger 扩展实现 与对应 returnType 的映射关系记录到MERGER_CACHE集合中</span></span><br><span class="line">            <span class="comment">// 读取泛型参数类型，即为返回值类型</span></span><br><span class="line">            MERGER_CACHE.putIfAbsent(ReflectUtils.getGenericClass(m.getClass()), m);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在 <code>MergeableClusterInvoker</code> 使用默认 Merger 实现的时候，会通过 <code>MergerFactory</code> 以及服务接口返回值类型（returnType）选择合适的 Merger 实现。</p>
+<h2 id="MergeableCluster-amp-MergeableClusterInvoker"><a href="#MergeableCluster-amp-MergeableClusterInvoker" class="headerlink" title="MergeableCluster &amp; MergeableClusterInvoker"></a>MergeableCluster &amp; MergeableClusterInvoker</h2><p><code>MergeableCluster</code> 用于创建 <code>MergeableClusterInvoker</code>，<code>MergeableClusterInvoker</code> 封装了分组聚合的逻辑。</p>
+<h3 id="MergeableCluster"><a href="#MergeableCluster" class="headerlink" title="MergeableCluster"></a>MergeableCluster</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MergeableCluster</span> <span class="keyword">extends</span> <span class="title">AbstractCluster</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 扩展名</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String NAME = <span class="string">"mergeable"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">AbstractClusterInvoker&lt;T&gt; <span class="title">doJoin</span><span class="params">(Directory&lt;T&gt; directory)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 创建 MergeableClusterInvoker 对象</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> MergeableClusterInvoker&lt;T&gt;(directory);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>MergeableCluster</code> 的配置方式和其它 <code>Cluster</code> 实现类不同，当引用多个服务分组时，会自动使用分组聚合的特性，即 <code>MergeableCluster</code> 会根据是否引用多个服务分组进而激活，无需显示设置。其它的 <code>Cluster</code> ，如默认的 <code>FailoverCluster</code> 会在构建服务目录时以 <code>group</code> 维度对多个 Invoker 进行封装，因此，<code>MergeableClusterInvoker</code> 拿到的某个 Invoker 可能就是通过 <code>FailoverCluster</code> 封装后的结果。</p>
+<h3 id="MergeableClusterInvoker"><a href="#MergeableClusterInvoker" class="headerlink" title="MergeableClusterInvoker"></a>MergeableClusterInvoker</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MergeableClusterInvoker</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">AbstractClusterInvoker</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger log = LoggerFactory.getLogger(MergeableClusterInvoker<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MergeableClusterInvoker</span><span class="params">(Directory&lt;T&gt; directory)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(directory);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invocation  调用信息</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invokers    Invokers 是当前调用方法对应的 Invoker 列表，该列表中的 Invoker 可能是被分组处理后的结果</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> loadbalance</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> Result <span class="title">doInvoke</span><span class="params">(Invocation invocation, List&lt;Invoker&lt;T&gt;&gt; invokers, LoadBalance loadbalance)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 1 检测候选 Invoker 是否为空</span></span><br><span class="line">        checkInvokers(invokers, invocation);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2 获取 merger 配置项的值</span></span><br><span class="line">        String merger = getUrl().getMethodParameter(invocation.getMethodName(), MERGER_KEY);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3 判断调用的目标方法是否有 Merger 合并器</span></span><br><span class="line">        <span class="comment">// 如果没有则默认所有调用实例都是一个分组下的，无需做结果合并，直接找到第一个可用的 Invoker 进行调用并返回结果，然后结束流程。</span></span><br><span class="line">        <span class="keyword">if</span> (ConfigUtils.isEmpty(merger)) &#123; <span class="comment">// If a method doesn't have a merger, only invoke one Group</span></span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">final</span> Invoker&lt;T&gt; invoker : invokers) &#123;</span><br><span class="line">                <span class="keyword">if</span> (invoker.isAvailable()) &#123;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        <span class="keyword">return</span> invoker.invoke(invocation);</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (RpcException e) &#123;</span><br><span class="line">                        <span class="keyword">if</span> (e.isNoInvokerAvailableAfterFilter()) &#123;</span><br><span class="line">                            log.debug(<span class="string">"No available provider for service"</span> + getUrl().getServiceKey() + <span class="string">" on group "</span> + invoker.getUrl().getParameter(GROUP_KEY) + <span class="string">", will continue to try another group."</span>);</span><br><span class="line">                        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                            <span class="keyword">throw</span> e;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 兜底，没有可用的，就调用第一个 Invoker</span></span><br><span class="line">            <span class="keyword">return</span> invokers.iterator().next().invoke(invocation);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4 确定调用方法的返回值类型</span></span><br><span class="line">        Class&lt;?&gt; returnType;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            returnType = getInterface().getMethod(</span><br><span class="line">                    invocation.getMethodName(), invocation.getParameterTypes()).getReturnType();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (NoSuchMethodException e) &#123;</span><br><span class="line">            returnType = <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 5 以异步方式调用每个 Invoker 对象，并将调用结果记录到 results 中。</span></span><br><span class="line">        <span class="comment">// results ：key 是 服务键，value 是 AsyncRpcResult</span></span><br><span class="line">        Map&lt;String, Result&gt; results = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">final</span> Invoker&lt;T&gt; invoker : invokers) &#123;</span><br><span class="line">            RpcInvocation subInvocation = <span class="keyword">new</span> RpcInvocation(invocation, invoker);</span><br><span class="line">            <span class="comment">// 指定异步调用</span></span><br><span class="line">            subInvocation.setAttachment(ASYNC_KEY, <span class="string">"true"</span>);</span><br><span class="line">            results.put(invoker.getUrl().getServiceKey(), invoker.invoke(subInvocation));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Object result = <span class="keyword">null</span>;</span><br><span class="line">        List&lt;Result&gt; resultList = <span class="keyword">new</span> ArrayList&lt;Result&gt;(results.size());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 6 等待结果返回</span></span><br><span class="line">        <span class="keyword">for</span> (Map.Entry&lt;String, Result&gt; entry : results.entrySet()) &#123;</span><br><span class="line">            Result asyncResult = entry.getValue();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// AsyncRpcResult.get() 方法</span></span><br><span class="line">                Result r = asyncResult.get();</span><br><span class="line">                <span class="comment">// 调用异常（包括超时）， 则打印error级别的日志,但最终的结果会部分数据缺失。</span></span><br><span class="line">                <span class="keyword">if</span> (r.hasException()) &#123;</span><br><span class="line">                    log.error(<span class="string">"Invoke "</span> + getGroupDescFromServiceKey(entry.getKey()) +</span><br><span class="line">                                    <span class="string">" failed: "</span> + r.getException().getMessage(),</span><br><span class="line">                            r.getException());</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 将调用成功的结果保存起来</span></span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    resultList.add(r);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Failed to invoke service "</span> + entry.getKey() + <span class="string">": "</span> + e.getMessage(), e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 7 对调用结果集为空或只有一个的情况处理，对应调用空结果集或方法返回值类型是 void ，则返回一个空结果，不需要合并</span></span><br><span class="line">        <span class="keyword">if</span> (resultList.isEmpty()) &#123;</span><br><span class="line">            <span class="keyword">return</span> AsyncRpcResult.newDefaultAsyncResult(invocation);</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (resultList.size() == <span class="number">1</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> resultList.iterator().next();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (returnType == <span class="keyword">void</span><span class="class">.<span class="keyword">class</span>) </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> AsyncRpcResult.newDefaultAsyncResult(invocation);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 8 不同合并方式的处理</span></span><br><span class="line">        <span class="comment">// 8.1 基于指定的返回类型的方法合并结果（该方法的参数必须是返回结果的类型）</span></span><br><span class="line">        <span class="comment">// merger 以 . 开头，则直接使用 . 后的方法合并结果。如 merger=".addAll" ，则调用的是结果类型的原生方法，如服务方法返回类型是 List，则就调用 List.addAll 方法来合并结果。</span></span><br><span class="line">        <span class="keyword">if</span> (merger.startsWith(<span class="string">"."</span>)) &#123;</span><br><span class="line">            merger = merger.substring(<span class="number">1</span>);</span><br><span class="line">            Method method;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 反射获取指定方法对象，获取失败会抛出异常。也就是不能随意指定合并方法，合并方法必须合理。</span></span><br><span class="line">                method = returnType.getMethod(merger, returnType);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (NoSuchMethodException e) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Can not merge result because missing method [ "</span> + merger + <span class="string">" ] in class [ "</span> +</span><br><span class="line">                        returnType.getName() + <span class="string">" ]"</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (!Modifier.isPublic(method.getModifiers())) &#123;</span><br><span class="line">                method.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 获取方法的返回结果</span></span><br><span class="line">            result = resultList.remove(<span class="number">0</span>).getValue();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 反射调用合并方法进行结果的合并</span></span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 如果返回类型不是 void，且合并方法返回类型和服务方法返回类型相同，则调用合并方法合并结果，并修改 result</span></span><br><span class="line">                <span class="keyword">if</span> (method.getReturnType() != <span class="keyword">void</span><span class="class">.<span class="keyword">class</span></span></span><br><span class="line"><span class="class">                        &amp;&amp; <span class="title">method</span>.<span class="title">getReturnType</span>().<span class="title">isAssignableFrom</span>(<span class="title">result</span>.<span class="title">getClass</span>())) </span>&#123;</span><br><span class="line">                    <span class="keyword">for</span> (Result r : resultList) &#123;</span><br><span class="line">                        result = method.invoke(result, r.getValue());</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 合并方法返回类型和服务方法返回类型不同，则调用合并方法把结果合并进去即可</span></span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="keyword">for</span> (Result r : resultList) &#123;</span><br><span class="line">                        method.invoke(result, r.getValue());</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Can not merge result: "</span> + e.getMessage(), e);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 8.2 基于 Merger 合并器合并结果</span></span><br><span class="line">            <span class="comment">// merger 不是以 . 开头，需要使用 Merger 合并器进行结果的合并</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            Merger resultMerger;</span><br><span class="line">            <span class="comment">// 8.2.1 merger 参数为 true 或者 default，表示使用内置的 Merger 扩展实现完成合并，即调用 MergerFactory</span></span><br><span class="line">            <span class="keyword">if</span> (ConfigUtils.isDefault(merger)) &#123;</span><br><span class="line">                resultMerger = MergerFactory.getMerger(returnType);</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 8.2.2 merger参数指定了Merger的扩展名称，则使用SPI查找对应的Merger扩展实现对象</span></span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                resultMerger = ExtensionLoader.getExtensionLoader(Merger<span class="class">.<span class="keyword">class</span>).<span class="title">getExtension</span>(<span class="title">merger</span>)</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 8.2.3 使用 Merger 进行结果合并</span></span><br><span class="line">            <span class="keyword">if</span> (resultMerger != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="comment">// 这里将结果同一转成为 Object 类型</span></span><br><span class="line">                List&lt;Object&gt; rets = <span class="keyword">new</span> ArrayList&lt;Object&gt;(resultList.size());</span><br><span class="line">                <span class="keyword">for</span> (Result r : resultList) &#123;</span><br><span class="line">                    rets.add(r.getValue());</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// 执行合并操作</span></span><br><span class="line">                result = resultMerger.merge(</span><br><span class="line">                        rets.toArray((Object[]) Array.newInstance(returnType, <span class="number">0</span>)));</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"There is no merger to merge result."</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">return</span> AsyncRpcResult.newDefaultAsyncResult(result, invocation);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 省略其它方法</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>MergeableClusterInvoker.doInvoke</code> 方法逻辑还是比较长的，下面对主要逻辑进行说明：</p>
+<ol>
+<li>对候选 Invoker 列表进行校验，需要注意的是这里的 Invoker 列表中的元素可能是由其它 <code>Cluster</code> 实现分组合并过的（服务目录中的逻辑）。</li>
+<li>获取 merger 配置项，如果没有设置该配置项，则说明无需进行结果合并，直接调用第一个可用的 Invoker 并结束逻辑。</li>
+<li>异步调用候选 Invoker 列表，并阻塞等待执行结果，将调用成功的结果保存起来。</li>
+<li>调用结果集大小为空 或 调用结果集大小为 1 或 服务方法返回类型为 void ，则返回一个空的结果并结束逻辑。</li>
+<li>拿到结果集后，针对 merger 配置项的值有两种合并方式：<ul>
+<li>基于指定的返回类型的方法合并结果</li>
+<li>基于 Merger 合并器合并结果，可能是 Dubbo 内置的合并器，或者自定义的合并器</li>
+</ul>
+</li>
+</ol>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章主要介绍了 Dubbo 集群模块中的 <code>Merger</code> 相关知识点。先是介绍了 Dubbo 内置的 <code>Merger</code> 实现，接着介绍了 <code>MergerFactory</code>，最后重点分析了 Dubbo 集群模块对 <code>Merger</code> 的使用，也就是通过 <code>MergeableCluster</code> 以及 <code>MergeableClusterInvoker</code> 对象实现分组聚合能力。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/1d657bdb/" title="集群容错 - Merger" target="_blank" rel="external">https://gentryhuang.com/posts/1d657bdb/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/946483bd/" title="Dubbo源码分析 - 领域模型扩展"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/7f19ea26/" title="集群容错 - Cluster"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
