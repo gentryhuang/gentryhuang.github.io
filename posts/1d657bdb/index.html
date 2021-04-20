@@ -25,13 +25,13 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述Dubbo 支持通过分组聚合按照 组 合并返回结果。比如菜单服务，服务接口一样，但暴露多种实现，使用 group 区分，消费方需要从每种 group 中调用一次并返回结果，最后合并这些结果后返回。关于分组 Invoker 的组装逻辑是在服务目录 Directory 中完成的，而分组聚合逻辑是在服务引用的过程中，当引用多个服务分组时会自动使用分组聚合的特性，即使用 MergeableCluste">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/1d657bdb/dubbo-cluster-merger-uml.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-merger-uml.jpg">
 <meta property="article:published_time" content="2020-10-04T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-04-11T09:40:29.961Z">
+<meta property="article:modified_time" content="2021-04-20T08:19:58.330Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/1d657bdb/dubbo-cluster-merger-uml.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-merger-uml.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/1d657bdb/index.html">
   
@@ -460,7 +460,7 @@
       
         <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Dubbo 支持通过<strong>分组聚合</strong>按照 <strong>组</strong> 合并返回结果。比如菜单服务，服务接口一样，但暴露多种实现，使用 <code>group</code> 区分，消费方需要从每种 <code>group</code> 中调用一次并返回结果，最后合并这些结果后返回。关于分组 Invoker 的组装逻辑是在服务目录 <code>Directory</code> 中完成的，而分组聚合逻辑是在服务引用的过程中，当引用多个服务分组时会自动使用分组聚合的特性，即使用 <code>MergeableCluster</code> 对象。</p>
 <p><code>Merger</code> 相关 UML 图如下：</p>
-<p><img src="/posts/1d657bdb/dubbo-cluster-merger-uml.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-merger-uml.jpg" alt></p>
 <p><strong>Dubbo 中的 <code>Merger</code> 实现目前包括两部分内容：</strong></p>
 <blockquote>
 <ol>

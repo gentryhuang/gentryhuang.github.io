@@ -25,13 +25,13 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述Mock 机制是 RPC 框架中非常常见且有用的功能，不仅可以用来实现服务降级，还可以用来在测试中模拟返回结果以及调用的各种异常情况。Dubbo 中的 Mock 机制也叫做本地伪装，是在服务消费方实现的，具体来说就是在 Cluster 这一层实现的。Mock 机制相关的 UML 类图如下：  Mock 涉及的接口比较多，整个流程贯穿 Cluster 和 Protocol 层，还可能会涉及到 P">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/542117c1/dubbo-cluster-mock-uml.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-mock-uml.jpg">
 <meta property="article:published_time" content="2020-10-05T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-04-13T12:53:15.526Z">
+<meta property="article:modified_time" content="2021-04-20T08:19:55.615Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/542117c1/dubbo-cluster-mock-uml.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-mock-uml.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/542117c1/index.html">
   
@@ -459,7 +459,7 @@
     <div class="article-entry marked-body" itemprop="articleBody">
       
         <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p><code>Mock</code> 机制是 RPC 框架中非常常见且有用的功能，不仅可以用来实现服务降级，还可以用来在测试中模拟返回结果以及调用的各种异常情况。Dubbo 中的 <code>Mock</code> 机制也叫做<strong>本地伪装</strong>，是在服务消费方实现的，具体来说就是在 <code>Cluster</code> 这一层实现的。<code>Mock</code> 机制相关的 UML 类图如下：</p>
-<p><img src="/posts/542117c1/dubbo-cluster-mock-uml.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-cluster-mock-uml.jpg" alt></p>
 <p><code>Mock</code> 涉及的接口比较多，整个流程贯穿 <code>Cluster</code> 和 <code>Protocol</code> 层，还可能会涉及到 <code>Proxy</code> 层。在介绍 <code>Mock</code> 机制之前，我们先简单对配置方式进行介绍。</p>
 <h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><p>Dubbo 的 Mock 机制是应用在消费端侧，而不是服务端侧。虽然服务端侧也提供了 <code>mock</code> 配置项，但是消费端更清楚所需的 Mock 机制。</p>
 <h2 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h2><ul>
