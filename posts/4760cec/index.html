@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - 心跳检测 | gentryhuang的博客</title>
+  <meta name="description" content="概述Dubbo 心跳检测是为了保证连接的可用性，在需要的时候及时采取重连、断开等措施。需要说明的是，Dubbo 心跳检测是针对 TCP 层面的协议（如：Dubbo 协议），HTTP 层面的协议是无需进行连接管理的。心跳检测需要容错，一次心跳失败不能认定连接不通，多次心跳失败才能采取相应措施。此外，心跳检测不应该忙检测。 连接长短连接TCP 本身并没有长短连接之分，长短连接与否取决于对它的使用。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - 心跳检测">
+<meta property="og:url" content="https://gentryhuang.com/posts/4760cec/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述Dubbo 心跳检测是为了保证连接的可用性，在需要的时候及时采取重连、断开等措施。需要说明的是，Dubbo 心跳检测是针对 TCP 层面的协议（如：Dubbo 协议），HTTP 层面的协议是无需进行连接管理的。心跳检测需要容错，一次心跳失败不能认定连接不通，多次心跳失败才能采取相应措施。此外，心跳检测不应该忙检测。 连接长短连接TCP 本身并没有长短连接之分，长短连接与否取决于对它的使用。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/4760cec/dubbo-heartbeat-provider-listen.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/4760cec/dubbo-heartbeat-consumer-invoke-provider.jpg">
+<meta property="article:published_time" content="2021-02-19T10:56:21.000Z">
+<meta property="article:modified_time" content="2021-05-01T10:53:30.786Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/4760cec/dubbo-heartbeat-provider-listen.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/4760cec/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">66</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">62</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">12</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Raft/" rel="tag">Raft</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" rel="tag">共识算法</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">四月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">三月 2021</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">二月 2021</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">5</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/48468614/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/48468614/" class="title">Raft 共识算法</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-04-23T11:28:56.000Z" itemprop="datePublished">2021-04-23</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-03-16T11:33:59.000Z" itemprop="datePublished">2021-03-16</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-03-13T11:00:50.000Z" itemprop="datePublished">2021-03-13</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/4760cec/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/4760cec/" class="title">Dubbo源码分析 - 心跳检测</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-02-19T10:56:21.000Z" itemprop="datePublished">2021-02-19</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/c812f120/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/c812f120/" class="title">Dubbo源码分析 - 异步改造</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-02-13T16:00:00.000Z" itemprop="datePublished">2021-02-14</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#连接"><span class="toc-number">2.</span> <span class="toc-text">连接</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#长短连接"><span class="toc-number">2.1.</span> <span class="toc-text">长短连接</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Dubbo-中的长连接"><span class="toc-number">2.2.</span> <span class="toc-text">Dubbo 中的长连接</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#连接的保活"><span class="toc-number">2.3.</span> <span class="toc-text">连接的保活</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TCP-KeepAlive"><span class="toc-number">2.3.1.</span> <span class="toc-text">TCP KeepAlive</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#应用层心跳"><span class="toc-number">2.3.2.</span> <span class="toc-text">应用层心跳</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">3.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/健康检测" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - 心跳检测
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/4760cec/" class="article-date">
+	  <time datetime="2021-02-19T10:56:21.000Z" itemprop="datePublished">2021-02-19</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/4760cec/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 807(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 2(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Dubbo 心跳检测是为了保证连接的可用性，在需要的时候及时采取重连、断开等措施。需要说明的是，Dubbo 心跳检测是针对 TCP 层面的协议（如：Dubbo 协议），HTTP 层面的协议是无需进行连接管理的。心跳检测需要容错，一次心跳失败不能认定连接不通，多次心跳失败才能采取相应措施。此外，心跳检测不应该忙检测。</p>
+<h1 id="连接"><a href="#连接" class="headerlink" title="连接"></a>连接</h1><h2 id="长短连接"><a href="#长短连接" class="headerlink" title="长短连接"></a>长短连接</h2><p>TCP 本身并没有长短连接之分，长短连接与否取决于对它的使用。</p>
+<ul>
+<li><strong>短连接：</strong> 每次通信时创建一个连接，一次通信结束关闭连接即可。短连接的好处是管理简单，存在的连接都是可用的连接，不需要额外的控制手段。</li>
+<li><strong>长连接：</strong> 每次通信完毕后，不会关闭连接，这样可以做到连接的复用。长连接的好处是省去了创建连接的开销。<br>长短连接各自的优势，分别是对方的劣势。对于不追求高性能，使用短连接合适，并且省去了连接状态管理的工作。追求性能最好使用长连接，但是需要额外工作，如端点之间连接的维护和保活。</li>
+</ul>
+<h2 id="Dubbo-中的长连接"><a href="#Dubbo-中的长连接" class="headerlink" title="Dubbo 中的长连接"></a>Dubbo 中的长连接</h2><p>Dubbo 协议是基于 TCP 进行网络传输的，它采用的就是长连接。下面分别启动服务提供者应用和服务消费者应用，提供者负责监听本地 <code>20880</code> 端口，服务消费者负责发起请求。</p>
+<ul>
+<li>服务提供方启动完成<br><img src="/posts/4760cec/dubbo-heartbeat-provider-listen.jpg" alt><br>从上图可知，Dubbo 正在监听本地的 <code>20880</code> 端口，处理发送到本地 <code>20880</code> 端口的请求。</li>
+<li>服务消费方发起请求<br><img src="/posts/4760cec/dubbo-heartbeat-consumer-invoke-provider.jpg" alt><br>从上图可以验证，TCP 是一个双向的通信过程。</li>
+</ul>
+<h2 id="连接的保活"><a href="#连接的保活" class="headerlink" title="连接的保活"></a>连接的保活</h2><p>当端点间建立连接后，由于网络问题，建立的连接可能不可用，这时就需要保证连接的可用。</p>
+<h3 id="TCP-KeepAlive"><a href="#TCP-KeepAlive" class="headerlink" title="TCP KeepAlive"></a>TCP KeepAlive</h3><p>TCP KeepAlive 是面向网络的，并不是面向应用的。<strong>连接不可用并不一定是网络问题，可能是由于应用本身的负载过高、GC频繁等导致的，此时应用失去了活性，连接也应该属于不可用的</strong>。</p>
+<h3 id="应用层心跳"><a href="#应用层心跳" class="headerlink" title="应用层心跳"></a>应用层心跳</h3><p>网络层面的 KeepAlive 不足以支撑应用层面的连接可用性，这样情况应该使用应用层的心跳机制来实现连接保活，这也是业内常用的检测方法。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>分布式系统中健康检测是非常有必要的，通过健康检测机制可以及时地发现连接是否可用或服务是否可用，调用方根据检测结果做出正确的选择，如重连、断开连接、将服务移除健康列表等。健康检测可从 <code>TCP KeepAlive</code>、<code>业务心跳</code> 以及 <code>业务请求可用率</code> 等多个维度进行考虑。</p>
+<p>应用健康状况不仅包括 TCP 连接状况，还包括应用本身是否存活，很多情况下 TCP 连接没有断开，但应用可能已经“僵死了”。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/4760cec/" title="Dubbo源码分析 - 心跳检测" target="_blank" rel="external">https://gentryhuang.com/posts/4760cec/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/aa1d8127/" title="Redis原理 - 简单动态字符串"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/c812f120/" title="Dubbo源码分析 - 异步改造"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>

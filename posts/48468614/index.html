@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Raft 共识算法 | gentryhuang的博客</title>
+  <meta name="description" content="概述Raft 是一个共识算法（consensus algorithm），也称作 Raft 协议。所谓共识就是多个节点就某个事情达成一致，即使是在部分节点故障、甚至网络分区的情况下也是可行的。在分布式系统中，共识算法更多用于提供系统的容错性。 Raft 算法是在兰伯特 Multi-Paxos 思想的基础上进行了简化和限制，目标就是容易理解。Raft 虽然增强了可理解性，但在性能、可靠性、可用性方面是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Raft 共识算法">
+<meta property="og:url" content="https://gentryhuang.com/posts/48468614/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述Raft 是一个共识算法（consensus algorithm），也称作 Raft 协议。所谓共识就是多个节点就某个事情达成一致，即使是在部分节点故障、甚至网络分区的情况下也是可行的。在分布式系统中，共识算法更多用于提供系统的容错性。 Raft 算法是在兰伯特 Multi-Paxos 思想的基础上进行了简化和限制，目标就是容易理解。Raft 虽然增强了可理解性，但在性能、可靠性、可用性方面是">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/architecture-raft-replicated-state-machines.jpeg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-node-state.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-vote-rpc.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replicate-heartbeat-rpc.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-rules.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-property.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-state-change.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-term.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-1.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-2.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-3.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-4.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-same-term.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-log-struct.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-simple-process.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-1.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-2.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-6.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-3.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-4.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-5.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-log-compaction.png">
+<meta property="article:published_time" content="2021-04-23T11:28:56.000Z">
+<meta property="article:modified_time" content="2021-05-01T10:59:39.307Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Raft">
+<meta property="article:tag" content="共识算法">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/architecture-raft-replicated-state-machines.jpeg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/48468614/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+            <p>本站总访问量 <span id="busuanzi_value_site_pv"></span> 次</p>
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">66</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">62</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">12</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Raft/" rel="tag">Raft</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" rel="tag">共识算法</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">四月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">三月 2021</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">二月 2021</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">5</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/48468614/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/48468614/" class="title">Raft 共识算法</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-04-23T11:28:56.000Z" itemprop="datePublished">2021-04-23</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/2362a8ea/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/2362a8ea/" class="title">Redis原理 - 链表</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-03-16T11:33:59.000Z" itemprop="datePublished">2021-03-16</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/aa1d8127/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/aa1d8127/" class="title">Redis原理 - 简单动态字符串</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-03-13T11:00:50.000Z" itemprop="datePublished">2021-03-13</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/4760cec/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/4760cec/" class="title">Dubbo源码分析 - 心跳检测</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-02-19T10:56:21.000Z" itemprop="datePublished">2021-02-19</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/c812f120/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/c812f120/" class="title">Dubbo源码分析 - 异步改造</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-02-13T16:00:00.000Z" itemprop="datePublished">2021-02-14</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#复制状态机"><span class="toc-number">2.</span> <span class="toc-text">复制状态机</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Raft-算法概览"><span class="toc-number">3.</span> <span class="toc-text">Raft 算法概览</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#算法简要"><span class="toc-number">3.1.</span> <span class="toc-text">算法简要</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#状态数据结构"><span class="toc-number">3.1.1.</span> <span class="toc-text">状态数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#选举-RPC-数据结构"><span class="toc-number">3.1.2.</span> <span class="toc-text">选举 RPC 数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#日志复制｜心跳-RPC-数据结构"><span class="toc-number">3.1.3.</span> <span class="toc-text">日志复制｜心跳 RPC 数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#服务节点规则"><span class="toc-number">3.1.4.</span> <span class="toc-text">服务节点规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#关键特性"><span class="toc-number">3.1.5.</span> <span class="toc-text">关键特性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#阶段状态（角色）"><span class="toc-number">3.2.</span> <span class="toc-text">阶段状态（角色）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#领导者任期"><span class="toc-number">3.3.</span> <span class="toc-text">领导者任期</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#超时处理"><span class="toc-number">3.4.</span> <span class="toc-text">超时处理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#通信"><span class="toc-number">3.5.</span> <span class="toc-text">通信</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#领导者选举"><span class="toc-number">4.</span> <span class="toc-text">领导者选举</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#选举-Leader"><span class="toc-number">4.1.</span> <span class="toc-text">选举 Leader</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#选举结果"><span class="toc-number">4.2.</span> <span class="toc-text">选举结果</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#选举规则"><span class="toc-number">4.3.</span> <span class="toc-text">选举规则</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#日志复制"><span class="toc-number">5.</span> <span class="toc-text">日志复制</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#日志结构"><span class="toc-number">5.1.</span> <span class="toc-text">日志结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#日志复制操作"><span class="toc-number">5.2.</span> <span class="toc-text">日志复制操作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#任期更新"><span class="toc-number">5.3.</span> <span class="toc-text">任期更新</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#日志的一致性"><span class="toc-number">5.4.</span> <span class="toc-text">日志的一致性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AppendEntries-一致性检查"><span class="toc-number">5.5.</span> <span class="toc-text">AppendEntries 一致性检查</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#日志压缩"><span class="toc-number">6.</span> <span class="toc-text">日志压缩</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#快照结构"><span class="toc-number">6.1.</span> <span class="toc-text">快照结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#快照发送"><span class="toc-number">6.2.</span> <span class="toc-text">快照发送</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#快照创建"><span class="toc-number">6.3.</span> <span class="toc-text">快照创建</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#存在问题"><span class="toc-number">6.4.</span> <span class="toc-text">存在问题</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#安全性"><span class="toc-number">7.</span> <span class="toc-text">安全性</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#成员变更"><span class="toc-number">8.</span> <span class="toc-text">成员变更</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#节点奔溃"><span class="toc-number">9.</span> <span class="toc-text">节点奔溃</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#客户端协议"><span class="toc-number">10.</span> <span class="toc-text">客户端协议</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">11.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-architecture/Raft协议" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Raft 共识算法
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/48468614/" class="article-date">
+	  <time datetime="2021-04-23T11:28:56.000Z" itemprop="datePublished">2021-04-23</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Raft/" rel="tag">Raft</a>, <a class="article-tag-link" href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" rel="tag">共识算法</a>
+  </span>
+
+
+        
+	<span class="article-read hidden-xs">
+	    <i class="icon icon-eye-fill" aria-hidden="true"></i>
+	    <span id="busuanzi_container_page_pv">
+			<span id="busuanzi_value_page_pv">0</span>
+		</span>
+	</span>
+
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/48468614/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 11.4k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 39(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Raft 是一个共识算法（consensus algorithm），也称作 Raft 协议。所谓共识就是多个节点就某个事情达成一致，即使是在部分节点故障、甚至网络分区的情况下也是可行的。在分布式系统中，共识算法更多用于提供系统的容错性。</p>
+<p>Raft 算法是在兰伯特 Multi-Paxos 思想的基础上进行了简化和限制，目标就是容易理解。Raft 虽然增强了可理解性，但在性能、可靠性、可用性方面是不输于 Paxos 的。Raft 算法将共识的关键要素进行了拆分，以简化流程和提供算法的可理解性。</p>
+<h1 id="复制状态机"><a href="#复制状态机" class="headerlink" title="复制状态机"></a>复制状态机</h1><p>共识算法的实现一般是基于复制状态机（Replicated state machines），即所有节点都是从同一个 <code>state</code> 出发，都经过同样的一些操作序列（log），最后到达同样的 <code>state</code> ，架构图如下：</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/architecture-raft-replicated-state-machines.jpeg" alt></p>
+<p>这是一个<strong>共识系统的典型架构</strong>，其中涉及到三个组件：</p>
+<blockquote>
+<ol>
+<li>状态机：处理来自 Log 的指令序列，将执行结果对外输出。状态机具有确定性，只要 Log 的指令序列相同，产生的结果也是相同的。</li>
+<li>Log：保存了所有写操作记录。</li>
+<li>共识模块：保证包含来自客户端的指令的 Log 的一致性，充当管理日志的角色。（这也是 Raft 算法核心内容） </li>
+</ol>
+</blockquote>
+<p>复制状态机通常使用<strong>复制日志</strong>来实现。每个服务节点存储一个包含一系列命令的日志，日志会被其状态机所使用，用于计算其中的指令。注意，只要各个服务节点上的日志是相同的或者大多数节点日志相同，说明系统已经达成共识，这些具有相同日志的服务节点上的状态机就能以相同的顺序执行相同的命令，执行的结果也是相同的。不难看出，<strong>复制日志充当数据副本的角色</strong>。</p>
+<p>保证复制日志的一致性是共识算法的工作。服务节点上的共识模块从客户端接收命令，并将其添加到其 Log 中，然后与其它服务节点的共识模块进行通信，以完成日志复制。正确复制指令后，每台服务节点将命令应用到状态机（状态机执行对应的指令）。</p>
+<h1 id="Raft-算法概览"><a href="#Raft-算法概览" class="headerlink" title="Raft 算法概览"></a>Raft 算法概览</h1><p>Raft 是一种用于管理复制日志的算法，它采用领导者模式，将共识问题分解为三个相对独立的子问题：Leader 选举、日志复制、安全（约定）。下面对 Raft 算法进行总体说明，并就关键特性进行列举。图中的相关元素会在后文具体说明。</p>
+<h2 id="算法简要"><a href="#算法简要" class="headerlink" title="算法简要"></a>算法简要</h2><h3 id="状态数据结构"><a href="#状态数据结构" class="headerlink" title="状态数据结构"></a>状态数据结构</h3><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-node-state.jpg" alt></p>
+<ul>
+<li>所有服务节点上的持久性状态（在响应RPC请求之前，已经更新到了稳定的存储设备）<blockquote>
+<ul>
+<li>currentTerm: 服务节点已知最新任期（在服务节点首次启动时初始化为 0，该值是单调递增的）</li>
+<li>votedFor: 当前任期内收到选票的候选者id,如果没有投给任何候选者，则为空</li>
+<li>log[]: 日志条目</li>
+</ul>
+</blockquote>
+</li>
+<li>所有服务节点上的易失性状态<blockquote>
+<ul>
+<li>commitIndex: 已知已提交的最高的日志条目的索引（初始值为 0，单调递增）</li>
+<li>lastApplied: 已经被应用到状态机的最高的日志条目的索引（初始值为 0，单调递增）</li>
+</ul>
+</blockquote>
+</li>
+<li>领导者（服务节点）上的易失性状态（选举后已经重新初始化）<blockquote>
+<ul>
+<li>nextIndex[]: 对于每个服务节点，发送到该服务节点的下一个日志条目的索引（初始值为领导者最后的日志条目的索引+1）</li>
+<li>matchIndex[]: 对于每一台服务节点，已知的已经复制到该服务节点的最高日志条目的索引（初始值为0，单调递增）</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+<h3 id="选举-RPC-数据结构"><a href="#选举-RPC-数据结构" class="headerlink" title="选举 RPC 数据结构"></a>选举 RPC 数据结构</h3><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-vote-rpc.jpg" alt></p>
+<ul>
+<li>由候选人负责调用，用来征集选票<blockquote>
+<ul>
+<li>term：候选人的任期编号</li>
+<li>candidatedId: 请求选票的候选人的 id</li>
+<li>lastLogIndex: 候选人最后日志条目的索引值</li>
+<li>lastLogTerm: 候选人最后日志条目的任期编号</li>
+</ul>
+</blockquote>
+</li>
+<li>返回值<blockquote>
+<ul>
+<li>term: 响应中的任期号，以便于候选人去更新自己的任期号（候选人任期号较小时）</li>
+<li>voteGranted: 候选人赢得了此张选票时为真</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+<h3 id="日志复制｜心跳-RPC-数据结构"><a href="#日志复制｜心跳-RPC-数据结构" class="headerlink" title="日志复制｜心跳 RPC 数据结构"></a>日志复制｜心跳 RPC 数据结构</h3><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replicate-heartbeat-rpc.jpg" alt></p>
+<ul>
+<li>领导者用于日志条目的复制 RPC 和 心跳 RPC<blockquote>
+<ul>
+<li>term: 领导者任期</li>
+<li>leaderId: 领导者Id，跟随者可以根据该值对客户端进行重定向</li>
+<li>prevLogIndex: 上一个个日志条目的索引</li>
+<li>prevLogTerm: 上一个日志条目的任期</li>
+<li>entries[]: 需要被保存的日志条目（如果是心跳 RPC，则为空；为了提高效率可能一次性发送多个）</li>
+<li>leaderCommit: 领导者的已知已提交的最高的日志条目的索引</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+<p>需要特别说明的是，<code>prevLogIndex</code> 和 <code>prevLogTerm</code> 是动态变化的，不是很好理解。</p>
+<ul>
+<li>结果<blockquote>
+<ul>
+<li>term: 响应中的任期，对于领导者而言，它会更新自己的任期（其它领导者任期更高）</li>
+<li>success: 如果跟随者所含有的条目和 prevLogIndex 以及 prevLogTerm 匹配上了，则结果为 true</li>
+</ul>
+</blockquote>
+</li>
+<li>接受者的实现<blockquote>
+<ul>
+<li>如果领导者的任期小于接收者的当前任期，则返回 false</li>
+<li>如果接受者日志中不能找到一个和 prevlogIndex 以及 prevLogTerm 一样的索引和任期的日志条目，则返回 false</li>
+<li>如果接受者的条目和新条目发生了冲突（索引相同，任期不同），那么就删除这个已存在的条目以及它之后的所有条目</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+<h3 id="服务节点规则"><a href="#服务节点规则" class="headerlink" title="服务节点规则"></a>服务节点规则</h3><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-rules.jpg" alt></p>
+<ul>
+<li>所有服务节点<blockquote>
+<ul>
+<li>如果commitIndex &gt; lastApplied，那么 lastApplied 加一，并把log[lastApplied]应用到状态机中。</li>
+<li>如果接收到的 RPC 请求或响应中，任期号T &gt; currentTerm，那么就令 currentTerm 等于 T，并切换状态为跟随者</li>
+</ul>
+</blockquote>
+</li>
+<li>跟随者<blockquote>
+<ul>
+<li>响应来自候选人和领导者的请求</li>
+<li>如果超过选举超时时间没有收到当前领导人（即该领导人的任期需与这个跟随者的当前任期相同）的心跳/附加日志，就自己变成候选者</li>
+</ul>
+</blockquote>
+</li>
+<li>候选者<blockquote>
+<ul>
+<li>节点在转变成候选者后就立即开始选举过程</li>
+<li>如果接收到大多数服务节点的选票，那么就变成领导者</li>
+<li>如果接收到来自新的领导者的 AppendEntries RPC，转变成跟随者</li>
+<li>如果选举过程超时，再次发起一轮选举</li>
+</ul>
+</blockquote>
+</li>
+<li>领导人<blockquote>
+<ul>
+<li>选举后，向每个服务节点发送 AppendEntries RPC（心跳）；以一定的时间间隔不停的重复发送，以阻止跟随者超时</li>
+<li>如果接收到来自客户端的请求：附加条目到本地日志中，在条目被应用到状态机后响应客户端</li>
+<li>如果跟随者的最后一个日志条目的索引值大于等于 nextIndex ，则以 AppendEntries RPC 发送从 nextIndex 开始的所有日志条目<ul>
+<li>如果成功：更新相应跟随者的 nextIndex 和 matchIndex</li>
+<li>如果因为日志不一致而失败，则递减 nextIndex 并进行重试</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+<h3 id="关键特性"><a href="#关键特性" class="headerlink" title="关键特性"></a>关键特性</h3><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-property.jpg" alt></p>
+<blockquote>
+<ul>
+<li><strong>Election Safety:</strong> 选举安全性。对于一个给定的任期号，最多只会有一个领导人被选举出来。</li>
+<li><strong>Leader Append-Only:</strong> 领导者只附加原则。领导人绝对不会删除或者覆盖自己的日志，只会增加。</li>
+<li><strong>Log Matching:</strong> 日志匹配原则。如果两个日志在相同的索引位置的日志条目的任期号相同，那么就可以认为这两个日志从头到这个索引位置之间全部完全相同。</li>
+<li><strong>Leader Completeness:</strong> 领导者完全特性。如果某个日志条目在某个任期中已经被提交，那么该条目必然出现在更大任期号的所有领导者中。</li>
+<li><strong>State Machine Safety:</strong> 状态机安全特性。如果一个领导者已经将给定的索引值位置的日志条目应用到状态机中，那么其它任何的服务节点在这个索引位置不会应用一个不同的日志。</li>
+</ul>
+</blockquote>
+<p> <strong>Raft 在任何时候都保证以上的各个特性，这也是 Raft 实现共识算法的基础。</strong></p>
+<h2 id="阶段状态（角色）"><a href="#阶段状态（角色）" class="headerlink" title="阶段状态（角色）"></a>阶段状态（角色）</h2><p><strong>在任何时候，每个服务节点都处于以下三种状态之一：</strong></p>
+<blockquote>
+<p><strong>领导者（Leader）：</strong>处理所有客户端的交互以及日志复制，一个任期内只能有一个领导者。<br><strong>跟随者（Follower）：</strong>绝大多数服务节点在大多数时间都处于跟随者的状态，这些服务节点完全处于被动状态，它们不会发起任何 RPC 请求，仅仅对其它服务节点发起的 RPC 请求做出响应。<br><strong>候选者（Candidate）：</strong>处于领导者（Leader）与跟随者（Follower）之间的一种状态，只在选举新领导者的过程中临时出现，当系统处于稳定状态，只会有一个领导者，其他的服务节点都是跟随者。</p>
+</blockquote>
+<p>下图展示了相关状态图，描述了三种状态以及变化情况。</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-state-change.jpg" alt></p>
+<h2 id="领导者任期"><a href="#领导者任期" class="headerlink" title="领导者任期"></a>领导者任期</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-term.jpg" alt></p>
+<p>每届领导者都会有一个任期 term，term 是随着任期数递增的，并且不会被重复使用。Raft 系统中的服务节点会持久化相关数据，其中包括当前任期 term 值。任期这个概念非常重要，Raft 可以根据该值判断过期信息。<strong>服务节点之间在通信时会交换当前任期号。如果一个服务节点的当前任期小于另一个服务节点，则它将其当前任期更新为较大的值。如果候选者或领导者发现其当前任期已过时，则将立即恢复为跟随者状态。如果服务节点收到带有过期任期的请求，则会拒绝该请求。</strong></p>
+<h2 id="超时处理"><a href="#超时处理" class="headerlink" title="超时处理"></a>超时处理</h2><p>Raft 中有两个控制选举的超时设置，第一个是选举超时时间（election timeout），另一个是心跳超时时间（heartbeat timeout）。Leader 发送心跳消息是以心跳超时指定的时间间隔进行的，也就是根据 heartbeat timeout 发送心跳信息。Follower 会在 election timeout 内等待 RPC 消息，如果没有等到则会主动发起选举请求。</p>
+<p>在 Raft 中定义了随机超时时间，巧妙地使用随机选举超时时间策略把超时时间都分散开来，在大多数情况下只有一个服务节点先发起选举，这样就能减少因选票瓜分导致选举失败的情况。</p>
+<p>Raft 算法中，随机超时时间具有 2 种含义：可以定义为不一样</p>
+<blockquote>
+<ul>
+<li>Follower 等待 Leader 心跳信息超时的时间间隔是随机的。</li>
+<li>Candidate 在一个随机时间间隔内没有获得 majority 投票（含自己一票），那么选举无效，然后 Candidate 发起新一轮的选举。该过程的选举超时时间间隔是随机的。</li>
+</ul>
+</blockquote>
+<p>在 Raft 算法中，选举超时时间随机分配在 [150ms,300ms] 区间中，当 Follower 收到 RPC 消息时（包括选举 RPC、AppendEntries RPC） 都会重置其选举超时时间。</p>
+<h2 id="通信"><a href="#通信" class="headerlink" title="通信"></a>通信</h2><p>Raft 服务节点使用远程过程调用（RPC）进行通信，其中主要包括以下两种类型的 RPC （Raft 在传输快照时使用的是第三种 RPC）。</p>
+<ul>
+<li><strong>RequestVote RPC</strong><blockquote>
+<p>由候选人在选举期间发送的 RPC 请求，该 RPC 请求对应的数据结构可以参见前文的 <strong>选举 RPC 数据结构</strong> 。</p>
+</blockquote>
+</li>
+<li><strong>AppendEntries RPC</strong><blockquote>
+<p>领导者在发送心跳和复制日志条目时会发送该 RPC 请求，该 RPC 请求对应的数据结构可以参见前文的 <strong>日志复制｜心跳 RPC 数据结构</strong> 。需要注意的是，心跳 RPC 相比日志复制 RPC 缺少了日志条目。</p>
+</blockquote>
+</li>
+</ul>
+<p><strong>注意：AppendEntries RPC 具有一致性检查的功能，它是实现各节点间日志的一致性（或者说副本数据）的重要机制。</strong></p>
+<h1 id="领导者选举"><a href="#领导者选举" class="headerlink" title="领导者选举"></a>领导者选举</h1><p>Raft 使用心跳超时机制触发领导者选举。前面已经介绍，如果存在 Follower 在 election timeout 内没有收到来自 Leader 的心跳，则会主动发起选举。没有收到 Leader 的心跳的原因可能是：此时还没有 Leader、Leader 挂了、网络故障。</p>
+<h2 id="选举-Leader"><a href="#选举-Leader" class="headerlink" title="选举 Leader"></a>选举 Leader</h2><p>下面我们以初始化状态下，集群中所有的节点都是跟随者的状态为例介绍选举过程。<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-1.jpg" alt></p>
+<p>设定，节点初始化状态都是 Follower 状态，任期为 0 ，各节点随机分配的 election timeout 如上图所示 。需要注意的是，节点都会对相关属性进行持久化，防止节点宕机后数据丢失。</p>
+<p><strong>等待超时</strong></p>
+<p>通过上图可知，集群中没有领导者，而节点 A 的选举超时时间最小（150ms），因此它会最先因为没有等到领导者的信息（不仅仅心跳信息）而发生超时，进而主动发起选举。</p>
+<p><strong>切换到 Candidate 状态</strong></p>
+<p>节点 A 增加自己的任期编号并推荐自己为候选者，先给自己投上一张票，然后向其它节点发送请求投票 RPC 消息，通常这些请求是并行发出的。注意此时 RPC 消息携带的信息。<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-2.jpg" alt></p>
+<p><strong>响应投票请求</strong></p>
+<p>如果其它节点收到候选者 A 的投票请求，在任期编号为 1 的这一任期内还么没有进行过投票，那么就会把票投给节点 A 并将自己记录的任期替换成候选者的任期编号（投票 RPC 中会携带），此外节点的选举超时时间会被重置。投票请求对应的数据结构可参考前文。<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-3.jpg" alt></p>
+<p><strong>切换到 Leader 状态</strong></p>
+<p>如果候选人在选举超时时间内获得 majority 投票，那么它就会成为本届任期内新的领导者。<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-4.jpg" alt></p>
+<p><strong>发送心跳消息</strong><br>节点 A 当选领导者后，它会立刻向其它节点发送心跳消息（AppendEntries RPC），避免其它节点触发新的选举，以维护自己领导者的地位。注意心跳消息一致性检查的作用，通过这种机制，领导者在获得权力的时候就不需要任何特殊的操作来恢复一致性，只需要进行正常的操作，然后日志就能自动的在回复附加日志 RPC 的一致性检查失败的时候自动趋于一致。关于日志复制内容下文详细介绍。以上是正常流选举 Leader 的过程，下面对候选者选举的所有可能情况进行介绍。</p>
+<h2 id="选举结果"><a href="#选举结果" class="headerlink" title="选举结果"></a>选举结果</h2><p>第一、在选举超时时间内得到了 majority 投票，然后它会将自己的状态切换到 Leader 并立即向集群中其它服务节点发送心跳消息，以建立它的领导者地位并防止进行新的选举。注意，收到 Leader 的 RPC 消息后（包括日志复制消息和心跳消息），其它节点的心跳超时时间会重置。这也是前面介绍的正常流的过程。</p>
+<p>第二、在等待投票结果时收到其它节点发送的 AppendEntries RPC 消息（以领导者身份），如果该领导者的任期（包括在此次 RPC 消息中）不小于候选者当前任期，则候选者转成 Follower 状态，并更新自己的任期，否则候选者拒绝该 RPC 请求并继续处于候选人的状态。</p>
+<p>第三、没有任何服务节点获胜。可能存在有多个服务节点同时成为 Candidate 导致了分票，没有服务节点获得 majority 投票。发生这种情况时，每一个 Candidate 都等待选举超时，其中先超时的会增加其任期，然后进行一轮新的选举。<strong>注意这里选举超时时间的重要性，没有该机制的话，选票就可能会被无限地瓜分，那么就延长了系统不可用的时间（没有leader是不能处理客户端相关请求的）。</strong></p>
+<h2 id="选举规则"><a href="#选举规则" class="headerlink" title="选举规则"></a>选举规则</h2><p>选举过程涉及的约定如下，其中包含了 Raft 安全约定中的部分内容。</p>
+<blockquote>
+<ol>
+<li>Leader 会周期性地向所有 Follower 发送心跳请求（不包含日志项的 AppendEntries RPC）来维持自己的权威，以并行的方式执行，防止 Follower 发起新的选举。</li>
+<li>如果在 Follower 的选举超时时间内没有收到来自领导者的消息（心跳或日志复制），那么就推荐自己为候选人，发起领导者选举。</li>
+<li>选举中获得 majority 投票（含自己一票）的 Candidate 将晋升为 Leader 。</li>
+<li><strong>一个任期内只允许有一个领导者，除非领导者宕机、网络故障等发生，其它节点才会发起新一轮的选举。</strong></li>
+<li><strong>每一个服务节点最多会对一个任期号投出一张选票，按照先来先服务的原则。</strong><br> <img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-same-term.jpg" alt><br> 节点 C 的任期编号为 1，先收到一个来自节点 A 的包含任期编号为 2 的投票请求，接着又收到一个来自节点 B 的包含任期编号为 2 的投票请求。按照先来先服务的原则，C 会把唯一的一张票投给节点 A 并更新自己的任期编号，当再收到节点 B 的投票请求时，发现已经对任期编号为 2 的投票请求做出了响应，于是就拒绝节点 B 的投票请求。</li>
+<li><strong>日志完整性高的跟随者不会投票给日志完整性低的候选者，日志完整性高低依据节点最后一条日志条目对应的任期编号及索引号，任期编号更大、索引号更大完整性就越高。</strong></li>
+</ol>
+</blockquote>
+<p>上述涉及到的选票的安全性，会在 Raft 安全部分进行详细说明。</p>
+<h1 id="日志复制"><a href="#日志复制" class="headerlink" title="日志复制"></a>日志复制</h1><h2 id="日志结构"><a href="#日志结构" class="headerlink" title="日志结构"></a>日志结构</h2><p>Log 具有持久化、保序的特点，是大多数分布式系统的基石。在 Raft 算法中，<strong>副本数据是以日志的形式存在的</strong>，Raft 中的日志结构如下图所示：</p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-log-struct.jpg" alt></p>
+<p>日志由有序序号标记的条目组成，每个日志条目包含了：<code>索引（index）</code>、<code>任期编码（term）</code>以及<code>指令（command）</code>。其中提交状态（ <code>committed</code>） 指日志条目被复制到大多数节点后日志条目的状态，<code>applied</code> 是指节点将日志条目应用到状态机。</p>
+<p><strong>索引：</strong>用来标识日志条目在日志中的位置，是一个连续的、单调递增的整数。<br><strong>任期编号：</strong>创建当前日志条目的领导者的任期编号。<br><strong>指令：</strong>一般由客户端请求指定的、状态机需要执行的指令，本质上是客户端指定的数据。</p>
+<p>每个服务节点无论是领导者还是跟随者，都各自保存一个日志副本，日志条目格式如上图所示。每个服务节点都必须保证日志能在奔溃后还可以恢复，所以日志本身需要持久化。领导者将创建的日志条目复制到大多数的服务节点上的时候，该日志条目就会被提交（例如上图中国呢的日志条目 7），同时该日志之前的所有日志条目也都会被提交，包括由其它领导者创建的日志条目。注意，领导者不能单独直接提交其它领导者创建的日志条目，只能在提交自己任期的日志时间接提交，这也是安全性规定的。</p>
+<h2 id="日志复制操作"><a href="#日志复制操作" class="headerlink" title="日志复制操作"></a>日志复制操作</h2><p>客户端将指令发送给领导者，领导者首先<strong>将命令封装成一个日志条目</strong>并写入自己的日志中，然后向所有其它的跟随者发送 AppendEntries 的远程调用，通常以并行的方式将调用的消息发送到所有服务节点，然后等待这些消息的响应。一旦领导者收到足够多的响应，该日志条目也就具备提交状态，那么领导者就会将该日志条目的指令应用到状态机并将执行结果返回给客户端，否则返回异常给客户端。需要注意的是，领导者将日志条目应用到它的状态机时并不需要直接通知跟随者应用日志条目，领导者会通过后续的 AppendEntries 远程调用通知其它的服务节点，最终每个跟随者都会知道该记录已提交，然后也将该日志条目应用到它的状态机。</p>
+<p>领导者不直接发送消息通知其它节点应用指定的日志条目，是 Raft 的一个优化。通过前文的 AppendEntries RPC 的数据结构，我们知道领导者的日志复制 RPC 消息或心跳消息，包含了领导者已知已提交的最高的日志条目索引，所以通过日志复制 RPC 消息或心跳消息，跟随者就可以知道领导者的日志提交位置信息。因此，当其它节点接收到领导者的心跳消息或日志复制消息后，就会将该日志条目应用到它的状态机。这个优化降低了处理客户端请求的延迟。</p>
+<p>下图展示了正常流程的日志复制过程：<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-simple-process.jpg" alt></p>
+<blockquote>
+<ol>
+<li>接收到客户端请求后，领导者基于客户端请求中的指令会创建一个日志条目并添加到本地日志中。</li>
+<li>领导者通过日志复制 RPC ，将新的日志条目复制到其它的服务节点上。</li>
+<li>当领导者将日志条目成功复制到大多数的服务节点上的时候，领导者会将该日志条目应用到它的状态机中。</li>
+<li>领导者将执行的结果返回给客户端。</li>
+<li>当跟随者接收到心跳消息或者日志复制消息后，如果跟随者发现领导者已经提交了某个日志条目而自己还没有，那么跟随者就将这条日志条目应用到本地的状态机中。</li>
+</ol>
+</blockquote>
+<p>以上是理想状态下的日志过程，在实际环境中可能会遇到进程奔溃、服务节点宕机等问题，这些问题会导致日志不一致。下面我们对日志复制过程进行讨论，主要讨论 Leader 在不同阶段宕机的情况。关于跟随者节点或候选者节点宕机比较容易处理，我们会在后文简单介绍。</p>
+<blockquote>
+<ol>
+<li>客户端数据到达 Leader 节点之前，Leader 宕机了。<br> <img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-1.jpg" alt><br> 这种情况对数据的一致性没有影响。</li>
+<li>客户端数据到达 Leader 节点，但未复制到 Follower 节点<br> <img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-2.jpg" alt><br> 该阶段 Leader 挂掉，数据属于未提交状态，客户端不会收到响应。Follower 节点上没有该数据，重新选举 Leader 后客户端重试重新提交可成功。原来的 Leader 节点恢复作为 Follower 加入集群重新从当前任期的新 Leader 同步数据，强制保持和 Leader 数据一致。</li>
+<li>客户端数据到达 Leader 节点，成功复制到 Follower 所有节点，但还未向 Leader 响应接收<br> <img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-6.jpg" alt><br> 这个阶段 Leader 挂掉，虽然数据在 Follower 节点处于未提交状态，但是保持一致。重新选举出 Leader 后可完成数据提交。</li>
+<li>客户端数据到达 Leader 节点，成功复制到 Follower 大多数节点，但还未向 Leader 响应接收<br> <img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-3.jpg" alt><br> 这个阶段 Leader 挂掉，数据在 Follower 节点处于未提交状态且不一致，Raft 协议要求投票只能投给拥有最新数据的节点。所以，拥有最新数据的节点会被选为 Leader ，然后再强制同步数据到 Follower ，数据不会丢失并最终一致。注意，如果是成功复制到少数 Follower ,那么数据就可能会丢失。</li>
+<li>客户端数据到达 Leader 节点，成功复制到 Folloer 所有或多数节点，数据在 Leader 处于已提交状态，但在 Follower 处于未提交状态<br> <img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-4.jpg" alt><br> 这个阶段 Leader 挂掉，选出的新 Leader 拥有最新的数据，对于数据缺失的 Follower 节点，执行同步机制会保证最终一致。</li>
+<li>网络分区导致脑裂，出现双 Leader<br> <img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-5.jpg" alt><br> 网络分区将原先的 Leader 节点和 Follower 节点分隔开，Follower 收不到 Leader 的心跳将发起选举产生新的 Leader。这时就产生了双 Leader，原先的 Leader 独自在一个区，向它提交数据不可能复制到多数节点所以永远提交不成功。向新的 Leader 提交数据可以提交成功，网络恢复后旧的 Leader 发现集群中有更新任期的 Leader（任期更大），则自动降级为 Follower 并更新任期且从新 Leader 同步数据达成集群数据一致。</li>
+</ol>
+</blockquote>
+<p>通过上述穷举不难看出，Raft 能很好地应对一致性问题。此外，跟随者崩溃了或处于慢响应状态，领导者会反复重试这个调用，直到跟随者恢复后，领导者就能重试成功。但是领导者并不需要等待每个跟随者的响应，它只需要等到足够数量的响应，保证记录已被大多数服务节点存储即可。所以这样就能在一般情况下获得很好的性能提升。也就是说，在通常情况下，只需要获得大多数最快的服务器的应答，领导者就可以立即执行命令，并将结果返回至客户端。</p>
+<h2 id="任期更新"><a href="#任期更新" class="headerlink" title="任期更新"></a>任期更新</h2><p>出现网络分区时，可能使集群中出现两个 Leader，网络恢复时该如何处理两个 Leader 的问题呢？Raft 使用任期号来处理。每个 RPC 请求都包括发送者的任期号，接收者收到请求后会将其与自己的任期号相比较，如果不匹配，则会更新那些过期的记录。所以如果发送者的任期比接收者小，接收者会立即拒绝 RPC 请求，并将包括了接受者任期信息的响应发送回发送者，当发送者接收到响应时会发现自己的任期号是过期的，此时它就会停下并作为跟随者继续运行，同时更新自己的任期号。反之，如果接受者的任期号更小，它同样会更新自己的任期号。</p>
+<p>选举过程也会导致任期号的更新。候选者发起投票请求时会将自己的任期号随着 RPC 请求发送出去，这样所有的接收者都会更新自己的任期号，与候选者保持一致。</p>
+<h2 id="日志的一致性"><a href="#日志的一致性" class="headerlink" title="日志的一致性"></a>日志的一致性</h2><p>在 Raft 算法中，<strong>领导者处理不一致日志是通过强制跟随者直接复制自己的日志来解决的</strong>。也就是说，Raft 是通过以领导者的日志为准来实现各节点日志的一致，这意味着在跟随者中的冲突的日志条目会被领导者的日志覆盖。</p>
+<p>日志记录的索引以及任期编号可以唯一标识一条日志条目。Raft 维护着以下特性：</p>
+<ol>
+<li>如果两条日志条目拥有相同的索引和任期号，那么它们存储的指令也是相同的。</li>
+<li>如果两条日志条目拥有相同的索引和任期号，那么它们之前的所有日志条目也全部相同。</li>
+</ol>
+<p>第一个特性来自领导者创建日志条目的原则，领导者最多在一个任期里在指定的日志索引位置创建一条日志条目，而且日志条目在日志中的位置不会改变。第二个特性由一致性检查来保证。此外，如果某条日志条目是已提交的，那么其所有前序的记录都应该处于已提交状态。</p>
+<h2 id="AppendEntries-一致性检查"><a href="#AppendEntries-一致性检查" class="headerlink" title="AppendEntries 一致性检查"></a>AppendEntries 一致性检查</h2><p><strong>Raft 强制在 AppendEntries 远程（日志复制和心跳）调用时进行一致性检查，如果发现问题则需要修复跟随者日志</strong>。要使得跟随者的日志和领导者一致，领导者就必须找到最后两者达成一致的地方，然后删除从那个点之后的所有日志条目，发送自己的日志给跟随者。而这些操作都在进行 AppendEntries 的一致性检查时完成。</p>
+<p>领导者会为每个跟随者维护一个状态变量 <code>nextIndex</code> ，这个变量存储下一个需要发送给跟随者的日志条目的下标位置索引。当一个服务节点成为领导者后，它会将 nextIndex 值统一设置为自己最后一条日志条目的 index 加 1 。领导者会根据 AppendEntries 调用发现一致性问题，因为当跟随者接收到 AppendEntries 调用时都会进行检查。当领导者与跟随者进行 AppendEntries 通信时，都会包括日志条目下标索引 index 以及任期号 term 作为请求参数，这里日志条目就是 log[nextIndex-1] 的值。当消息到达跟随者后，它会将接收到的下标位置索引与任期与自己的日志信息进行比较，如果不一致就会拒绝当前请求。在被跟随者拒绝之后，领导者就会减小 nextIndex 值并进行重试。最终 nextIndex 会在某个位置使得领导者和跟随者的日志达成一致。当这种情况发生，附加日志 RPC 就会成功，这时就会把跟随者冲突的日志条目全部删除并且加上领导人的日志。一旦附加日志 RPC 成功，那么跟随者的日志就会和领导人保持一致，并且在接下来的任期里一直继续保持。</p>
+<p><strong>一致性检查流程概括如下：</strong></p>
+<blockquote>
+<ol>
+<li>Leader 初始化 nextIndex 为自己最后一个 log index + 1</li>
+<li>AppendEntries 中的 prevLogTerm 、prevLogindex 来自 logs[nextIndex -1]</li>
+<li>Follower 会将接收到的下标索引与任期与自己的日志信息进行比较，如果一致则返回 true，否则返回 false。</li>
+<li>Leader 收到 Follower 的回复，如果返回值是 false，则 nextIndex -= 1，回到第 2 步进行重试，否则同步 nextIndex 后的所有日志条目。</li>
+</ol>
+</blockquote>
+<p>从一致性检查的过程不难发现，如果 Follower 和 Leader 的日志差异过大会造成 AppendEntries RPC 拒绝次数。但是在实践中，失败是很少发生的并且也不大可能会有这么多不一致的日志。如果一定要优化的话，那么可以采用：当 AppendEntries RPC 请求被拒绝的时候，跟随者可以包含冲突的条目的任期号和自己存储的那个任期的最早的下标索引。借助这些信息，领导者可以减小 nextIndex 越过所有那个任期冲突的所有日志条目，这样就变成每个任期需要一次 AppendEntries RPC 而不是每个条目一次。</p>
+<p>一致性检查机制非常重要，如果一个跟随者接受了来自领导者的新记录，那么它的日志记录也与领导者的日志记录是完全匹配的。此外，<strong>领导者刚当选时不需要任何特殊的操作来恢复一致性，它只需要进行正常的操作，然后日志就能自动的在回复 AppendEntries RPC 的一致性检查失败的时候自动趋于一致。</strong></p>
+<h1 id="日志压缩"><a href="#日志压缩" class="headerlink" title="日志压缩"></a>日志压缩</h1><p>Raft 的日志在正常操作中不断增长，但在实际的系统中，不能让日志无限增长，否则系统重启时需要花很长的时间进行回放，从而影响系统的可用性。Raft 采用了快照技术进行日志压缩来解决日志过大问题。快照的缺点就是不是增量的，即使内存中某个值没有变，下次做快照的时候同样会被 dump 到磁盘。</p>
+<h2 id="快照结构"><a href="#快照结构" class="headerlink" title="快照结构"></a>快照结构</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-log-compaction.png" alt></p>
+<p>由快照结构可知，服务节点使用一个新的快照替换其日志中提交的日志条目（如上图中：索引1到索引5），快照只存储当前状态（如上图中的变量x和y）。并且快照包含一些元数据，其中 <code>last included index</code>、<code>last included term</code> 分别是快照覆盖的最后一条日志条目的索引以及任期号，这两个值用于 AppendEntries RPC 的一致性检查。此外，为了支持集群成员变更，快照中也保存了最新的配置信息。关于成员变更问题在下文中会有详细说明。</p>
+<p>Raft 中每个节点独立的创建快照，只包括已经应用到状态机的日志条目。一旦节点完成一次快照，就可以删除最后索引位置之前的所有日志和快照了。</p>
+<h2 id="快照发送"><a href="#快照发送" class="headerlink" title="快照发送"></a>快照发送</h2><p>正常情况下，Leader 的日志和 Follower 保持一致，但并不是所有情况都处于正常情况之下，有时可能因为 Follower 的反应缓慢或宕机造成日志不一致的情况，这时就需要 Leader 进行日志复制。如果在复制的过程中，Leader 需要发给 Follower 的日志条目被丢失了（因为 Leader 做了快照），这时会通过 InstallSnapshot RPC 发送快照给 Follower，如果没有丢失则直接从日志中复制即可。</p>
+<p><strong>InstallSnapshot RPC 数据结构的关键字段如下：</strong></p>
+<blockquote>
+<ol>
+<li>term: Leader 的任期</li>
+<li>leaderId: Leader 的id，以便于跟随者重定向请求</li>
+<li>lastIncludedIndex: 快照中包含的最后一条日志条目的索引值</li>
+<li>lastIncludedTerm: 快照中包含的最后一条日志条目的任期号<br>……</li>
+</ol>
+</blockquote>
+<p>当跟随者收到了 InstallSnapshot RPC 发来的快照，它会根据自身的日志进行处理：</p>
+<blockquote>
+<ol>
+<li>Follower 的日志信息不包括快照中的日志信息，或者包含与快照冲突的信息，这种情况直接使用快照内容替代自己的日志。</li>
+<li>快照中的日志仅是 Follower 日志的子集（前缀）（由于网络重传或者错误），那么 Follower 中被快照包括的部分被代替，之后的部分仍然保留。</li>
+</ol>
+</blockquote>
+<h2 id="快照创建"><a href="#快照创建" class="headerlink" title="快照创建"></a>快照创建</h2><p>各节点独立创建快照的方式背离了 Raft 的强领导者原则，因为跟随者可以在不知道领导者的情况下创建快照。虽然快照创建背离 Raft 的领导者原则，但是本质上还是以领导者为中心，并且这种背离是值得的。领导者的存在是为了解决在达成一致性时的冲突，但是在创建快照时一致性已经达成，因为创建快照是基于已经提交的日志条目的，所以没有领导者也是可以的。数据依然是从领导者传给跟随者。</p>
+<p>不使用基于领导者的快照方案，一方面减少网络带宽的使用，降低了快照处理的时间，另一方面降低了 Leader 设计的复杂性。</p>
+<h2 id="存在问题"><a href="#存在问题" class="headerlink" title="存在问题"></a>存在问题</h2><p><strong>写入频率问题</strong></p>
+<p>快照不能创建的太频繁，否则会消耗大量磁盘带宽和其它资源。快照创建的频率太低，需要承受耗尽存储容量的风险，同时增加了回放日志的时间。解决上述问题一个简单策略就是设置一个阈值。</p>
+<p><strong>服务暂停问题</strong></p>
+<p>写入快照需要消耗显著的一段时间，并且我们不希望影响到正常的操作。可以通过 Copy-On-Write 技术解决该问题，如利用 Linux 上的 fork 指令复制父进程及所有内存中的状态，在子进程创建快照，父进程继续提供 Raft 基本服务。</p>
+<h1 id="安全性"><a href="#安全性" class="headerlink" title="安全性"></a>安全性</h1><p>Raft 的安全性是为了保证每一个状态机会按照相同顺序执行相同的指令，即保证每个服务节点上的日志（数据副本）是一致的。如果没有安全性，数据的正确性和一致性就不能得到保证。例如，一个跟随者可能会进入不可用状态，同时领导者已经提交了一些日志条目，如果没有安全性，这个跟随者可能会被选举为领导者并且覆盖这些日志条目。前面的章节主要描述了 Raft 算法是如何选举和复制日志的，其中已经穿插了不少的安全机制，本章节对安全性进行补充。</p>
+<p><strong>选举限制</strong></p>
+<p>Raft 是一种强领导者模型的算法，只有从集群中选举出 Leader 才能处理客户端请求和协调 Raft 内部运行机制（如：心跳、日志复制，以及它们对应的一致性检查等）。</p>
+<p>一个任期内只允许有一个领导者，这是由<strong>一个服务节点某一任期内最多只能投一票</strong> 和 <strong>只有获得 majority 投票的服务节点才会成为 Leader</strong> 这两个原则来保证的。为了实现这种机制，服务节点需要保证将自己的投票信息持久化，这样就能在服务节点崩溃之后也能恢复到之前的状态。否则就会出现服务节点已经作出投票，但在崩溃重启后在同一任期内将票又投给了另外一个不同服务节点的情况。</p>
+<p>当一个候选者发起投票请求，它会包括自身的日志记录信息，索引 index、任期号 term 。当跟随者接收到请求，它会将候选者的日志信息与自己的日志信息进行比较，如果投票者的日志更完整，那么它会拒绝投票。Raft 是通过比较两份日志中最后一条日志条目的索引值和任期号定义哪个日志更新。如果两份日志最后的条目的任期号不同，那么任期号大的日志更新，如果两份日志最后的条目任期号相同，则索引值大的更新。</p>
+<p>Raft 保证所有之前的任期号中已经提交的日志条目都会出现在新的领导者中，不需要传送这些日志条目给领导者。这意味着日志条目是单向传送的，只能从领导者传给跟随者，并且领导者从不会覆盖自身本地日志中已经存在的日志条目。</p>
+<p><strong>当前任期提交</strong></p>
+<p>只要日志条目被复制到大多数的服务节点上，领导者就可以提交当前任期内的这一日志条目。领导者不会根据大多数原则去提交一个之前任期内的日志条目，只会根据大多数提交当前任期的日志条目。一旦当前任期的日志条目被提交，那么根据日志匹配特性，之前的日志条目也都会被间接的提交。如果领导者被选举后迟迟收不到客户端的请求，也就是意味着该领导者还不能确认哪些日志条目被提交，基于这个问题 Raft 通过让每个 Leader 在其任期开始时向日志中提交一个空的没有任何操作的日志条目，立即尝试复制来处理这个问题。</p>
+<p><strong>状态机安全</strong></p>
+<p>Raft 中某个节点将某一位置的日志条目应用到状态机，那么其它节点在同一位置不能应用不同的日志，也就是说，所有节点在同一位置（index）必须应用同样的日志。</p>
+<h1 id="成员变更"><a href="#成员变更" class="headerlink" title="成员变更"></a>成员变更</h1><p>Raft 算法是强领导者模型，领导者选举建立在大多数的基础之上，当集群中的成员变更时就可能同时存在新旧配置的 2 个大多数，进而出现两个领导者，这会破坏 Raft 集群的领导者唯一性，影响了集群的运行。</p>
+<p>尽管可以通过暂停整个集群，更新所有配置，然后重启整个集群的方式来解决因集群变更带来的问题，但是在更改的时候集群会不可用。Raft 通过单节点变更来解决成员变更问题。这里我们需要明确两个定义：</p>
+<p><strong>配置</strong></p>
+<blockquote>
+<p>这里的配置是对集群中节点的描述，包括每台服务节点的 ID 、网络地址等。比如：A、B、C 组成的集群，那么集群的配置就是 [A、B、C] 集合。这些信息都非常重要，因为我们需要用它们来决定多数票的具体数量，从而进行领导者选举或用来提交日志。</p>
+</blockquote>
+<p><strong>单节点变更</strong></p>
+<blockquote>
+<p>单节点变更是利用一次变更一个节点，不会同时存在旧配置和新配置 2 个 大多数的特性，实现成员变更。</p>
+</blockquote>
+<h1 id="节点奔溃"><a href="#节点奔溃" class="headerlink" title="节点奔溃"></a>节点奔溃</h1><p>前面的章节对领导者节点的奔溃进行不同场景的介绍，核心关注点在于领导者节点奔溃的时机，不同时机奔溃集群处理不同，但是关键一点是大多数共识的日志条目不会丢失。跟随者和候选者奔溃后的处理方式相对比较简单，并且它们处理的方式相同。如果跟随者或者候选者奔溃了，后续发送它们的 RPC 消息都会失败。Raft 中处理这种失败就是简单的通过无限重试，如果奔溃的节点恢复了，那么 RPC 消息就会成功。如果一个服务节点完成了一个 RPC 请求，但是还没有响应的时候奔溃了，那么恢复后就会再次收到同样的请求。Raft 的 RPC 都是幂等的，所以这样重试不会造成任何问题。</p>
+<h1 id="客户端协议"><a href="#客户端协议" class="headerlink" title="客户端协议"></a>客户端协议</h1><p><strong>请求领导者</strong></p>
+<p>Raft 中的客户端发送所有请求给领导者，当客户端请求的不是领导者时，那么该服务节点会拒绝客户端的请求并向客户端提供它最近接收到的领导者的信息（AppendEntries RPC包含了领导者的网络地址）。如果领导者已经崩溃了，那么客户端的请求就会超时，客户端之后会再次重试随机挑选服务节点。</p>
+<p><strong>线性语意</strong></p>
+<p>Raft 的目标是要实现线性语义（每一次操作立即执行，只执行一次），但 Raft 是可以执行同一条指令多次的，如领导者提交日志条目后宕机了，那么客户端会和新的领导者重试这条指令，导致这条指令被再次执行。解决方案就是客户端对于每一条指令都赋予一个唯一的序列号。然后，状态机跟踪每条指令最新的序列号和相应的响应。如果接收到一条指令，它的序列号已经被执行了，那么就立即返回结果，而不重新执行指令。</p>
+<p>Raft 读取的是状态机运算后的数据。Raft 的读操作虽然直接从领导者节点读取，但是在网络分区的情况下可能会返回脏数据，而线性的读操作必须不能返回脏数据，Raft 使用两个额外的措施保证这一点。首先，领导者必须有关于被提交日志的最新信息，领导者完全特性保证了领导者一定拥有所有已经被提交的日志条目，但是在它任期开始的时候，可能还不知道哪些是已经被提交的，为了知道这些信息，它需要在它的任期里提交一条日志条目。Raft 中通过领导者在任期开始的时候提交一个空白的没有任何操作的日志条目到日志中去来实现。第二，领导者在处理只读的请求之前必须检查自己是否已经被废黜了（更新的领导者被选举出来）。Raft 中通过让领导人在响应只读请求之前，先和集群中的大多数节点交换一次心跳信息来处理这个问题。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>Raft 算法本质上是通过复制日志来实现共识的，和客户端的交互依赖状态机执行日志条目的指令，集群内部通过选举、心跳、日志复制来协调。Raft 具体的做法是将共识问题分解为多个独立的子问题，高度概括为：先选举出领导者，由它完全负责 <code>replicated log</code> 的管理。此外，接受客户端写请求，然后复制到跟随者节点，并在 <code>安全</code> 的时候执行这些请求。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/48468614/" title="Raft 共识算法" target="_blank" rel="external">https://gentryhuang.com/posts/48468614/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    
+    <li class="next">
+      <a href="/posts/2362a8ea/" title="Redis原理 - 链表"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
