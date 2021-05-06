@@ -18,12 +18,12 @@
   
   
   <title>Raft 共识算法 | gentryhuang的博客</title>
-  <meta name="description" content="概述Raft 是一个共识算法（consensus algorithm），也称作 Raft 协议。所谓共识就是多个节点就某个事情达成一致，即使是在部分节点故障、甚至网络分区的情况下也是可行的。在分布式系统中，共识算法更多用于提供系统的容错性。 Raft 算法是在兰伯特 Multi-Paxos 思想的基础上进行了简化和限制，目标就是容易理解。Raft 虽然增强了可理解性，但在性能、可靠性、可用性方面是">
+  <meta name="description" content="问题 Raft 的优缺点 1.读写请求和数据转发压力落在领导者节点，导致领导者压力。2.大规模跟随者的集群，领导者需要承担大量元数据维护和心跳通知的成本。3.领导者单点问题，故障后直到新领导者选举出来期间集群不可用。4.随着候选人规模增长，收集半数以上投票的成本更大。   为什么raft不采用paxos方式选主？ 不直接采用Basic Paxos，是因为在Raft中不是所有的节点都能当选领导者，只">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Raft 共识算法">
 <meta property="og:url" content="https://gentryhuang.com/posts/48468614/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="概述Raft 是一个共识算法（consensus algorithm），也称作 Raft 协议。所谓共识就是多个节点就某个事情达成一致，即使是在部分节点故障、甚至网络分区的情况下也是可行的。在分布式系统中，共识算法更多用于提供系统的容错性。 Raft 算法是在兰伯特 Multi-Paxos 思想的基础上进行了简化和限制，目标就是容易理解。Raft 虽然增强了可理解性，但在性能、可靠性、可用性方面是">
+<meta property="og:description" content="问题 Raft 的优缺点 1.读写请求和数据转发压力落在领导者节点，导致领导者压力。2.大规模跟随者的集群，领导者需要承担大量元数据维护和心跳通知的成本。3.领导者单点问题，故障后直到新领导者选举出来期间集群不可用。4.随着候选人规模增长，收集半数以上投票的成本更大。   为什么raft不采用paxos方式选主？ 不直接采用Basic Paxos，是因为在Raft中不是所有的节点都能当选领导者，只">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/architecture-raft-replicated-state-machines.jpeg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-node-state.jpg">
@@ -48,10 +48,10 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-5.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-log-compaction.png">
 <meta property="article:published_time" content="2021-04-23T11:28:56.000Z">
-<meta property="article:modified_time" content="2021-05-01T11:11:18.609Z">
+<meta property="article:modified_time" content="2021-05-06T10:31:32.909Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Raft">
-<meta property="article:tag" content="分布式算法">
+<meta property="article:tag" content="共识算法">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/architecture-raft-replicated-state-machines.jpeg">
   <!-- Canonical links -->
@@ -248,7 +248,7 @@
   <div class="widget">
     <h3 class="widget-title">标签</h3>
     <div class="widget-body">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">62</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">12</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Raft/" rel="tag">Raft</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E7%AE%97%E6%B3%95/" rel="tag">分布式算法</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/AQS/" rel="tag">AQS</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Dubbo/" rel="tag">Dubbo</a><span class="tag-list-count">62</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Filter/" rel="tag">Filter</a><span class="tag-list-count">12</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">4</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Javassist/" rel="tag">Javassist</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Mina/" rel="tag">Mina</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Protocol/" rel="tag">Protocol</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RPC/" rel="tag">RPC</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Raft/" rel="tag">Raft</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis/" rel="tag">Redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" rel="tag">Redis数据结构</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SPI/" rel="tag">SPI</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a><span class="tag-list-count">3</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Zookeeper/" rel="tag">Zookeeper</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%90%86/" rel="tag">代理</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" rel="tag">共识算法</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a><span class="tag-list-count">32</span></li></ul>
     </div>
   </div>
 
@@ -258,7 +258,7 @@
   <div class="widget">
     <h3 class="widget-title">标签云</h3>
     <div class="widget-body tagcloud">
-      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E7%AE%97%E6%B3%95/" style="font-size: 13px;">分布式算法</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
     </div>
   </div>
 
@@ -267,7 +267,7 @@
   <div class="widget">
     <h3 class="widget-title">归档</h3>
     <div class="widget-body">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">四月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">三月 2021</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">二月 2021</a><span class="archive-list-count">3</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">5</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/05/">五月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">四月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/03/">三月 2021</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">二月 2021</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">一月 2021</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">十二月 2020</a><span class="archive-list-count">2</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">十一月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">十月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/09/">九月 2020</a><span class="archive-list-count">5</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">七月 2020</a><span class="archive-list-count">6</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">六月 2020</a><span class="archive-list-count">4</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">五月 2020</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/04/">四月 2020</a><span class="archive-list-count">8</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">三月 2020</a><span class="archive-list-count">14</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/10/">十月 2019</a><span class="archive-list-count">10</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">九月 2019</a><span class="archive-list-count">20</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/08/">八月 2019</a><span class="archive-list-count">2</span></li></ul>
     </div>
   </div>
 
@@ -279,6 +279,31 @@
     <div class="widget-body">
       <ul class="recent-post-list list-unstyled ">
         
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/4760cec/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/RPC/">RPC</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/4760cec/" class="title">Dubbo源码分析 - 心跳检测</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-05-04T10:56:21.000Z" itemprop="datePublished">2021-05-04</time>
+              </p>
+            </div>
+          </li>
+          
           <li>
             
             <div class="item-thumb">
@@ -357,31 +382,6 @@
           <li>
             
             <div class="item-thumb">
-              <a href="/posts/4760cec/" class="thumb">
-    
-    
-        <span class="thumb-image thumb-none"></span>
-    
-</a>
-
-            </div>
-            
-            <div class="item-inner">
-              <p class="item-category">
-                <a class="category-link" href="/categories/RPC/">RPC</a>
-              </p>
-              <p class="item-title">
-                <a href="/posts/4760cec/" class="title">Dubbo源码分析 - 心跳检测</a>
-              </p>
-              <p class="item-date">
-                <time datetime="2021-02-19T10:56:21.000Z" itemprop="datePublished">2021-02-19</time>
-              </p>
-            </div>
-          </li>
-          
-          <li>
-            
-            <div class="item-thumb">
               <a href="/posts/c812f120/" class="thumb">
     
     
@@ -419,7 +419,7 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#复制状态机"><span class="toc-number">2.</span> <span class="toc-text">复制状态机</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Raft-算法概览"><span class="toc-number">3.</span> <span class="toc-text">Raft 算法概览</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#算法简要"><span class="toc-number">3.1.</span> <span class="toc-text">算法简要</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#状态数据结构"><span class="toc-number">3.1.1.</span> <span class="toc-text">状态数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#选举-RPC-数据结构"><span class="toc-number">3.1.2.</span> <span class="toc-text">选举 RPC 数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#日志复制｜心跳-RPC-数据结构"><span class="toc-number">3.1.3.</span> <span class="toc-text">日志复制｜心跳 RPC 数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#服务节点规则"><span class="toc-number">3.1.4.</span> <span class="toc-text">服务节点规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#关键特性"><span class="toc-number">3.1.5.</span> <span class="toc-text">关键特性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#阶段状态（角色）"><span class="toc-number">3.2.</span> <span class="toc-text">阶段状态（角色）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#领导者任期"><span class="toc-number">3.3.</span> <span class="toc-text">领导者任期</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#超时处理"><span class="toc-number">3.4.</span> <span class="toc-text">超时处理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#通信"><span class="toc-number">3.5.</span> <span class="toc-text">通信</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#领导者选举"><span class="toc-number">4.</span> <span class="toc-text">领导者选举</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#选举-Leader"><span class="toc-number">4.1.</span> <span class="toc-text">选举 Leader</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#选举结果"><span class="toc-number">4.2.</span> <span class="toc-text">选举结果</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#选举规则"><span class="toc-number">4.3.</span> <span class="toc-text">选举规则</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#日志复制"><span class="toc-number">5.</span> <span class="toc-text">日志复制</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#日志结构"><span class="toc-number">5.1.</span> <span class="toc-text">日志结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#日志复制操作"><span class="toc-number">5.2.</span> <span class="toc-text">日志复制操作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#任期更新"><span class="toc-number">5.3.</span> <span class="toc-text">任期更新</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#日志的一致性"><span class="toc-number">5.4.</span> <span class="toc-text">日志的一致性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AppendEntries-一致性检查"><span class="toc-number">5.5.</span> <span class="toc-text">AppendEntries 一致性检查</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#日志压缩"><span class="toc-number">6.</span> <span class="toc-text">日志压缩</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#快照结构"><span class="toc-number">6.1.</span> <span class="toc-text">快照结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#快照发送"><span class="toc-number">6.2.</span> <span class="toc-text">快照发送</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#快照创建"><span class="toc-number">6.3.</span> <span class="toc-text">快照创建</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#存在问题"><span class="toc-number">6.4.</span> <span class="toc-text">存在问题</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#安全性"><span class="toc-number">7.</span> <span class="toc-text">安全性</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#成员变更"><span class="toc-number">8.</span> <span class="toc-text">成员变更</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#节点奔溃"><span class="toc-number">9.</span> <span class="toc-text">节点奔溃</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#客户端协议"><span class="toc-number">10.</span> <span class="toc-text">客户端协议</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">11.</span> <span class="toc-text">小结</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#问题"><span class="toc-number">1.</span> <span class="toc-text">问题</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#复制状态机"><span class="toc-number">3.</span> <span class="toc-text">复制状态机</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Raft-算法概览"><span class="toc-number">4.</span> <span class="toc-text">Raft 算法概览</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#算法简要"><span class="toc-number">4.1.</span> <span class="toc-text">算法简要</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#状态数据结构"><span class="toc-number">4.1.1.</span> <span class="toc-text">状态数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#选举-RPC-数据结构"><span class="toc-number">4.1.2.</span> <span class="toc-text">选举 RPC 数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#日志复制｜心跳-RPC-数据结构"><span class="toc-number">4.1.3.</span> <span class="toc-text">日志复制｜心跳 RPC 数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#服务节点规则"><span class="toc-number">4.1.4.</span> <span class="toc-text">服务节点规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#关键特性"><span class="toc-number">4.1.5.</span> <span class="toc-text">关键特性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#阶段状态（角色）"><span class="toc-number">4.2.</span> <span class="toc-text">阶段状态（角色）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#领导者任期"><span class="toc-number">4.3.</span> <span class="toc-text">领导者任期</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#超时处理"><span class="toc-number">4.4.</span> <span class="toc-text">超时处理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#通信"><span class="toc-number">4.5.</span> <span class="toc-text">通信</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#领导者选举"><span class="toc-number">5.</span> <span class="toc-text">领导者选举</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#选举-Leader"><span class="toc-number">5.1.</span> <span class="toc-text">选举 Leader</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#选举结果"><span class="toc-number">5.2.</span> <span class="toc-text">选举结果</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#选举规则"><span class="toc-number">5.3.</span> <span class="toc-text">选举规则</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#日志复制"><span class="toc-number">6.</span> <span class="toc-text">日志复制</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#日志结构"><span class="toc-number">6.1.</span> <span class="toc-text">日志结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#日志复制操作"><span class="toc-number">6.2.</span> <span class="toc-text">日志复制操作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#任期更新"><span class="toc-number">6.3.</span> <span class="toc-text">任期更新</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#日志的一致性"><span class="toc-number">6.4.</span> <span class="toc-text">日志的一致性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AppendEntries-一致性检查"><span class="toc-number">6.5.</span> <span class="toc-text">AppendEntries 一致性检查</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#日志压缩"><span class="toc-number">7.</span> <span class="toc-text">日志压缩</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#快照结构"><span class="toc-number">7.1.</span> <span class="toc-text">快照结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#快照发送"><span class="toc-number">7.2.</span> <span class="toc-text">快照发送</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#快照创建"><span class="toc-number">7.3.</span> <span class="toc-text">快照创建</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#存在问题"><span class="toc-number">7.4.</span> <span class="toc-text">存在问题</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#安全性"><span class="toc-number">8.</span> <span class="toc-text">安全性</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#成员变更"><span class="toc-number">9.</span> <span class="toc-text">成员变更</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#节点奔溃"><span class="toc-number">10.</span> <span class="toc-text">节点奔溃</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#客户端协议"><span class="toc-number">11.</span> <span class="toc-text">客户端协议</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">12.</span> <span class="toc-text">小结</span></a></li></ol>
     </nav>
   </div>
 </aside>
@@ -454,7 +454,7 @@
         
   <span class="article-tag">
     <i class="icon icon-tags"></i>
-	<a class="article-tag-link" href="/tags/Raft/" rel="tag">Raft</a>, <a class="article-tag-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E7%AE%97%E6%B3%95/" rel="tag">分布式算法</a>
+	<a class="article-tag-link" href="/tags/Raft/" rel="tag">Raft</a>, <a class="article-tag-link" href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" rel="tag">共识算法</a>
   </span>
 
 
@@ -470,17 +470,32 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/48468614/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 11.4k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 11.8k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 39(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 40(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Raft 是一个共识算法（consensus algorithm），也称作 Raft 协议。所谓共识就是多个节点就某个事情达成一致，即使是在部分节点故障、甚至网络分区的情况下也是可行的。在分布式系统中，共识算法更多用于提供系统的容错性。</p>
+        <h1 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h1><ul>
+<li>Raft 的优缺点<blockquote>
+<p>1.读写请求和数据转发压力落在领导者节点，导致领导者压力。<br>2.大规模跟随者的集群，领导者需要承担大量元数据维护和心跳通知的成本。<br>3.领导者单点问题，故障后直到新领导者选举出来期间集群不可用。<br>4.随着候选人规模增长，收集半数以上投票的成本更大。</p>
+</blockquote>
+</li>
+<li>为什么raft不采用paxos方式选主？<blockquote>
+<p>不直接采用Basic Paxos，是因为在Raft中不是所有的节点都能当选领导者，只有大多数节点中日志最完整的节点才能当选领导者。</p>
+</blockquote>
+</li>
+<li>raft集群如何感知其他节点呢？候选节点如何判断获得的票数已经过半，从而晋升为领导者？<blockquote>
+<p>每个节点都存储有集群配置，也就集群成员的地址信息，所以，一个节点就能通过rpc消息和其它节点交互，另外，知道了当前集群的成员数，也就能判断“接收多少票数时，票数过半了”</p>
+</blockquote>
+</li>
+<li>Raft的任期编号是怎样进行初始化的？2.集群中的大多数是如何确定的，比如A、B、C三节点集群，怎么就知道2个响应就是大多数？<br> 1-： 可以使用同一发号器<br> 2-：问题3回答</li>
+</ul>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Raft 是一个共识算法（consensus algorithm），也称作 Raft 协议。所谓共识就是多个节点就某个事情达成一致，即使是在部分节点故障、甚至网络分区的情况下也是可行的。在分布式系统中，共识算法更多用于提供系统的容错性。</p>
 <p>Raft 算法是在兰伯特 Multi-Paxos 思想的基础上进行了简化和限制，目标就是容易理解。Raft 虽然增强了可理解性，但在性能、可靠性、可用性方面是不输于 Paxos 的。Raft 算法将共识的关键要素进行了拆分，以简化流程和提供算法的可理解性。</p>
 <h1 id="复制状态机"><a href="#复制状态机" class="headerlink" title="复制状态机"></a>复制状态机</h1><p>共识算法的实现一般是基于复制状态机（Replicated state machines），即所有节点都是从同一个 <code>state</code> 出发，都经过同样的一些操作序列（log），最后到达同样的 <code>state</code> ，架构图如下：</p>
 <p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/architecture-raft-replicated-state-machines.jpeg" alt></p>
@@ -836,6 +851,10 @@
   <div class="bar-inner">
   
   <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/4760cec/" title="Dubbo源码分析 - 心跳检测"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
     
     
     <li class="next">
