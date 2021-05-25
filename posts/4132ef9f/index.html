@@ -17,21 +17,23 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>标签: SPI | gentryhuang的博客</title>
-  <meta name="description" content="博客">
-<meta property="og:type" content="website">
-<meta property="og:title" content="gentryhuang‘s blog">
-<meta property="og:url" content="https://gentryhuang.com/tags/SPI/index.html">
+  <title>MySQL - 慢查询 | gentryhuang的博客</title>
+  <meta name="description" content="概述MySQL 慢查询日志是排查问题 SQL 语句，以及检查当前 MySQL 性能的一个重要手段。默认情况下，MySQL 并不启动慢查询日志，需要我们手动来开启。如果不是调优需要的话，一般不建议开启慢查询，毕竟开启慢查询或多或少会带来一定的性能影响。 关键参数 slow_query_log:  是否开启慢查询日志，默认 OFF，开启则设置为 ON。 slow_query_log_file:  慢查">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL - 慢查询">
+<meta property="og:url" content="https://gentryhuang.com/posts/4132ef9f/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="博客">
+<meta property="og:description" content="概述MySQL 慢查询日志是排查问题 SQL 语句，以及检查当前 MySQL 性能的一个重要手段。默认情况下，MySQL 并不启动慢查询日志，需要我们手动来开启。如果不是调优需要的话，一般不建议开启慢查询，毕竟开启慢查询或多或少会带来一定的性能影响。 关键参数 slow_query_log:  是否开启慢查询日志，默认 OFF，开启则设置为 ON。 slow_query_log_file:  慢查">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-05-14T11:17:14.000Z">
+<meta property="article:modified_time" content="2021-05-25T03:02:21.914Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
 <meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/tags/SPI/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/4132ef9f/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -383,140 +385,159 @@
 </aside>
 
   
-  <main class="main" role="main">
-  <article class="content article article-tags post-type-list" itemscope="">
-    <header class="article-header">
-      <h1 itemprop="name" class="hidden-xs">标签: SPI</h1>
-      <p class="text-muted hidden-xs">共 3 篇文章</p>
-      <nav role="navigation" id="nav-main" class="okayNav">
-        <ul>
-          <li><a href="/tags">All</a></li>
-          
-          <li><a href="/tags/Raft/">Raft</a></li>
-          
-          <li><a href="/tags/共识算法/">共识算法</a></li>
-          
-          <li><a href="/tags/缓存/">缓存</a></li>
-          
-          <li><a href="/tags/JUC/">JUC</a></li>
-          
-          <li><a href="/tags/AQS/">AQS</a></li>
-          
-          <li><a href="/tags/设计模式/">设计模式</a></li>
-          
-          <li><a href="/tags/Dubbo/">Dubbo</a></li>
-          
-          <li><a href="/tags/Javassist/">Javassist</a></li>
-          
-          <li><a href="/tags/RPC/">RPC</a></li>
-          
-          <li><a href="/tags/Protocol/">Protocol</a></li>
-          
-          <li><a href="/tags/SPI/">SPI</a></li>
-          
-          <li><a href="/tags/Filter/">Filter</a></li>
-          
-          <li><a href="/tags/Mina/">Mina</a></li>
-          
-          <li><a href="/tags/Netty/">Netty</a></li>
-          
-          <li><a href="/tags/Spring/">Spring</a></li>
-          
-          <li><a href="/tags/Redis/">Redis</a></li>
-          
-          <li><a href="/tags/Zookeeper/">Zookeeper</a></li>
-          
-          <li><a href="/tags/代理/">代理</a></li>
-          
-          <li><a href="/tags/Redis数据结构/">Redis数据结构</a></li>
-          
-        </ul>
-      </nav>
-    </header>
-    <!-- /header -->
-    <div class="article-body">
-      <div class="row">
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#关键参数"><span class="toc-number">2.</span> <span class="toc-text">关键参数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#配置"><span class="toc-number">3.</span> <span class="toc-text">配置</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#临时配置"><span class="toc-number">3.1.</span> <span class="toc-text">临时配置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#永久配置"><span class="toc-number">3.2.</span> <span class="toc-text">永久配置</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#查看慢查询功能"><span class="toc-number">4.</span> <span class="toc-text">查看慢查询功能</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#mysqldumpslow"><span class="toc-number">5.</span> <span class="toc-text">mysqldumpslow</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">6.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-sql/MySQL慢查询" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
         
-<div class="col-md-6">
-    
-<article class="panel panel-default hover-shadow hover-grow" itemscope itemtype="http://schema.org/BlogPosting">
-  <div class="panel-body">
-     <div class="article-meta">
-       <time datetime="2020-03-17T16:00:00.000Z" itemprop="datePublished">2020-03-18</time>
-     </div>
-     <h3 class="article-title" itemprop="name">
-       <a class="article-link" href="/posts/3e0b5964/">Dubbo源码分析 - 自适应扩展</a>
-     </h3>
-   </div>
-   
-   <div class="panel-footer">
-     
-      <a href="/tags/Dubbo/" class="label label-default mb">Dubbo</a>
-     
-      <a href="/tags/SPI/" class="label label-default mb">SPI</a>
-     
-     
-   </div>
-   
-</article>
+  
+    <h1 class="article-title" itemprop="name">
+      MySQL - 慢查询
+    </h1>
+  
 
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/4132ef9f/" class="article-date">
+	  <time datetime="2021-05-14T11:17:14.000Z" itemprop="datePublished">2021-05-14</time>
+	</a>
+</span>
+        
+        
 
-</div>
+        
 
-<div class="col-md-6">
-    
-<article class="panel panel-default hover-shadow hover-grow" itemscope itemtype="http://schema.org/BlogPosting">
-  <div class="panel-body">
-     <div class="article-meta">
-       <time datetime="2020-03-12T16:00:00.000Z" itemprop="datePublished">2020-03-13</time>
-     </div>
-     <h3 class="article-title" itemprop="name">
-       <a class="article-link" href="/posts/5d81f464/">Dubbo源码分析 - Dubbo SPI</a>
-     </h3>
-   </div>
-   
-   <div class="panel-footer">
-     
-      <a href="/tags/Dubbo/" class="label label-default mb">Dubbo</a>
-     
-      <a href="/tags/SPI/" class="label label-default mb">SPI</a>
-     
-     
-   </div>
-   
-</article>
-
-
-</div>
-
-<div class="col-md-6">
-    
-<article class="panel panel-default hover-shadow hover-grow" itemscope itemtype="http://schema.org/BlogPosting">
-  <div class="panel-body">
-     <div class="article-meta">
-       <time datetime="2020-03-10T16:00:00.000Z" itemprop="datePublished">2020-03-11</time>
-     </div>
-     <h3 class="article-title" itemprop="name">
-       <a class="article-link" href="/posts/a9c33b8c/">Java SPI</a>
-     </h3>
-   </div>
-   
-   <div class="panel-footer">
-     
-      <a href="/tags/SPI/" class="label label-default mb">SPI</a>
-     
-     
-   </div>
-   
-</article>
-
-
-</div>
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/4132ef9f/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 481(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 2(分)</span>
+	
 
       </div>
     </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>MySQL 慢查询日志是排查问题 SQL 语句，以及检查当前 MySQL 性能的一个重要手段。默认情况下，MySQL 并不启动慢查询日志，需要我们手动来开启。如果不是调优需要的话，一般不建议开启慢查询，毕竟开启慢查询或多或少会带来一定的性能影响。</p>
+<h1 id="关键参数"><a href="#关键参数" class="headerlink" title="关键参数"></a>关键参数</h1><ul>
+<li><strong>slow_query_log:</strong>  是否开启慢查询日志，默认 OFF，开启则设置为 ON。</li>
+<li><strong>slow_query_log_file:</strong>  慢查询日志文件存储位置。</li>
+<li><strong>long_query_time:</strong>  超过多少秒的查询才会记录到日志中。单位是秒。</li>
+<li><strong>log_queries_not_using_indexes:</strong>  是否把没有使用到索引的 SQL 记录到日志中，默认 OFF,开启则设置为 ON。</li>
+</ul>
+<h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><p>默认情况下是没有开启慢查询日志，下面通过两种配置方式进行设置。</p>
+<h2 id="临时配置"><a href="#临时配置" class="headerlink" title="临时配置"></a>临时配置</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; set global slow_query_log='ON';</span><br><span class="line">Query OK, 0 rows affected (0.00 sec)</span><br><span class="line"> </span><br><span class="line">mysql&gt; set global slow_query_log_file='/var/lib/mysql/instance-1-slow.log';</span><br><span class="line">Query OK, 0 rows affected (0.00 sec)</span><br><span class="line"> </span><br><span class="line">mysql&gt; set global long_query_time=2; # 下次会话才会生效</span><br><span class="line">Query OK, 0 rows affected (0.00 sec)</span><br></pre></td></tr></table></figure>
+
+<h2 id="永久配置"><a href="#永久配置" class="headerlink" title="永久配置"></a>永久配置</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;etc&#x2F;mysql&#x2F;conf.d&#x2F;mysql.cnf</span><br><span class="line">[mysqld]</span><br><span class="line">slow_query_log &#x3D; ON</span><br><span class="line">slow_query_log_file &#x3D; &#x2F;var&#x2F;lib&#x2F;mysql&#x2F;instance-1-slow.log</span><br><span class="line">long_query_time &#x3D; 2</span><br></pre></td></tr></table></figure>
+
+<p>配置好慢 SQL 相关参数后，重启 MySQL 即可。</p>
+<h1 id="查看慢查询功能"><a href="#查看慢查询功能" class="headerlink" title="查看慢查询功能"></a>查看慢查询功能</h1><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like 'slow_query%';</span><br><span class="line">+<span class="comment">---------------------+----------------------------------+</span></span><br><span class="line">| Variable_name       | Value                            |</span><br><span class="line">+<span class="comment">---------------------+----------------------------------+</span></span><br><span class="line">| slow_query_log      | ON                               |</span><br><span class="line">| slow_query_log_file | /var/lib/mysql/mysql001-slow.log |</span><br><span class="line">+<span class="comment">---------------------+----------------------------------+</span></span><br><span class="line">2 rows in <span class="keyword">set</span> (<span class="number">0.05</span> sec)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like 'long_query_time';</span><br><span class="line">+<span class="comment">-----------------+----------+</span></span><br><span class="line">| Variable_name   | Value    |</span><br><span class="line">+<span class="comment">-----------------+----------+</span></span><br><span class="line">| long_query_time | 1.000000 |</span><br><span class="line">+<span class="comment">-----------------+----------+</span></span><br><span class="line">1 row in <span class="keyword">set</span> (<span class="number">0.02</span> sec)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like 'log_queries_not_using_indexes';</span><br><span class="line">+<span class="comment">-------------------------------+-------+</span></span><br><span class="line">| Variable_name                 | Value |</span><br><span class="line">+<span class="comment">-------------------------------+-------+</span></span><br><span class="line">| log_queries_not_using_indexes | OFF   |</span><br><span class="line">+<span class="comment">-------------------------------+-------+</span></span><br><span class="line">1 row in <span class="keyword">set</span> (<span class="number">0.01</span> sec)</span><br></pre></td></tr></table></figure>
+
+
+<h1 id="mysqldumpslow"><a href="#mysqldumpslow" class="headerlink" title="mysqldumpslow"></a>mysqldumpslow</h1><p><strong>mysqldumpslow</strong> 是 MySQL 官方提供的慢查询日志分析工具，使用 <strong>mysqldumpslow</strong> 命令可以非常明确的得到各种我们需要的查询语句。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>慢查询日志是排查SQL问题以及优化的重要手段，在生产环境中一般都会实时采集慢查询日志，对 MySQL 查询语句监控、分析。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/4132ef9f/" title="MySQL - 慢查询" target="_blank" rel="external">https://gentryhuang.com/posts/4132ef9f/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
   </article>
-   
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    
+    <li class="next">
+      <a href="/posts/fa9a5340/" title="缓存一致性问题"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
 </main>
 
   
@@ -588,6 +609,10 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 
 
 
+
+
+
+   
 
 
 
