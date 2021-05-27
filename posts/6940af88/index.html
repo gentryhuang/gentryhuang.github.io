@@ -25,15 +25,15 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述分布式系统中在可用性和一致性之间没有一个完美的方案，如何构建一个兼容可用性和一致性的分布式系统成为了一个非常棘手的问题。基于此，出现了诸如 CAP 和 BASE 这样的分布式理论和算法。本篇文章将对 CAP 理论进行介绍。 CAP 定理CAP 理论对分布式系统的特性做了高度抽象，抽象成了一致性、可用性和分区容错性，并且证明一个分布式系统不可能同时满足这三个特性，最多只能同时满足其中的两项。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/6940af88/architecture-cap.jpeg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/theory-algorithm/architecture-cap.jpeg">
 <meta property="article:published_time" content="2019-10-12T13:03:22.000Z">
-<meta property="article:modified_time" content="2021-05-22T15:22:31.114Z">
+<meta property="article:modified_time" content="2021-05-27T12:39:11.852Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
 <meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/6940af88/architecture-cap.jpeg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/theory-algorithm/architecture-cap.jpeg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/6940af88/index.html">
   
@@ -443,7 +443,7 @@
       
         <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>分布式系统中在<strong>可用性</strong>和<strong>一致性</strong>之间没有一个完美的方案，如何构建一个兼容可用性和一致性的分布式系统成为了一个非常棘手的问题。基于此，出现了诸如 CAP 和 BASE 这样的分布式理论和算法。本篇文章将对 CAP 理论进行介绍。</p>
 <h1 id="CAP-定理"><a href="#CAP-定理" class="headerlink" title="CAP 定理"></a>CAP 定理</h1><p>CAP 理论对分布式系统的特性做了高度抽象，抽象成了<strong>一致性</strong>、<strong>可用性</strong>和<strong>分区容错性</strong>，并且证明一个分布式系统<strong>不可能同时满足</strong>这三个特性，最多只能同时满足其中的两项。</p>
-<p><img src="/posts/6940af88/architecture-cap.jpeg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/theory-algorithm/architecture-cap.jpeg" alt></p>
 <h2 id="基本特性"><a href="#基本特性" class="headerlink" title="基本特性"></a>基本特性</h2><h3 id="一致性（Consistency）"><a href="#一致性（Consistency）" class="headerlink" title="一致性（Consistency）"></a>一致性（Consistency）</h3><p>在分布式环境中，一致性是指数据在多个副本节点之间是否能够保持一致的特性。当一个系统在数据一致性的状态下执行更新操作后，应该保证系统的数据仍然处于一致的状态。如果能够做到针对一个数据项的更新操作成功后，客户端不管访问哪个节点都能读取到最新的数据，那么该系统就被认为具有强一致性。<strong>一致性强调的是数据的正确性</strong>。</p>
 <h3 id="可用性（Availability）"><a href="#可用性（Availability）" class="headerlink" title="可用性（Availability）"></a>可用性（Availability）</h3><p>可用性是指系统提供的服务必须一直处于可用的状态，对于客户端的每个操作请求总是能够在<strong>有限的时间内</strong>给出<strong>响应</strong>。其中，有限时间内一般是一个在系统设计之初就设定好的系统运行指标，通常不同的系统之间会有很大的不同，如果超过设定的响应时间范围，那么系统就被认为是不可用的。<strong>可用性强调的是服务可用，但不保证数据正确</strong>。</p>
 <h3 id="分区容错性（Partition-Tolerance）"><a href="#分区容错性（Partition-Tolerance）" class="headerlink" title="分区容错性（Partition Tolerance）"></a>分区容错性（Partition Tolerance）</h3><p>网络分区是指在分布式系统中，不同的服务节点分布在不同的子网（机房/异地网络）中，如果这些子网之间出现网络不连通的状况，但各个子网内部网络是正常的，这样整个系统的网络环境就被分割成了若干个孤立的区。注意，组成一个分布式系统的每个服务节点的加入与退出都可以看作是一个特殊的网络分区。</p>
@@ -520,7 +520,7 @@
     
     
     <li class="next">
-      <a href="/posts/78134e07/" title="命令模式"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+      <a href="/posts/8acb1976/" title="状态模式"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
     </li>
     
     
