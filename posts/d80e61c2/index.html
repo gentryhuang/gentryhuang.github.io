@@ -25,13 +25,18 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言本篇文章将以事务为主线，分别介绍事务的基本特性、事务并发问题、封锁协议、隔离级别及基本实现，最后简单介绍下 MySQL 对标准的隔离级别规范的实现。 事务基本特性 原子性(Atomicity) 要么全部完成，要么全部不完成。   一致性(Consistency) 一个事务单元需要提交之后才会被其它事务可见。   隔离性(Isolation) 并发事务之间不会相互影响。   持久性(Durabi">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/d80e61c2/mysql-transaction-concurrent-problem-1.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/d80e61c2/mysql-transaction-concurrent-problem-2.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/d80e61c2/mysql-transaction-concurrent-problem-3.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/d80e61c2/mysql-transaction-concurrent-problem-4.jpg">
 <meta property="article:published_time" content="2021-05-21T10:49:59.000Z">
-<meta property="article:modified_time" content="2021-05-27T03:33:00.229Z">
+<meta property="article:modified_time" content="2021-05-27T03:42:49.173Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
 <meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/d80e61c2/mysql-transaction-concurrent-problem-1.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/d80e61c2/index.html">
   
@@ -462,22 +467,22 @@
 <h1 id="事务并发问题"><a href="#事务并发问题" class="headerlink" title="事务并发问题"></a>事务并发问题</h1><ul>
 <li><p><strong>丢失修改</strong></p>
 <blockquote>
-<p>回滚覆盖：回滚一个事务时，在该事务内的写操作要回滚，把其它已提交的事务写入的数据覆盖了。<br>提交覆盖：提交一个事务时，把其它已提交的事务写入的数据覆盖了。</p>
+<p>回滚覆盖：回滚一个事务时，在该事务内的写操作要回滚，把其它已提交的事务写入的数据覆盖了。<br>提交覆盖：提交一个事务时，把其它已提交的事务写入的数据覆盖了。<br><img src="/posts/d80e61c2/mysql-transaction-concurrent-problem-1.jpg" alt><br>上图描述的是回滚覆盖问题。</p>
 </blockquote>
 </li>
 <li><p><strong>脏读</strong></p>
 <blockquote>
-<p>一个事务读取到另一个未提交事务修改过的数据。</p>
+<p>一个事务读取到另一个未提交事务修改过的数据。<br><img src="/posts/d80e61c2/mysql-transaction-concurrent-problem-2.jpg" alt></p>
 </blockquote>
 </li>
 <li><p><strong>不可重复读</strong></p>
 <blockquote>
-<p>一个事务中先后根据相同条件读取到的数据不一致。强调更新和删除操作。</p>
+<p>一个事务中先后根据相同条件读取到的数据不一致。强调更新和删除操作。<br><img src="/posts/d80e61c2/mysql-transaction-concurrent-problem-3.jpg" alt></p>
 </blockquote>
 </li>
 <li><p><strong>幻读</strong></p>
 <blockquote>
-<p>一个事务中先后根据相同条件读取的数据记录数不一致。强调新增操作。</p>
+<p>一个事务中先后根据相同条件读取的数据记录数不一致。强调新增操作。<br><img src="/posts/d80e61c2/mysql-transaction-concurrent-problem-4.jpg" alt></p>
 </blockquote>
 </li>
 </ul>
