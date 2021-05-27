@@ -30,7 +30,7 @@
 <meta property="og:image" content="https://gentryhuang.com/posts/d80e61c2/mysql-transaction-concurrent-problem-3.jpg">
 <meta property="og:image" content="https://gentryhuang.com/posts/d80e61c2/mysql-transaction-concurrent-problem-4.jpg">
 <meta property="article:published_time" content="2021-05-21T10:49:59.000Z">
-<meta property="article:modified_time" content="2021-05-27T03:42:49.173Z">
+<meta property="article:modified_time" content="2021-05-27T07:38:02.643Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
@@ -434,7 +434,7 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/d80e61c2/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 2.1k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 2.2k(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 7(分)</span>
@@ -486,7 +486,7 @@
 </blockquote>
 </li>
 </ul>
-<h1 id="封锁协议"><a href="#封锁协议" class="headerlink" title="封锁协议"></a>封锁协议</h1><h2 id="封锁类型"><a href="#封锁类型" class="headerlink" title="封锁类型"></a>封锁类型</h2><p>为了解决并发问题，数据库系统引入了锁机制。基本的封锁类型有两种，排它锁(Exclusive locks 简记为X锁) 和 共享锁(Share locks 简记为S锁)，其中前者又称写锁，后者又称读锁。</p>
+<h1 id="封锁协议"><a href="#封锁协议" class="headerlink" title="封锁协议"></a>封锁协议</h1><h2 id="封锁类型"><a href="#封锁类型" class="headerlink" title="封锁类型"></a>封锁类型</h2><p>为了解决并发问题，数据库系统引入了锁机制。基本的封锁类型有两种，<strong>排它锁(Exclusive locks 简记为X锁)Z</strong> 和 <strong>共享锁(Share locks 简记为S锁)</strong>，其中前者又称写锁，后者又称读锁。</p>
 <h2 id="封锁协议-1"><a href="#封锁协议-1" class="headerlink" title="封锁协议"></a>封锁协议</h2><p>在运用X锁和S锁对数据对象加锁时，还需要约定一些规则，例如何时申请X锁或S锁、持锁时间、何时释放等，称这些加锁规则为封锁协议（Locking Protocol）。对封锁方式规定不同的规则，就形成了各种不同的封锁协议。</p>
 <ul>
 <li><p><strong>一级封锁协议</strong></p>
@@ -534,14 +534,15 @@
 </li>
 <li><p><strong>可重复读</strong><br>采用一级封锁协议+读之前加S锁，直到事务结束才释放S锁，对应三级封锁协议。由于事务结束才会释放S锁，所以保证了可重复读，但是不能保证幻读问题。</p>
 </li>
-<li><p><strong>串行化</strong><br>读写都加排它锁，锁的粒度到表，使得读写严格串行。这个不是很确定。</p>
+<li><p><strong>串行化</strong><br>读写都加锁，锁的粒度到表，使得读写严格串行。</p>
 </li>
 </ul>
 <p>注意，封锁协议和隔离级别并不是严格对应的。</p>
 <h1 id="MySQL事务隔离级别"><a href="#MySQL事务隔离级别" class="headerlink" title="MySQL事务隔离级别"></a>MySQL事务隔离级别</h1><p>虽然数据库的四种隔离级别通过 LBCC 技术都可以实现，但是它最大的问题是只实现了并发的读读，对于并发的读写还是冲突的，写时不能读，读时不能写，当读写操作都很频繁时，数据库的并发性将大大降低。针对这种场景，MVCC 技术应运而生，全称叫做 Multi-Version Concurrent Control（多版本并发控制），为了兼容落后的规范，数据库引擎厂商都想办法贴近四大隔离级别，但是和标准可能会有差别。</p>
 <p>InnoDB 对事务隔离级别的实现依赖两个重要手段：锁、MVCC(多版本并发控制)。MVCC 可以认为是对锁机制的优化，让普通 SELECT 避免加锁，同时保证事务隔离级别的语义。</p>
 <p>InnoDB 默认的事务隔离级别是 RR 隔离级别，它采用通过 <code>MVCC</code> 和 <code>间隙锁</code> 解决了标准的 RR 级别下存在的幻读问题。因为 <code>幻读</code> 的这个<code>读</code>字在 MySQL 里本身就存在歧义，这个<code>读</code>指的是<strong>快照读</strong>还是<strong>当前读</strong>呢？如果是快照读，MySQL 通过版本链来保证同一个事务里每次查询得到的结果集都是一致的；如果是当前读，MySQL 通过<code>间隙锁</code>保证其他事务无法插入新的数据，从而避免幻读问题。当然，如果场景中一会是快照读，一会是当前读，导致幻读现象，那就太为难 MySQL 了。</p>
-<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章主要对事务隔离级别的规范以及传统实现原理进行了介绍，并对 MySQL 的事务隔离级别的实现进行了简单说明。有了对事务整体的深入了解，对于理解 MySQL 中的锁机制、MVCC 原理会有很大的帮助。如果不知道事务隔离级别的基本实现，或者不清楚事务隔离级别和锁的关系，那么对于 MySQL 只能是管中窥豹。</p>
+<p>InnoDB 对串行化隔离级别是通过 <code>临键锁</code> 实现的，普通 SELECT 语句使用 <code>S临键锁</code>，当前读语句使用 <code>X临键锁</code>，加锁规则和 RR 隔离级别一致。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章主要对事务隔离级别的规范以及传统实现原理进行了介绍，并对 MySQL 的事务隔离级别的实现进行了简单说明。有了对事务整体的深入了解，对于理解 MySQL 中的锁机制、MVCC 原理会有很大的帮助。如果不知道事务隔离级别的基本实现，或者不清楚事务隔离级别和锁的关系，那么对于 MySQL 只能是管中窥豹。关于锁机制、MVCC原理会在后面的文章详细说明。</p>
 
       
     </div>
