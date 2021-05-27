@@ -17,24 +17,23 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>Dubbo过滤器 - TokenFilter | gentryhuang的博客</title>
-  <meta name="description" content="概述Dubbo 框架支持通过令牌验证在注册中心控制权限，以决定是否下发令牌给消费者，以防止消费者绕过注册中心访问服务提供者，另外通过注册中心可灵活改变授权方式，而不需修改或升级提供者。  配置 全局开启令牌1234&lt;!--随机token令牌，使用UUID生成--&gt;&lt;dubbo:provider interface&#x3D;&quot;com.foo.BarService&quot; token&#x3D;&quot;true&quot;">
+  <title>MySQL - 事务与隔离级别 | gentryhuang的博客</title>
+  <meta name="description" content="前言本篇文章将以事务为主线，分别介绍事务的基本特性、事务并发问题、封锁协议、隔离级别及基本实现，最后简单介绍下 MySQL 对标准的隔离级别规范的实现。 事务基本特性 原子性(Atomicity) 要么全部完成，要么全部不完成。   一致性(Consistency) 一个事务单元需要提交之后才会被其它事务可见。   隔离性(Isolation) 并发事务之间不会相互影响。   持久性(Durabi">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Dubbo过滤器 - TokenFilter">
-<meta property="og:url" content="https://gentryhuang.com/posts/4c117d83/index.html">
+<meta property="og:title" content="MySQL - 事务与隔离级别">
+<meta property="og:url" content="https://gentryhuang.com/posts/d80e61c2/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="概述Dubbo 框架支持通过令牌验证在注册中心控制权限，以决定是否下发令牌给消费者，以防止消费者绕过注册中心访问服务提供者，另外通过注册中心可灵活改变授权方式，而不需修改或升级提供者。  配置 全局开启令牌1234&lt;!--随机token令牌，使用UUID生成--&gt;&lt;dubbo:provider interface&#x3D;&quot;com.foo.BarService&quot; token&#x3D;&quot;true&quot;">
+<meta property="og:description" content="前言本篇文章将以事务为主线，分别介绍事务的基本特性、事务并发问题、封锁协议、隔离级别及基本实现，最后简单介绍下 MySQL 对标准的隔离级别规范的实现。 事务基本特性 原子性(Atomicity) 要么全部完成，要么全部不完成。   一致性(Consistency) 一个事务单元需要提交之后才会被其它事务可见。   隔离性(Isolation) 并发事务之间不会相互影响。   持久性(Durabi">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-token.jpg">
-<meta property="article:published_time" content="2020-08-06T12:59:38.000Z">
-<meta property="article:modified_time" content="2021-02-22T03:24:49.937Z">
+<meta property="article:published_time" content="2021-05-21T10:49:59.000Z">
+<meta property="article:modified_time" content="2021-05-27T03:33:00.229Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="Dubbo">
-<meta property="article:tag" content="Filter">
+<meta property="article:tag" content="求职">
+<meta property="article:tag" content="技术">
+<meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-token.jpg">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/posts/4c117d83/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/d80e61c2/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -391,21 +390,21 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#配置"><span class="toc-number">2.</span> <span class="toc-text">配置</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Token-流转"><span class="toc-number">3.</span> <span class="toc-text">Token 流转</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#服务提供端"><span class="toc-number">3.1.</span> <span class="toc-text">服务提供端</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#服务消费端"><span class="toc-number">3.2.</span> <span class="toc-text">服务消费端</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#TokenFilter"><span class="toc-number">4.</span> <span class="toc-text">TokenFilter</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#事务基本特性"><span class="toc-number">2.</span> <span class="toc-text">事务基本特性</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#事务并发问题"><span class="toc-number">3.</span> <span class="toc-text">事务并发问题</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#封锁协议"><span class="toc-number">4.</span> <span class="toc-text">封锁协议</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#封锁类型"><span class="toc-number">4.1.</span> <span class="toc-text">封锁类型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#封锁协议-1"><span class="toc-number">4.2.</span> <span class="toc-text">封锁协议</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#事务隔离级别"><span class="toc-number">5.</span> <span class="toc-text">事务隔离级别</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#隔离级别"><span class="toc-number">5.1.</span> <span class="toc-text">隔离级别</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#传统的隔离级别实现"><span class="toc-number">5.2.</span> <span class="toc-text">传统的隔离级别实现</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#MySQL事务隔离级别"><span class="toc-number">6.</span> <span class="toc-text">MySQL事务隔离级别</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">7.</span> <span class="toc-text">小结</span></a></li></ol>
     </nav>
   </div>
 </aside>
 
 <main class="main" role="main">
   <div class="content">
-  <article id="post-rpc/Dubbo过滤器-TokenFilter" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+  <article id="post-sql/事务隔离级别与锁" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
     <div class="article-header">
       
         
   
     <h1 class="article-title" itemprop="name">
-      Dubbo过滤器 - TokenFilter
+      MySQL - 事务与隔离级别
     </h1>
   
 
@@ -413,55 +412,131 @@
       <div class="article-meta">
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
-	<a href="/posts/4c117d83/" class="article-date">
-	  <time datetime="2020-08-06T12:59:38.000Z" itemprop="datePublished">2020-08-06</time>
+	<a href="/posts/d80e61c2/" class="article-date">
+	  <time datetime="2021-05-21T10:49:59.000Z" itemprop="datePublished">2021-05-21</time>
 	</a>
 </span>
         
   <span class="article-category">
     <i class="icon icon-folder"></i>
-    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+    <a class="article-category-link" href="/categories/MySQL/">MySQL</a>
   </span>
 
         
-  <span class="article-tag">
-    <i class="icon icon-tags"></i>
-	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>, <a class="article-tag-link" href="/tags/Filter/" rel="tag">Filter</a>
-  </span>
-
 
         
 
-        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/4c117d83/#comments" class="article-comment-link">评论</a></span>
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/d80e61c2/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 531(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 2.1k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 2(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 7(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Dubbo 框架支持通过令牌验证在注册中心控制权限，以决定是否下发令牌给消费者，以防止消费者绕过注册中心访问服务提供者，另外通过注册中心可灵活改变授权方式，而不需修改或升级提供者。</p>
-<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-filter-token.jpg" alt></p>
-<h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><ul>
-<li>全局开启令牌<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!--随机token令牌，使用UUID生成--&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:provider</span> <span class="attr">interface</span>=<span class="string">"com.foo.BarService"</span> <span class="attr">token</span>=<span class="string">"true"</span> /&gt;</span></span><br><span class="line"><span class="comment">&lt;!--固定token令牌，相当于密码--&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:provider</span> <span class="attr">interface</span>=<span class="string">"com.foo.BarService"</span> <span class="attr">token</span>=<span class="string">"123456"</span> /&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>服务级别开启令牌<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!--随机token令牌，使用UUID生成--&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">interface</span>=<span class="string">"com.foo.BarService"</span> <span class="attr">token</span>=<span class="string">"true"</span> /&gt;</span></span><br><span class="line"><span class="comment">&lt;!--固定token令牌，相当于密码--&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dubbo:service</span> <span class="attr">interface</span>=<span class="string">"com.foo.BarService"</span> <span class="attr">token</span>=<span class="string">"123456"</span> /&gt;</span></span><br></pre></td></tr></table></figure>
-
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>本篇文章将以<strong>事务</strong>为主线，分别介绍事务的基本特性、事务并发问题、封锁协议、隔离级别及基本实现，最后简单介绍下 MySQL 对标准的隔离级别规范的实现。</p>
+<h1 id="事务基本特性"><a href="#事务基本特性" class="headerlink" title="事务基本特性"></a>事务基本特性</h1><ul>
+<li><strong>原子性(Atomicity)</strong><blockquote>
+<p>要么全部完成，要么全部不完成。</p>
+</blockquote>
+</li>
+<li><strong>一致性(Consistency)</strong><blockquote>
+<p>一个事务单元需要提交之后才会被其它事务可见。</p>
+</blockquote>
+</li>
+<li><strong>隔离性(Isolation)</strong><blockquote>
+<p>并发事务之间不会相互影响。</p>
+</blockquote>
+</li>
+<li><strong>持久性(Durability)</strong><blockquote>
+<p>事务提交后即持久化到存储设备上。</p>
+</blockquote>
 </li>
 </ul>
-<h1 id="Token-流转"><a href="#Token-流转" class="headerlink" title="Token 流转"></a>Token 流转</h1><h2 id="服务提供端"><a href="#服务提供端" class="headerlink" title="服务提供端"></a>服务提供端</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">+--- ServiceConfig#doExportUrlsFor1Protocol</span><br><span class="line">  <span class="comment">// token 【使暴露出去的服务更安全，使用token做安全校验】</span></span><br><span class="line">  <span class="keyword">if</span> (!ConfigUtils.isEmpty(token)) &#123;</span><br><span class="line">     <span class="comment">// true || default 时，UUID 随机生成</span></span><br><span class="line">     <span class="keyword">if</span> (ConfigUtils.isDefault(token)) &#123;</span><br><span class="line">            map.put(Constants.TOKEN_KEY, UUID.randomUUID().toString());</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            map.put(Constants.TOKEN_KEY, token);</span><br><span class="line">        &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
-
-<p>服务提供者将设置的 Token 最终会设置到 URL 中，最终写入到注册中心上。</p>
-<h2 id="服务消费端"><a href="#服务消费端" class="headerlink" title="服务消费端"></a>服务消费端</h2><p>服务消费者从注册中心获取服务提供者的 URL ，从而获得该服务的 Token 。在创建 RpcInvocation 时会自动带上 Token，最终会将 Token 发送到服务提供方，而 TokenFilter 就是处理来自服务消费方的 Token 的。</p>
-<h1 id="TokenFilter"><a href="#TokenFilter" class="headerlink" title="TokenFilter"></a>TokenFilter</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Activate</span>(group = Constants.PROVIDER, value = Constants.TOKEN_KEY)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TokenFilter</span> <span class="keyword">implements</span> <span class="title">Filter</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 对请求的令牌做校验</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> invoker service</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> inv</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> RpcException</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invoker&lt;?&gt; invoker, Invocation inv)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="comment">// 获得服务提供者配置的Token 值</span></span><br><span class="line">        String token = invoker.getUrl().getParameter(Constants.TOKEN_KEY);</span><br><span class="line">        <span class="keyword">if</span> (ConfigUtils.isNotEmpty(token)) &#123;</span><br><span class="line">            Class&lt;?&gt; serviceType = invoker.getInterface();</span><br><span class="line">            <span class="comment">// 从 RpcInvocation 的 隐式参数中，获得 Token 值</span></span><br><span class="line">            Map&lt;String, String&gt; attachments = inv.getAttachments();</span><br><span class="line">            String remoteToken = attachments == <span class="keyword">null</span> ? <span class="keyword">null</span> : attachments.get(Constants.TOKEN_KEY);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 验证消费方【RpcInvocation的信息】传过来的的Token 和 服务提供者配置的Token 释放一致，不一致就抛出异常</span></span><br><span class="line">            <span class="keyword">if</span> (!token.equals(remoteToken)) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Invalid token! Forbid invoke remote service "</span> + serviceType + <span class="string">" method "</span> + inv.getMethodName() + <span class="string">"() from consumer "</span> + RpcContext.getContext().getRemoteHost() + <span class="string">" to provider "</span> + RpcContext.getContext().getLocalHost());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> invoker.invoke(inv);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-
-
-
+<p>注意，隔离性和一致性是有冲突的，有时候为了提高性能，会适度的破坏一致性，而这个权衡的结果会造成事务并发问题。</p>
+<h1 id="事务并发问题"><a href="#事务并发问题" class="headerlink" title="事务并发问题"></a>事务并发问题</h1><ul>
+<li><p><strong>丢失修改</strong></p>
+<blockquote>
+<p>回滚覆盖：回滚一个事务时，在该事务内的写操作要回滚，把其它已提交的事务写入的数据覆盖了。<br>提交覆盖：提交一个事务时，把其它已提交的事务写入的数据覆盖了。</p>
+</blockquote>
+</li>
+<li><p><strong>脏读</strong></p>
+<blockquote>
+<p>一个事务读取到另一个未提交事务修改过的数据。</p>
+</blockquote>
+</li>
+<li><p><strong>不可重复读</strong></p>
+<blockquote>
+<p>一个事务中先后根据相同条件读取到的数据不一致。强调更新和删除操作。</p>
+</blockquote>
+</li>
+<li><p><strong>幻读</strong></p>
+<blockquote>
+<p>一个事务中先后根据相同条件读取的数据记录数不一致。强调新增操作。</p>
+</blockquote>
+</li>
+</ul>
+<h1 id="封锁协议"><a href="#封锁协议" class="headerlink" title="封锁协议"></a>封锁协议</h1><h2 id="封锁类型"><a href="#封锁类型" class="headerlink" title="封锁类型"></a>封锁类型</h2><p>为了解决并发问题，数据库系统引入了锁机制。基本的封锁类型有两种，排它锁(Exclusive locks 简记为X锁) 和 共享锁(Share locks 简记为S锁)，其中前者又称写锁，后者又称读锁。</p>
+<h2 id="封锁协议-1"><a href="#封锁协议-1" class="headerlink" title="封锁协议"></a>封锁协议</h2><p>在运用X锁和S锁对数据对象加锁时，还需要约定一些规则，例如何时申请X锁或S锁、持锁时间、何时释放等，称这些加锁规则为封锁协议（Locking Protocol）。对封锁方式规定不同的规则，就形成了各种不同的封锁协议。</p>
+<ul>
+<li><p><strong>一级封锁协议</strong></p>
+<blockquote>
+<p><strong>定义</strong>：事务T在修改数据R之前必须先对其加X锁，直到事务结束才释放。事务结束包括正常结束（COMMIT）和非正常结束（ROLLBACK）。<br><strong>说明</strong>：一级封锁协议可以防止丢失修改，并保证事务T是可恢复的。使用一级封锁协议可以解决丢失修改问题。在一级封锁协议中，如果仅仅是读数据不对其进行修改，是不需要加锁的，它不能保证可重复读和不读“脏”数据。</p>
+</blockquote>
+</li>
+<li><p><strong>二级封锁协议</strong></p>
+<blockquote>
+<p><strong>定义</strong>：一级封锁协议基础上加事务T在读取数据R之前必须先对其加S锁，读完后方可释放S锁。<br><strong>说明</strong>：二级封锁协议除防止了丢失修改，还可以进一步防止读“脏”数据。但在二级封锁协议中，由于读完数据后即可释放S锁，所以它不能保证可重复读。</p>
+</blockquote>
+</li>
+<li><p><strong>三级封锁协议</strong></p>
+<blockquote>
+<p><strong>定义</strong>：一级封锁协议基础上加事务T在读取数据R之前必须先对其加S锁，直到事务结束才释放。<br><strong>说明</strong>：三级封锁协议除防止了丢失修改和不读“脏”数据外，还进一步防止了不可重复读。</p>
+</blockquote>
+</li>
+</ul>
+<p>上述三级协议的主要区别在于什么操作需要申请封锁，以及何时释放。</p>
+<h1 id="事务隔离级别"><a href="#事务隔离级别" class="headerlink" title="事务隔离级别"></a>事务隔离级别</h1><p>为了解决事务并发问题，进行并发控制，数据库系统提供了四种事务隔离级别。本质上三级封锁协议反映在实际的数据库系统上，就是四种事务隔离机制。总的来说，四种事务隔离机制就是在逐渐的限制事务的自由度，以满足对不同并发控制程度的要求。</p>
+<h2 id="隔离级别"><a href="#隔离级别" class="headerlink" title="隔离级别"></a>隔离级别</h2><ul>
+<li><strong>读未提交(Read Uncommitted)</strong><blockquote>
+<p>可以读取未提交的记录，会出现脏读，幻读，不可重复读，所有并发问题都可能遇到。</p>
+</blockquote>
+</li>
+<li><strong>读已提交(Read Committed)</strong><blockquote>
+<p>只能读取到已经提交的数据。不会出现脏读现象，但是会出现幻读，不可重复读；（大多数数据库的默认隔离级别都是 RC，但是 MySQL InnoDb 默认是 RR）。</p>
+</blockquote>
+</li>
+<li><strong>可重复读(Repeated Read)</strong><blockquote>
+<p>在同一个事务内的查询都是事务开始时刻一致的，MySQL InnoDb 默认的隔离级别，解决了不可重复读问题，但是仍然存在幻读问题。</p>
+</blockquote>
+</li>
+<li><strong>串行化(Serializable)</strong><blockquote>
+<p>所有的增删改查串行执行，啥并发问题都没有。</p>
+</blockquote>
+</li>
+</ul>
+<p>需要明确的是，以上的隔离级别是在SQL规范层面的定义，不同数据库的实现方式和使用方式并不相同，类似于JVM规范和JVM厂商的关系。</p>
+<h2 id="传统的隔离级别实现"><a href="#传统的隔离级别实现" class="headerlink" title="传统的隔离级别实现"></a>传统的隔离级别实现</h2><p>SQL 隔离级别的标准是<strong>基于锁</strong>的实现方式制定的，即基于锁的并发控制（Lock-Based Concurrent Control，简写 LBCC）。通过对读写操作加不同的锁，以及对释放锁的时机进行不同的控制，就可以实现四种隔离级别。</p>
+<ul>
+<li><p><strong>读未提交</strong><br>写操作加X锁，直到事务结束释放X锁，对读操作不加锁，对应一级封锁协议。由于只是对写操作加X锁，事务读不阻塞其它事务读和写，事务写阻塞其它事务写但不阻塞读，因此不能解决脏读、不可重复读和幻读。</p>
+</li>
+<li><p><strong>读已提交</strong><br>采用一级封锁协议+读之前加S锁，读完数据释放S锁，对应二级封锁协议。由于读完之后就释放S锁，所以不能保证不可重复读和幻读。</p>
+</li>
+<li><p><strong>可重复读</strong><br>采用一级封锁协议+读之前加S锁，直到事务结束才释放S锁，对应三级封锁协议。由于事务结束才会释放S锁，所以保证了可重复读，但是不能保证幻读问题。</p>
+</li>
+<li><p><strong>串行化</strong><br>读写都加排它锁，锁的粒度到表，使得读写严格串行。这个不是很确定。</p>
+</li>
+</ul>
+<p>注意，封锁协议和隔离级别并不是严格对应的。</p>
+<h1 id="MySQL事务隔离级别"><a href="#MySQL事务隔离级别" class="headerlink" title="MySQL事务隔离级别"></a>MySQL事务隔离级别</h1><p>虽然数据库的四种隔离级别通过 LBCC 技术都可以实现，但是它最大的问题是只实现了并发的读读，对于并发的读写还是冲突的，写时不能读，读时不能写，当读写操作都很频繁时，数据库的并发性将大大降低。针对这种场景，MVCC 技术应运而生，全称叫做 Multi-Version Concurrent Control（多版本并发控制），为了兼容落后的规范，数据库引擎厂商都想办法贴近四大隔离级别，但是和标准可能会有差别。</p>
+<p>InnoDB 对事务隔离级别的实现依赖两个重要手段：锁、MVCC(多版本并发控制)。MVCC 可以认为是对锁机制的优化，让普通 SELECT 避免加锁，同时保证事务隔离级别的语义。</p>
+<p>InnoDB 默认的事务隔离级别是 RR 隔离级别，它采用通过 <code>MVCC</code> 和 <code>间隙锁</code> 解决了标准的 RR 级别下存在的幻读问题。因为 <code>幻读</code> 的这个<code>读</code>字在 MySQL 里本身就存在歧义，这个<code>读</code>指的是<strong>快照读</strong>还是<strong>当前读</strong>呢？如果是快照读，MySQL 通过版本链来保证同一个事务里每次查询得到的结果集都是一致的；如果是当前读，MySQL 通过<code>间隙锁</code>保证其他事务无法插入新的数据，从而避免幻读问题。当然，如果场景中一会是快照读，一会是当前读，导致幻读现象，那就太为难 MySQL 了。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章主要对事务隔离级别的规范以及传统实现原理进行了介绍，并对 MySQL 的事务隔离级别的实现进行了简单说明。有了对事务整体的深入了解，对于理解 MySQL 中的锁机制、MVCC 原理会有很大的帮助。如果不知道事务隔离级别的基本实现，或者不清楚事务隔离级别和锁的关系，那么对于 MySQL 只能是管中窥豹。</p>
 
       
     </div>
@@ -471,7 +546,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.com/posts/4c117d83/" title="Dubbo过滤器 - TokenFilter" target="_blank" rel="external">https://gentryhuang.com/posts/4c117d83/</a>
+      <a href="https://gentryhuang.com/posts/d80e61c2/" title="MySQL - 事务与隔离级别" target="_blank" rel="external">https://gentryhuang.com/posts/d80e61c2/</a>
     </li>
     
     <li class="post-copyright-license">
@@ -517,13 +592,9 @@
   
   <ul class="pager pull-left">
     
-    <li class="prev">
-      <a href="/posts/c5f1bd62/" title="Dubbo过滤器 - ExceptionFilter"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
-    </li>
-    
     
     <li class="next">
-      <a href="/posts/2e2f77b9/" title="Dubbo过滤器 - EchoFilter"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+      <a href="/posts/4132ef9f/" title="MySQL - 慢查询日志"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
     </li>
     
     
