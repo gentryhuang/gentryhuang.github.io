@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>网络通信 - IO多路复用 | gentryhuang的博客</title>
+  <meta name="description" content="概述IO多路复用简单来说就是，单线程或单进程同时监测若干个文件描述符是否可以执行IO操作的能力，IO多路复用解决的本质问题是用更少的资源完成更多的事。需要说明的是，处理IO多路复用的问题需要操作系统提供内核级别的支持，操作系统充当观察者的角色。本篇文章我们就来分析IO多路复用底层实现原理，我们以 Linux 操作系统提供的IO复用API select、poll 以及epoll 为例，逐一进行分析。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="网络通信 - IO多路复用">
+<meta property="og:url" content="https://gentryhuang.com/posts/b25f5b99/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述IO多路复用简单来说就是，单线程或单进程同时监测若干个文件描述符是否可以执行IO操作的能力，IO多路复用解决的本质问题是用更少的资源完成更多的事。需要说明的是，处理IO多路复用的问题需要操作系统提供内核级别的支持，操作系统充当观察者的角色。本篇文章我们就来分析IO多路复用底层实现原理，我们以 Linux 操作系统提供的IO复用API select、poll 以及epoll 为例，逐一进行分析。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-select-1.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-epoll-1.jpg">
+<meta property="article:published_time" content="2021-06-12T02:43:23.000Z">
+<meta property="article:modified_time" content="2021-07-04T12:45:46.109Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="I&#x2F;O">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-select-1.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/b25f5b99/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">66</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/I-O/" style="font-size: 13.14px;">I/O</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/b25f5b99/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/b25f5b99/" class="title">网络通信 - IO多路复用</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-06-12T02:43:23.000Z" itemprop="datePublished">2021-06-12</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/51fff883/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/51fff883/" class="title">网络通信 - I/O模型</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-06-05T07:36:47.000Z" itemprop="datePublished">2021-06-05</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/a26fab1/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/a26fab1/" class="title">Redis原理 - 事务</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-05-27T12:08:59.000Z" itemprop="datePublished">2021-05-27</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d80e61c2/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d80e61c2/" class="title">MySQL - 事务与隔离级别</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-05-21T10:49:59.000Z" itemprop="datePublished">2021-05-21</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/4132ef9f/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/4132ef9f/" class="title">MySQL - 慢查询日志</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-05-14T11:17:14.000Z" itemprop="datePublished">2021-05-14</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#思考"><span class="toc-number">2.</span> <span class="toc-text">思考</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#select"><span class="toc-number">3.</span> <span class="toc-text">select</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#API定义"><span class="toc-number">3.1.</span> <span class="toc-text">API定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#原理"><span class="toc-number">3.2.</span> <span class="toc-text">原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用示例"><span class="toc-number">3.3.</span> <span class="toc-text">使用示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#特点"><span class="toc-number">3.4.</span> <span class="toc-text">特点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#poll"><span class="toc-number">4.</span> <span class="toc-text">poll</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#API-定义"><span class="toc-number">4.1.</span> <span class="toc-text">API 定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用示例-1"><span class="toc-number">4.2.</span> <span class="toc-text">使用示例</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#epoll"><span class="toc-number">5.</span> <span class="toc-text">epoll</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#API-定义-1"><span class="toc-number">5.1.</span> <span class="toc-text">API 定义</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#epoll-create"><span class="toc-number">5.1.1.</span> <span class="toc-text">epoll_create</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#epoll-ctl"><span class="toc-number">5.1.2.</span> <span class="toc-text">epoll_ctl</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#epoll-wait"><span class="toc-number">5.1.3.</span> <span class="toc-text">epoll_wait</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#参数"><span class="toc-number">5.1.3.1.</span> <span class="toc-text">参数</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#原理-1"><span class="toc-number">5.1.3.2.</span> <span class="toc-text">原理</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用示例-2"><span class="toc-number">5.2.</span> <span class="toc-text">使用示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#特点-1"><span class="toc-number">5.3.</span> <span class="toc-text">特点</span></a></li></ol></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-network/IO多路复用" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      网络通信 - IO多路复用
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/b25f5b99/" class="article-date">
+	  <time datetime="2021-06-12T02:43:23.000Z" itemprop="datePublished">2021-06-12</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/I-O/" rel="tag">I/O</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/b25f5b99/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 6.5k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 24(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>IO多路复用简单来说就是，单线程或单进程同时监测若干个文件描述符是否可以执行IO操作的能力，IO多路复用解决的本质问题是用更少的资源完成更多的事。需要说明的是，处理IO多路复用的问题需要操作系统提供内核级别的支持，操作系统充当观察者的角色。本篇文章我们就来分析IO多路复用底层实现原理，我们以 Linux 操作系统提供的IO复用API <code>select</code>、<code>poll</code> 以及<code>epoll</code> 为例，逐一进行分析。</p>
+<h1 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h1><p>实现IO多路复用直接使用用户线程轮询查看若干个文件描述符的状态难道不行吗？为什么要操作系统内核支持？在请求量比较小的时候确实可以使用该方案，但是在大量请求的情况下，这对于 CPU 的使用率来说无疑是种灾难。而使用操作系统内核帮我们观察文件描述符就可以优雅、高效地实现IO多路复用。</p>
+<p>操作系统内核虽然清楚知道每个文件描述符对应的 Socket 的状态变化，但是内核如何知道该把哪个文件描述符信息给哪个进程呢？一个 Socket 文件可以由多个进程使用，而一个进程也可以使用多个 Socket 文件，进程和 Socket 之间是多对多的关系。此外，一个 Socket 也会对应多个事件类型。操作系统表示太难了，它很难判断将哪种事件给哪个进程。因此，在进程内部就需要维护自己关注哪些 Socket 文件的哪些事件，如读事件、写事件以及异常事件等。</p>
+<p>下面我们带着这些问题，结合 Linux 下的IO复用API进行分析。</p>
+<h1 id="select"><a href="#select" class="headerlink" title="select"></a>select</h1><p>select 实现IO多路复用的思想是：操作系统内核会扫描用户进程传入的 3 类 fd_set 文件描述数组(本质是 bitmap)，当对应的 Socket 准备就绪时会置位（标志对应的 Socket 有数据来了） fd_set 数组中对于元素，最后将内核置位后的 fd_set 数组们拷贝回用户空间。由于 select 只是知道至少存在一个 Socket 准备就绪了，但是不知道具体哪个 Socket 准备就绪，因此用户进程需要根据内核返回的 fd_set 数组们自行判断哪个文件描述符对应的 Socket 发生了哪种事件，然后再进一步处理。</p>
+<h2 id="API定义"><a href="#API定义" class="headerlink" title="API定义"></a>API定义</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/select.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* According to earlier standards */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/time.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 0 监听感兴趣的文件描述符上的事件</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">select</span><span class="params">(<span class="keyword">int</span> nfds, </span></span></span><br><span class="line"><span class="function"><span class="params">           fd_set *readfds, fd_set *writefds,fd_set *exceptfds, </span></span></span><br><span class="line"><span class="function"><span class="params">           struct timeval *timeout)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// fd_set 可以理解为一个集合，这个集合中存放的是文件描述符，可通过以下四个宏进行设置：</span></span><br><span class="line"><span class="comment">// 1 将一个文件描述符移除集合中 </span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FD_CLR</span><span class="params">(<span class="keyword">int</span> fd, fd_set *<span class="built_in">set</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2  检查一个文件描述符是否在集合中，可以用这个来检测一次select调用之后有哪些文件描述符可以进行IO操作</span></span><br><span class="line"><span class="function"><span class="keyword">int</span>  <span class="title">FD_ISSET</span><span class="params">(<span class="keyword">int</span> fd, fd_set *<span class="built_in">set</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3 添加一个文件描述符到集合中</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FD_SET</span><span class="params">(<span class="keyword">int</span> fd, fd_set *<span class="built_in">set</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 4 清空给定集合</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">FD_ZERO</span><span class="params">(fd_set *<span class="built_in">set</span>)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>select 将监听的文件描述符分为了 3 类，每一类都对应一个 fd_set 数组，本质上是一个 bitmap，也就是字节数组。分别是 <strong>writefds（写文件描述符）</strong>、<strong>readfds（读文件描述符）</strong>以及 <strong>exceptfds（异常事件文件描述符）</strong>。每一类都代表 Socket 对应的事件，每一类存储的都是 Socket 对应的文件描述符。用户进程可以根据需要准备相关 fd_set 数组，在调用 select 函数时，这三个事件参数可以用 NULL 来表示对应的事件不需要监听，当该函数返回时，只留下可以进行IO操作的文件描述符。其实也不难看出，select 模型下操作系统内核并没有维护存储文件描述符相关的数据结构，只是定义了 fd_set ，将维护工作交给了用户进程。</p>
+<p><strong>void FD_SET</strong><br>用户进程可以调用 FD_SET 函数将指定的文件描述符 fd 设置到准备的 fd_set 数组中。</p>
+<p><strong>void FD_CLR</strong><br>用户进程可以调用 FD_CLR 函数将指定的文件描述符 fd 从准备的 fd_set 数组移除。</p>
+<p><strong>void FD_ZERO</strong><br>用户进程可以调用 FD_ZERO 函数将 fd_set 数组清空。该函数主要用来每次调用 select 函数之前，清空 fd_set 数组，因为每次调用 select 函数监听就绪的 Socket 时，内核会根据就绪的 Socket 情况修改用户进程传入的数组，将就绪的 Socket 对应在 fd_set 数组中元素置位，也就是说 fd_set 不可重用。</p>
+<p><strong>int select</strong></p>
+<p>用户进程可以在超时时间内，监听感兴趣的文件描述符上的事件（读/写/异常事件）发生。下面我们对相关参数和返回值进行说明。</p>
+<p>参数：</p>
+<blockquote>
+<ul>
+<li>int nfds: fd_set 当中最大描述符加1，用来告知内核扫描的bitmap的范围。</li>
+<li>fd_set *readfds: 要监听的读事件就绪的 Socket 的文件描述符数组，传 NULL 表示对应的事件不需要监听。</li>
+<li>fd_set *writefds: 要监听的写事件就绪的 Socket 的文件描述符数组，传 NULL 表示对应的事件不需要监听。</li>
+<li>fd_set *exceptfds: 要监听的异常事件对应的 Socket 的文件描述符数组，传 NULL 表示对应的事件不需要监听。</li>
+<li>struct timeval *timeout: 超时时间</li>
+</ul>
+</blockquote>
+<p>返回值：</p>
+<blockquote>
+<p>监听的就绪 Socket 的描述符其数目，若超时则为0，若出错则为-1</p>
+</blockquote>
+<p><strong>int  FD_ISSET</strong></p>
+<p>用户进程可以调用 FD_ISSET 函数为准备的 fd_set 数组添加要监听的 Socket 对应的文件描述符 fd。</p>
+<h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p><strong>准备监听的文件描述符事</strong></p>
+<p>应用程序可以根据具体需要，将 Socket 对应的文件描述符放入到 fd_set 数组中，在调用 select 函数时根据要监听的事件类型传入对应的 fd_set 数组。注意，Socket 不限于客户端的 Socket，服务端的 Socket 也可以，比如监听服务端 Socket 的连接事件发生。其中的用户进程通过调用 FD_SET 函数，将文件描述符写入到 fd_set 数组中，也就是将对应的位设置为 1，具体如下：<br><img src="/posts/b25f5b99/io-multi-select-1.jpg" alt></p>
+<p>对于 select 模型，操作系统内核只是定义了文件描述符事件相关数据结构 fd_set，并没有在内核中提供维护文件描述符事件的数据结构。也就是说，应用程序需要根据系统系统内核提供的 fd_set 自行处理文件描述符相关数据。</p>
+<p><strong>等待数据到来</strong></p>
+<p>应用进程调用 select 函数，操作系统内核会依次遍历传入的每类 fd_set 数组，判断 fd_set 中元素对应的 Socket 有没有数据，这个过程的事件复杂度为 O(n)。如果有数据就对 fd_set 数组中的该 Socket 对应的元素进行置位，最后内核将 fd_set 拷贝回用户空间，不会阻塞当前调用进程。如果要监听的 fd_set 中的所有 Socket 都没有数据，那么进程将会阻塞在 select 函数上，直到超时或有 Socket 数据到来，才会唤醒进程。</p>
+<p>在内核遍历 fd_set 数组时，如果对应的 Socket 没有数据，那么内核会将用户进程加入到该 Socket 的等待队列中，这一点非常重要。</p>
+<p><strong>数据到来</strong></p>
+<p>当监听的任何一个 Socket 就绪时，中断程序将唤醒 Socket 等待队列中的进程，即每次唤醒都需要从每个队列中移除。当用户进程被唤醒时，它知道至少有一个监视的 Socket 发生了感兴趣的事件。同时，内核会对该 Socket 对应在 fd_set 数组中的数据进行置位，然后将修改后的 fd_set 数组们拷贝回用户空间。</p>
+<p>注意，select 虽然可以拿到内核修改后的 fd_set 数组，但是它并不知道是哪个 Socket 发生了哪个事件，需要用户进程自己去判断。</p>
+<p><strong>处理网络请求</strong></p>
+<p>用户进程拿到内核返回的 fd_set 数组包含整个文件描述符，程序不知道哪些 Socket 就绪，因此需要自行判断是哪个或哪些 Socket 发生了哪个事件，找到对应的 Socket 后，处理网络请求。</p>
+<h2 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建一个服务端 Socket 套接字，</span></span><br><span class="line">sockfd = socket(AF_INET, SOCK_STREAM, <span class="number">0</span>);</span><br><span class="line"><span class="built_in">memset</span>(&amp;addr, <span class="number">0</span>, <span class="keyword">sizeof</span> (addr));</span><br><span class="line">addr.sin_family = AF_INET;</span><br><span class="line">addr.sin_port = htons(<span class="number">2000</span>);</span><br><span class="line">addr.sin_addr.s_addr = INADDR_ANY;</span><br><span class="line">bind(sockfd,(struct sockaddr*)&amp;addr ,<span class="keyword">sizeof</span>(addr));</span><br><span class="line"><span class="built_in">listen</span> (sockfd, <span class="number">5</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 准备客户端连接对应的文件描述符</span></span><br><span class="line"> <span class="keyword">for</span> (i=<span class="number">0</span>;i&lt;<span class="number">5</span>;i++)</span><br><span class="line"> &#123;</span><br><span class="line">  <span class="built_in">memset</span>(&amp;client, <span class="number">0</span>, <span class="keyword">sizeof</span> (client));</span><br><span class="line">  addrlen = <span class="keyword">sizeof</span>(client);</span><br><span class="line">  <span class="comment">// 创建客户端 Socket 套接字,并保存对应的文件描述符</span></span><br><span class="line">  <span class="comment">// 注意，文件描述符是操作系统随机分配的一个非负整数</span></span><br><span class="line">  fds[i] = accept(sockfd,(struct sockaddr*)&amp;client, &amp;addrlen);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 保存最大的文件描述符</span></span><br><span class="line">  <span class="keyword">if</span>(fds[i] &gt; <span class="built_in">max</span>)</span><br><span class="line">      <span class="built_in">max</span> = fds[i];</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// select 实现多路复用</span></span><br><span class="line"><span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">   <span class="comment">// 1 调用  FD_ZERO 清理 rset 数组</span></span><br><span class="line">   FD_ZERO(&amp;rset);</span><br><span class="line">   <span class="comment">// 2 调用 FD_SET 设置监听的文件描述符到 rset 数组中</span></span><br><span class="line">   <span class="keyword">for</span> (i = <span class="number">0</span>; i&lt; <span class="number">5</span>; i++ ) &#123;</span><br><span class="line">       FD_SET(fds[i],&amp;rset);</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="built_in">puts</span>(<span class="string">"round again"</span>);</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 3 调用 slect 函数阻塞等待数据的到来，内核会判断 Socket 就绪情况</span></span><br><span class="line">   <span class="comment">// max+1 告知内核扫描 fd_set 数组范围</span></span><br><span class="line">   <span class="comment">// 这里只传入了 fd_set *readfds 参数，表示只监听读事件</span></span><br><span class="line">   select(<span class="built_in">max</span>+<span class="number">1</span>, &amp;rset, <span class="literal">NULL</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 4 监听的 Socket 有读就绪</span></span><br><span class="line">   <span class="keyword">for</span>(i=<span class="number">0</span>;i&lt;<span class="number">5</span>;i++) &#123;</span><br><span class="line">       <span class="comment">// 调用 FD_ISSET 判断 rset 是否有置位</span></span><br><span class="line">       <span class="keyword">if</span> (FD_ISSET(fds[i], &amp;rset))&#123;</span><br><span class="line">           <span class="built_in">memset</span>(<span class="built_in">buffer</span>,<span class="number">0</span>,MAXBUF);</span><br><span class="line">           <span class="built_in">read</span>(fds[i], <span class="built_in">buffer</span>, MAXBUF);</span><br><span class="line">           <span class="built_in">puts</span>(<span class="built_in">buffer</span>);</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;  </span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><ol>
+<li>单个进程能够监视的文件描述符的数量存在最大限制，通常是 1024 ，当然可以更改数量，但由于 select 采用轮询的方式扫描文件描述符，文件描述符数量越多，性能越差。</li>
+<li>每次调用 select，都需要把fd集合从用户空间拷贝到内核空间，并且内核需要遍历传递进来的所有 fd，这个开销在fd很多时会很大</li>
+<li>select 返回的是含有整个文件描述符的数组，应用程序需要遍历整个数组才能发现哪些文件描述符号对应的 Socket 发生了事件；</li>
+<li>select 的触发方式是水平触发，应用程序如果没有完成对一个已经就绪的文件描述符进行IO操作，那么之后每次 select 调用还是会将这些文件描述符通知进程。</li>
+</ol>
+<h1 id="poll"><a href="#poll" class="headerlink" title="poll"></a>poll</h1><p>poll 的实现和 select 非常相似，只是描述 fd 集合的方式不同，它们的工作原理是一样的。select 是将文件描述符分为了 3 类，使用 fd_set 结构存储，针对每一类文件描述符可关联对应的事件。poll 对所有文件描述符一视同仁，针对每个文件描述关联事件即可。具体的做法是是通过定义了一个结构体 pollfd，将文件描述符和感兴趣的事件绑定在一起。这就是 poll 和 select 的主要区别，也就是说 poll 使用 pollfd 数组解决了 select 使用 bitmap 存储文件描述符数量限制问题。需要注意的是，poll 仍然没有解决文件描述符频繁拷贝问题，也没有解决轮询问题。</p>
+<h2 id="API-定义"><a href="#API-定义" class="headerlink" title="API 定义"></a>API 定义</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;poll.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;poll.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">poll</span><span class="params">(struct pollfd *fds, <span class="keyword">nfds_t</span> nfds, <span class="keyword">int</span> timeout)</span></span>;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pollfd</span> &#123;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 文件描述符</span></span><br><span class="line">    <span class="keyword">int</span> fd; <span class="comment">/* file descriptor */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 感兴趣的事件</span></span><br><span class="line">    short events; <span class="comment">/* requested events to watch */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 内核检测到的实际事件</span></span><br><span class="line">    short revents; <span class="comment">/* returned events witnessed */</span></span><br><span class="line">    </span><br><span class="line"> &#125;;</span><br></pre></td></tr></table></figure>
+
+<p>下面对 poll 函数的参数和返回值说明。</p>
+<p>参数：</p>
+<blockquote>
+<ul>
+<li><strong>struct pollfd *fds</strong> 该数组用于存放用户进程监听的 Socket 文件描述符，每一个元素都是 pollfd 结构。fd 属性用于存放关注的 Socket 文件描述符；events 属性用于存方关注的事件；revents 是内核检测到 fd 对应的 Socket 实际发生的事件。</li>
+<li><strong>nfds_t nfds</strong> 用于告诉内核 fds 数组的大小，内核会根据该参数去遍历 fds 数组。</li>
+<li><strong>int timeout</strong> 阻塞等待的超时时间</li>
+</ul>
+</blockquote>
+<p>返回值：</p>
+<blockquote>
+<p>fds集合中就绪的描述符数量，返回 0 表示超时，返回 -1 表示出错。</p>
+</blockquote>
+<h2 id="使用示例-1"><a href="#使用示例-1" class="headerlink" title="使用示例"></a>使用示例</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (i=<span class="number">0</span>;i&lt;<span class="number">5</span>;i++)</span><br><span class="line">  &#123;</span><br><span class="line">   <span class="built_in">memset</span>(&amp;client, <span class="number">0</span>, <span class="keyword">sizeof</span> (client));</span><br><span class="line">   addrlen = <span class="keyword">sizeof</span>(client);</span><br><span class="line">   <span class="comment">// 1 使用 pollfd 结构准备文件描述符</span></span><br><span class="line">   pollfds[i].fd = accept(sockfd,(struct sockaddr*)&amp;client, &amp;addrlen);</span><br><span class="line">   <span class="comment">// 设置感兴趣的事件</span></span><br><span class="line">   pollfds[i].events = POLLIN;</span><br><span class="line">  &#125;</span><br><span class="line"> sleep(<span class="number">1</span>);</span><br><span class="line"> <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">"round again"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2 调用 poll 阻塞等待数据的到来，内核会判断 Socket 就绪情况</span></span><br><span class="line">    poll(pollfds, <span class="number">5</span>, <span class="number">50000</span>);</span><br><span class="line">    <span class="keyword">for</span>(i=<span class="number">0</span>;i&lt;<span class="number">5</span>;i++) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3 用户进程自己判断哪个 Socket 发生了 POLLIN </span></span><br><span class="line">        <span class="keyword">if</span> (pollfds[i].revents &amp; POLLIN)&#123;</span><br><span class="line">            <span class="comment">// 重置 revents ，</span></span><br><span class="line">            pollfds[i].revents = <span class="number">0</span>;</span><br><span class="line">            <span class="built_in">memset</span>(<span class="built_in">buffer</span>,<span class="number">0</span>,MAXBUF);</span><br><span class="line">            <span class="built_in">read</span>(pollfds[i].fd, <span class="built_in">buffer</span>, MAXBUF);</span><br><span class="line">            <span class="built_in">puts</span>(<span class="built_in">buffer</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>不难发现，poll 的改进主要是围绕着存储文件描述符事件的结构体 pollfd 来展开的，用户进程准备的各种文件描述符事件都是由该结构体存储的，此外内核检测到 Socket 有数据到来会设置对应的 pollfd 中的 revents 属性的值。虽然 poll 提供了更优质的编程接口，但是本质和 select 模型相同。因此千级并发以下的 I/O，可以考虑 select 和 poll 模型，但是如果出现更大的并发量，就需要用 epoll 模型。可以看到，当套接字 Socket 比较多的时候，不管哪个 Socket 是活跃的，对于使用 select 或 poll 模型都需要遍历一遍,这会浪费很多CPU资源。如果能给套接字 Socket 注册某个回调函数，当他们活跃时自动完成相关操作，那就避免了轮询，这正是 epoll 做的。</p>
+<h1 id="epoll"><a href="#epoll" class="headerlink" title="epoll"></a>epoll</h1><p><strong>epoll</strong> 是对 <strong>select</strong> 和 <strong>poll</strong> 的改进。它的核心思想是基于<strong>事件驱动</strong>来实现的，操作系统内核维护<strong>一颗红黑树</strong>来存储文件描述符信息(准确的说是非文件描述符)和维护一个<strong>链表</strong>来存放准备就绪的文件描述符对应的 Socket 相关的事件信息。这两个数据结构存储的元素都和 epitem 结构有关，后面再详细说明。</p>
+<h2 id="API-定义-1"><a href="#API-定义-1" class="headerlink" title="API 定义"></a>API 定义</h2><p>下面列举 epoll 提供的API：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/epoll.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建 epoll 实例，返回 epoll 专用文件描述符（Linux 优化后废弃了参数）</span></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">epoll_create</span><span class="params">(<span class="keyword">int</span> <span class="built_in">size</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 用于往 epoll 实例中增删改要检测的文件描述符事件</span></span><br><span class="line">    <span class="comment">// 根据具体操作调整调整红黑树和就绪链表</span></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">epoll_ctl</span><span class="params">(<span class="keyword">int</span> epfd, <span class="keyword">int</span> op, <span class="keyword">int</span> fd, struct epoll_event *event)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 用于阻塞等待可以执行IO操作的文件描述符事件，直到超时</span></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">epoll_wait</span><span class="params">(<span class="keyword">int</span> epfd, struct epoll_event *events, <span class="keyword">int</span> maxevents, <span class="keyword">int</span> timeout)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>上面列举了Linux中提供的epoll相关API，下面我们依次介绍这些函数。</p>
+<h3 id="epoll-create"><a href="#epoll-create" class="headerlink" title="epoll_create"></a>epoll_create</h3><p>当某一进程成功调用<strong>epoll_create</strong>函数时，Linux 内核会创建一个 <strong>epoll</strong> 实例，并返回其文件描述符。下面是 epoll 实例对应的结构体，我们只关注核心属性。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> &#123;</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// epoll_wait 使用的等待队列，和进程唤醒有关</span></span><br><span class="line">	<span class="keyword">wait_queue_head_t</span> wq;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 就绪队列，用于存放事件信息</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">rdllist</span>;</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// 红黑树的根节点，这颗树中存储着所有添加到 epoll 中的需要监控的事件信息</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rb_root</span> <span class="title">rbr</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//.....</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+
+<p>一般一个进程对应一个 <strong>epoll</strong> 实例，每个 <strong>epoll</strong> 实例都有一个独立的 <strong>eventpoll</strong> 结构体。更详细的结构如下图所示：<br><img src="/posts/b25f5b99/io-multi-epoll-1.jpg" alt></p>
+<p>值得注意的是，进程在调用以上函数创建 <strong>epoll</strong> 对象的同时，会初始化以上三个核心数据结构：</p>
+<ul>
+<li><strong>wq:</strong> 等待队列链表。中断数据就绪的时候会通过 wq 来找到阻塞在 epoll 对象上的用户进程（调用 epoll_wait 函数的进程）。</li>
+<li><strong>rdllist:</strong> 就绪链表。当有文件描述符对应的 Socket 就绪时，内核会将该 Scocket 等待队列中的 epitem 的 rdllink 成员添加到该就绪链表中。</li>
+<li><strong>rbr:</strong> 一颗红黑树。为了支持对海量连接的高效查找、插入和删除，eventpoll 内部使用了一颗红黑树。通过这颗树来管理用户进程下添加进来的文件描述符。注意，红黑树节点并不是文件描述符，而是内核对文件描述符和事件信息封装的 epitem 的 rbn 成员。</li>
+</ul>
+<p>至此，这些成员其实还只是刚被定义或初始化，都还没有用到，它们会在下面被用到。</p>
+<h3 id="epoll-ctl"><a href="#epoll-ctl" class="headerlink" title="epoll_ctl"></a>epoll_ctl</h3><p>某一进程通过调用 <strong>epoll_ctl</strong> 函数向 epoll 对象中添加、删除、修改感兴趣的<strong>文件描述符事件信息</strong>，返回0标识成功，返回-1表示失败。该方法的参数很重要，下面我们详细分析各个参数的作用。</p>
+<p><strong>int epfd</strong><br>表示 epoll 实例的文件描述符，也就是 <strong>epoll_create</strong> 函数调用成功返回的值。随便说一句，文件描述符是一个非负整数。</p>
+<p><strong>int op</strong><br>表示对文件描述符 fd 的监听事件的操作，操作类型如下：</p>
+<blockquote>
+<ul>
+<li>EPOLL_CTL_ADD：注册新的 fd 的监听事件</li>
+<li>EPOLL_CTL_MOD：修改已经注册的 fd 的监听事件</li>
+<li>EPOLL_CTL_DEL：删除 fd 的监听事件</li>
+</ul>
+</blockquote>
+<p><strong>int fd</strong><br>表示要监听的文件描述符，该文件描述符对应的 Socket 可能发生不同的操作，进而产生不同的事件。</p>
+<p><strong>struct epoll_event *event</strong><br>表示要监听的文件描述符 fd 对应的 Socket 发生的事件，该事件的结构定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 用户附加数据定义</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">union</span> epoll_data &#123;</span><br><span class="line">    <span class="keyword">void</span>        *ptr; <span class="comment">/*指向用户自定义数据*/</span></span><br><span class="line">    <span class="keyword">int</span>          fd;  <span class="comment">/*注册的文件描述符*/</span></span><br><span class="line">    <span class="keyword">uint32_t</span>     u32; </span><br><span class="line">    <span class="keyword">uint64_t</span>     u64;</span><br><span class="line">&#125; <span class="keyword">epoll_data_t</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// epoll 监听事件定义</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> &#123;</span></span><br><span class="line">    <span class="comment">// 描述 epoll 事件</span></span><br><span class="line">    <span class="keyword">uint32_t</span>     events;      <span class="comment">/* Epoll events */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 专门给用户使用的，具体见上面的结构体</span></span><br><span class="line">    <span class="keyword">epoll_data_t</span> data;        <span class="comment">/* User data variable */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>epoll_event</strong> 包括两部分信息，一个是文件描述符的事件信息，另一个是为使用方提供的属性。这个结构非常重要，使用方向 epoll 实例注册监听事件信息时，需要在 <strong>data</strong> 域写入文件描述符相关信息，当有文件描述符对应的 Socket 准备就绪时，会间接将对应的 epoll_event 拷贝会用户空间，用户进程就可以根据 epoll_event 中的 events 事件信息和 data 中用户指定的文件描述符，进而可以根据事件信息去操作文件描述符对应 Socket 。</p>
+<p>常用的 epoll 事件描述如下：</p>
+<ul>
+<li>EPOLLIN：描述符处于可读状态</li>
+<li>EPOLLOUT：描述符处于可写状态</li>
+<li>EPOLLET：将epoll event通知模式设置成 edge triggered</li>
+<li>EPOLLONESHOT：第一次进行通知，之后不再监测</li>
+<li>EPOLLHUP：本端描述符产生一个挂断事件，默认监测事件</li>
+<li>EPOLLRDHUP：对端描述符产生一个挂断事件</li>
+<li>EPOLLPRI：描述符有紧急的数据可读</li>
+<li>EPOLLERR：描述符产生错误时触发，默认检测事件</li>
+</ul>
+<p>下面我们只考虑注册新的文件描述符的监听事件。在调用 epoll_clt 函数注册文件描述符事件时，Linux 内核会做以下工作：</p>
+<ol>
+<li>根据传入的参数初始化一个 epitem 对象，该对象是内核管理文件描述符的基础，后续红黑树和就绪链表中的数据都要用到它。</li>
+<li>新建一个等待队列项，其中的回调函数为 ep_poll_callback（该回调函数会在 Socket 准备就绪后触发），base 指针指向步骤 1 初始化的 epitem，它将来会作为添加到就绪链表的数据源。</li>
+<li>将 epitem 的 rbn 成员插入到红黑树中。红黑树主要用来维护进程添加的文件描述符，这样就可以避免每次获取就绪 Socket 信息时都要重新拷贝一遍所有的文件描述符到内核态，并能在插入，查找和删除的操作发生高效执行。</li>
+</ol>
+<p>在 epoll 中，内核会根据传入的文件描述和事件，将相关信息封装成 <strong>epitem</strong> 对象，epitem 结构如下所示：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epitem</span>&#123;</span></span><br><span class="line">    <span class="comment">// 红黑树节点</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rb_node</span>  <span class="title">rbn</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 就绪链表节点</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>    <span class="title">rdllink</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 包含 文件描述符和对应 Socket 地址信息</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">epoll_filefd</span>  <span class="title">ffd</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//指向其所属的 eventpoll 对象  </span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> *<span class="title">ep</span>;</span>   </span><br><span class="line"></span><br><span class="line">    <span class="comment">// 监听的事件信息</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">event</span>;</span> </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epoll_filefd</span>&#123;</span></span><br><span class="line">    <span class="comment">// Socket 文件地址</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">file</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 文件描述符</span></span><br><span class="line">    <span class="keyword">int</span> fd;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里简单说明下，epoll 为啥要使用红黑树呢？使用红黑树是基于 epoll 在查询效率、插入效率、删除效率以及内存开销等多方面均衡的结果。</p>
+<h3 id="epoll-wait"><a href="#epoll-wait" class="headerlink" title="epoll_wait"></a>epoll_wait</h3><p>某一进程通过调用 <strong>epoll_wait</strong> 函数阻塞等待注册的事件发生，成功时返回就绪的事件数目，调用失败时返回 -1，等待超时返回 0。</p>
+<h4 id="参数"><a href="#参数" class="headerlink" title="参数"></a>参数</h4><p><strong>int epfd</strong><br>表示 epoll 实例的文件描述符，也就是 <strong>epoll_create</strong> 函数调用成功返回的值。</p>
+<p><strong>struct epoll_event *events</strong><br>关注的文件描述符对应的 Socket 有事件触发时，内核会将对应的感兴趣事件信息写入 events 数组中并拷贝回用户空间。</p>
+<p><strong>int maxevents</strong><br>通知内核 events 的大小，内核会根据该值从就绪链表中写数据到 events 数组中。</p>
+<h4 id="原理-1"><a href="#原理-1" class="headerlink" title="原理"></a>原理</h4><p>epoll_wait 做的事情相对比较简单，当用户进程调用它时会直接观察<strong>就绪链表</strong>中有没有数据即可。</p>
+<p><strong>有数据</strong></p>
+<blockquote>
+<p>内核会将就绪链表中元素对应的事件信息写入到 events 并拷贝回用户空间就结束了。</p>
+</blockquote>
+<p><strong>等待数据到来</strong><br>没有数据，则创建一个等待队列项，将用户进程设置到等待队列项然后添加到 eventpoll 的等待队列上，阻塞当前用户进程。需要注意的是，epoll_ctl 过程中是为文件描述符对应的 Socket 创建等待队列项，这里是为 epoll 创建等待队列项。从这个过程也可以看出，epoll 也是会阻塞当前进程的，这个是合理的，因为没有事情可做了占着 CPU 也没啥意义。</p>
+<p><strong>数据到来</strong><br>1 在执行 epoll_ctl 时，内核为传入的文件描述符对应的 Socket 添加了一个等待队列项，其回调函数是 ep_poll_callback，并使用 base 属性指向 epitem 。在执行 epoll_waite 时，内核为 epoll 创建了一个等待队列项，将用户进程设置到等待队列项中，接着设置一个default_wake_function 回调用函数（将来用来唤醒当前进程），并加入到 epoll 的等待队列中。</p>
+<p>当 Socket 就绪时，内核会找到 Socket 等待队列中设置的回调函数 ep_poll_callback 并执行该函数，该函数会根据等待队列项的 base 属性找到 epitem 对象，进而也可以找到 eventpoll 对象。接着将找到的 epitem 的 rdllink 添加到 epoll 的就绪链表中，最后会查看 eventpoll 的等待队列中是否有等待项，也就是查看是否有用户进程在等待，如果没有则执行中断的事情就做完了。如果有就查找到等待项里设置的回调函数 default_wake_function 并执行，唤醒阻塞的用户进程。</p>
+<p><strong>处理网络请求</strong></p>
+<p>当进程醒来之后，继续从 epoll_await 时暂停的代码继续执行，同时内核向用户空间拷贝就绪事件信息到 events 参数中，用户进程可以根据返回的具体信息处理网络请求。</p>
+<h2 id="使用示例-2"><a href="#使用示例-2" class="headerlink" title="使用示例"></a>使用示例</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">events</span>[5];</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 1 创建一个 epoll 实例</span></span><br><span class="line"><span class="keyword">int</span> epfd = epoll_create(<span class="number">10</span>);</span><br><span class="line"> ...</span><br><span class="line"> ...</span><br><span class="line"><span class="keyword">for</span> (i=<span class="number">0</span>;i&lt;<span class="number">5</span>;i++)</span><br><span class="line"> &#123;</span><br><span class="line">   </span><br><span class="line">  <span class="comment">// 2 epoll 监听事件定义</span></span><br><span class="line">  <span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">ev</span>;</span></span><br><span class="line">  <span class="built_in">memset</span>(&amp;client, <span class="number">0</span>, <span class="keyword">sizeof</span> (client));</span><br><span class="line">  addrlen = <span class="keyword">sizeof</span>(client);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 2.1 设置 fd </span></span><br><span class="line">  ev.data.fd = accept(sockfd,(struct sockaddr*)&amp;client, &amp;addrlen);</span><br><span class="line">  <span class="comment">// 2.2 设置监听事件</span></span><br><span class="line">  ev.events = EPOLLIN;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 3 向 epoll 注册 文件描述符事件</span></span><br><span class="line">  epoll_ctl(epfd, EPOLL_CTL_ADD, ev.data.fd, &amp;ev);</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">   <span class="built_in">puts</span>(<span class="string">"round again"</span>);</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 4 调用 epoll_wait 阻塞等待数据的到来，内核会判断 Socket 就绪情况，并把就绪的 Socket 相关的 epoll_event 拷贝出用户空间</span></span><br><span class="line">   <span class="comment">// 返回的就绪 Socket 的个数</span></span><br><span class="line">   nfds = epoll_wait(epfd, events, <span class="number">5</span>, <span class="number">10000</span>);</span><br><span class="line">  </span><br><span class="line">   <span class="comment">// 只需要遍历 nfds 个数即可</span></span><br><span class="line">   <span class="keyword">for</span>(i=<span class="number">0</span>;i&lt;nfds;i++) &#123;</span><br><span class="line">           <span class="built_in">memset</span>(<span class="built_in">buffer</span>,<span class="number">0</span>,MAXBUF);</span><br><span class="line">           <span class="built_in">read</span>(events[i].data.fd, <span class="built_in">buffer</span>, MAXBUF);</span><br><span class="line">           <span class="built_in">puts</span>(<span class="built_in">buffer</span>);</span><br><span class="line">   &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="特点-1"><a href="#特点-1" class="headerlink" title="特点"></a>特点</h2><ol>
+<li>epoll 为了减少文件描述符频繁的拷贝开销，在内核中维护了一颗红黑树用来存储文件描述信息。并不是说 epoll 完全避免了文件描述符的拷贝，epoll 只会在新增/修改/删除的时候进行拷贝工作，避免了每次监听的时候重复拷贝。</li>
+<li>epoll 使用了一个就绪链表来解决准确通知问题，也就是只会将就绪的 Socket 信息返回给用户空间，避免了用户进程寻找发生事件的 Socket 的开销。</li>
+<li>epoll 阻塞用户进程时只会将其添加到 epoll 实例的等待队列中，而不需要将用户进程轮流加入到文件描述符对应的 Socket 的等待队列中。并且 epoll 模型为文件描述符对应的 Socket 设置一个回调函数，当 Socket 就绪时会触发该函数的调用，这就是基于事件驱动模型。基于事件驱动内核就可以避免遍历所有文件描述符的开销。</li>
+</ol>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/b25f5b99/" title="网络通信 - IO多路复用" target="_blank" rel="external">https://gentryhuang.com/posts/b25f5b99/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    
+    <li class="next">
+      <a href="/posts/51fff883/" title="网络通信 - I/O模型"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
