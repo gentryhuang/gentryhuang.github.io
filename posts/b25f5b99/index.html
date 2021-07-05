@@ -29,7 +29,7 @@
 <meta property="og:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-epoll-1.jpg">
 <meta property="og:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-2.jpeg">
 <meta property="article:published_time" content="2021-06-12T02:43:23.000Z">
-<meta property="article:modified_time" content="2021-07-05T03:41:43.843Z">
+<meta property="article:modified_time" content="2021-07-05T03:46:38.216Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="I&#x2F;O">
 <meta name="twitter:card" content="summary">
@@ -601,7 +601,7 @@
 <li>epoll 阻塞用户进程时只会将其添加到 epoll 实例的等待队列中，而不需要将用户进程轮流加入到文件描述符对应的 Socket 的等待队列中。并且 epoll 模型为文件描述符对应的 Socket 设置一个回调函数，当 Socket 就绪时会触发该函数的调用，这就是基于事件驱动模型。基于事件驱动内核就可以避免遍历所有文件描述符的开销。</li>
 </ol>
 <h1 id="方案比较"><a href="#方案比较" class="headerlink" title="方案比较"></a>方案比较</h1><ol>
-<li>select 和 poll 基本类似，都是使用内核定义的数据结构来进行文件描述符的存储，select 采用 bitmap ，poll 采用数组。select 会收到最大连接数的限制，而 poll 在一定程度上解决了这个问题。而 epoll 则是内核专门维护了一颗红黑树来存储文件描述符信息。前两个文件描述符信息需要用户空间维护，而后者是在内核空间维护的。</li>
+<li>select 和 poll 基本类似，都是使用内核定义的数据结构来进行文件描述符的存储，select 采用 bitmap ，poll 采用数组。select 会受到最大连接数的限制，而 poll 在一定程度上解决了这个问题。而 epoll 则是内核专门维护了一颗红黑树来存储文件描述符信息。前两个文件描述符信息需要用户空间维护，而后者是在内核空间维护的。</li>
 <li>select 和 poll 都需要将有关文件描述符的数据结构在用户空间和内核空间来回拷贝，而 epoll 只会在新增/修改/删除的时候进行拷贝工作。</li>
 <li>select 和 poll 采用轮询的方式来检查文件描述符是否处于就绪状态，而 epoll 采用回调机制。造成的结果是，随着文件描述符的增加，select 和 poll 的效率会线性降低，而 epoll 受到的影响较小，除非活跃的 Socket 较多。 </li>
 <li>select 、poll 以及 epoll 虽然都会返回就绪的文件描述符数量。但是 select 和 poll 并不会明确指出是哪些文件描述符就绪，而 epoll 可以做到。用户进程返回后，调用 select 和 poll 的程序需要遍历监听整个文件描述符，而 epoll 得益于内核就绪链表则可以直接处理。</li>
