@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Redis原理 - Redis主流程 | gentryhuang的博客</title>
+  <meta name="description" content="前言本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。需要说明的是，笔者阅读的 Redis 版本是 #define REDIS_VERSION &quot;6.2.4&quot;，之所以选择较新的版本，因为笔者对">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis原理 - Redis主流程">
+<meta property="og:url" content="https://gentryhuang.com/posts/19fe4bc5/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。需要说明的是，笔者阅读的 Redis 版本是 #define REDIS_VERSION &quot;6.2.4&quot;，之所以选择较新的版本，因为笔者对">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/19fe4bc5/redis-outline-main-process.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/19fe4bc5/redis-outline-multi-process.jpg">
+<meta property="article:published_time" content="2021-06-24T06:59:01.000Z">
+<meta property="article:modified_time" content="2021-07-09T07:08:44.716Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="求职">
+<meta property="article:tag" content="技术">
+<meta property="article:tag" content="生活">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/19fe4bc5/redis-outline-main-process.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/19fe4bc5/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">66</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.14px;">AQS</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.71px;">Filter</a> <a href="/tags/I-O/" style="font-size: 13.14px;">I/O</a> <a href="/tags/JUC/" style="font-size: 13.43px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.29px;">Javassist</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.29px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.57px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.14px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.29px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.29px;">Spring</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.86px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/19fe4bc5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/19fe4bc5/" class="title">Redis原理 - Redis主流程</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-06-24T06:59:01.000Z" itemprop="datePublished">2021-06-24</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/b25f5b99/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/b25f5b99/" class="title">网络通信 - IO多路复用</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-06-12T02:43:23.000Z" itemprop="datePublished">2021-06-12</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/51fff883/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/51fff883/" class="title">网络通信 - IO模型</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-06-05T07:36:47.000Z" itemprop="datePublished">2021-06-05</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/a26fab1/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/a26fab1/" class="title">Redis原理 - 事务</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-05-27T12:08:59.000Z" itemprop="datePublished">2021-05-27</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/d80e61c2/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/d80e61c2/" class="title">MySQL - 事务与隔离级别</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-05-21T10:49:59.000Z" itemprop="datePublished">2021-05-21</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#main-函数"><span class="toc-number">2.</span> <span class="toc-text">main 函数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#事件循环"><span class="toc-number">3.</span> <span class="toc-text">事件循环</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-redis_theory/themory/Redis全流程" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Redis原理 - Redis主流程
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/19fe4bc5/" class="article-date">
+	  <time datetime="2021-06-24T06:59:01.000Z" itemprop="datePublished">2021-06-24</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/Redis/">Redis</a>
+  </span>
+
+        
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/19fe4bc5/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.9k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 8(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。需要说明的是，笔者阅读的 Redis 版本是 <code>#define REDIS_VERSION &quot;6.2.4&quot;</code>，之所以选择较新的版本，因为笔者对 Redis 一些新特性比较感兴趣，特别是 Redis 在 6.0 版本中提出的 IO 多线程。</p>
+<h1 id="main-函数"><a href="#main-函数" class="headerlink" title="main 函数"></a>main 函数</h1><p>Redis 服务器启动的入口是 main 函数，其它的无需多说，下面直接上代码。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Redis Server 启动入口</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 说明：</span></span><br><span class="line"><span class="comment"> *  Redis是用C语言实现的，从 main 函数启动。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span> </span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">timeval</span> <span class="title">tv</span>;</span></span><br><span class="line">    <span class="keyword">int</span> j;</span><br><span class="line">    <span class="keyword">char</span> config_from_stdin = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> INIT_SETPROCTITLE_REPLACEMENT</span></span><br><span class="line">    <span class="comment">// 1 初始化库</span></span><br><span class="line">    spt_init(argc, argv);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2 检查服务器是否以 Sentinel 模式启动</span></span><br><span class="line">    <span class="comment">// 这一点非常重要，因为 Sentinel 和普通的实例不同</span></span><br><span class="line">    server.sentinel_mode = checkForSentinelMode(argc, argv);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3  初始化服务器配置</span></span><br><span class="line">    initServerConfig();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 4 ACL 初始化（6.0 对 ACL 进行了功能丰富）</span></span><br><span class="line">    ACLInit(); <span class="comment">/* The ACL subsystem must be initialized ASAP because the</span></span><br><span class="line"><span class="comment">                  basic networking code and client creation depends on it. */</span></span><br><span class="line"></span><br><span class="line">  </span><br><span class="line">    <span class="comment">// 5 如果服务器以 Sentinel 模式启动，那么需要进行 Sentinel 功能相关的初始化，并为要监视的主服务器创建一些相应的数据结构</span></span><br><span class="line">    <span class="keyword">if</span> (server.sentinel_mode) &#123;</span><br><span class="line">        <span class="comment">// Sentinel 所属的属性覆盖服务器默认的属性</span></span><br><span class="line">        initSentinelConfig();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 哨兵模式初始化</span></span><br><span class="line">        initSentinel();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line">    <span class="comment">// 6 是否需要在 redis-check-rdb/aof模式下启动，这样可以校验持久化文件</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">strstr</span>(argv[<span class="number">0</span>], <span class="string">"redis-check-rdb"</span>) != <span class="literal">NULL</span>)</span><br><span class="line">        redis_check_rdb_main(argc, argv, <span class="literal">NULL</span>);</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (<span class="built_in">strstr</span>(argv[<span class="number">0</span>], <span class="string">"redis-check-aof"</span>) != <span class="literal">NULL</span>)</span><br><span class="line">        redis_check_aof_main(argc, argv);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 7 检查用户是否指定了配置文件，或者配置选项</span></span><br><span class="line">    <span class="keyword">if</span> (argc &gt;= <span class="number">2</span>) &#123;...&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">int</span> <span class="built_in">background</span> = server.daemonize &amp;&amp; !server.supervised;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 8 将服务器设置为守护进程运行</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">background</span>) daemonize();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 9 创建并初始化服务器</span></span><br><span class="line">    initServer();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 🌟 服务器不是运行在 SENTINEL 模式，那么执行以下代码</span></span><br><span class="line">    <span class="keyword">if</span> (!server.sentinel_mode) &#123;</span><br><span class="line">       </span><br><span class="line">        <span class="comment">// 10  bio 和 io 线程的初始化</span></span><br><span class="line">        InitServerLast();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 11 从 AOF 文件或者 RDB 文件中载入数据</span></span><br><span class="line">        loadDataFromDisk();</span><br><span class="line">        <span class="keyword">if</span> (server.cluster_enabled) &#123;</span><br><span class="line">            <span class="keyword">if</span> (verifyClusterConfigWithData() == C_ERR) &#123;</span><br><span class="line">                serverLog(LL_WARNING,</span><br><span class="line">                          <span class="string">"You can't have keys in a DB different than DB 0 when in "</span></span><br><span class="line">                          <span class="string">"Cluster mode. Exiting."</span>);</span><br><span class="line">                <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      </span><br><span class="line">      <span class="comment">// 以 SENTINEL 模式运行</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        ACLLoadUsersAtStartup();</span><br><span class="line">        <span class="comment">// bio 和 io 线程的初始化</span></span><br><span class="line">        InitServerLast();</span><br><span class="line">        <span class="comment">// Sentinel 准备就绪后执行</span></span><br><span class="line">        sentinelIsRunning();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 12 🌟 启动事件处理循环</span></span><br><span class="line">    <span class="comment">// 主要围绕 IO多路复用 展开的，驱动注册的时间事件回调和 IO 事件回调</span></span><br><span class="line">    aeMain(server.el);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 12 退出事件循环，回收内存</span></span><br><span class="line">    aeDeleteEventLoop(server.el);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// retun 0</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Redis 服务启动后，主线程 main 会依次执行以上流程，直到进入 <strong>aeMain</strong> 事件处理循环方法中。需要说明的是，上述代码片段删除掉了不关心的逻辑，本篇文章我们只关注以下两个逻辑：</p>
+<ul>
+<li>执行各种初始化</li>
+<li>执行事件循环</li>
+</ul>
+<p>Redis 服务器初始化逻辑较为复杂，从底层的数据结构到服务器不同的角色，初始化的逻辑和属性都不一样，这里就不展开了。下面对流程进行概括：</p>
+<p><img src="/posts/19fe4bc5/redis-outline-main-process.jpg" alt></p>
+<h1 id="事件循环"><a href="#事件循环" class="headerlink" title="事件循环"></a>事件循环</h1><p>事件循环逻辑是 Redis 核心的直接体现，它就是在这个循环中不断处理网络请求和内部自身逻辑的。下面我们直接上代码。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">aeMain</span><span class="params">(aeEventLoop *eventLoop)</span> </span>&#123;</span><br><span class="line">    eventLoop-&gt;<span class="built_in">stop</span> = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 主线程进入主循环，一直处理事件，直到服务器关闭</span></span><br><span class="line">    <span class="keyword">while</span> (!eventLoop-&gt;<span class="built_in">stop</span>) &#123;</span><br><span class="line">        <span class="comment">// 开始处理事件</span></span><br><span class="line">        aeProcessEvents(eventLoop, AE_ALL_EVENTS |</span><br><span class="line">                                   AE_CALL_BEFORE_SLEEP |</span><br><span class="line">                                   AE_CALL_AFTER_SLEEP);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，只要事件循环 <code>aeEventLoop</code> 没有被停止，主线程 main 就会一直自旋，不断执行 <code>aeProcessEvents</code> 方法。不难看出 <code>aeProcessEvents</code> 方法封装了 Redis 的所有功能逻辑，这里提前说下，Redis 的功能逻辑总共两大类：一个是网络事件，也称为文件事件；另一个是时间事件；前者用于处理网络中的交互，后者用于处理 Redis 自身的一些逻辑。</p>
+<p>下面继续贴出 <code>aeProcessEvents</code> 方法的代码。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">aeProcessEvents</span><span class="params">(aeEventLoop *eventLoop, <span class="keyword">int</span> flags)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> processed = <span class="number">0</span>, numevents;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Nothing to do? return ASAP */</span></span><br><span class="line">    <span class="keyword">if</span> (!(flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_FILE_EVENTS)) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (eventLoop-&gt;maxfd != <span class="number">-1</span> ||</span><br><span class="line">        ((flags &amp; AE_TIME_EVENTS) &amp;&amp; !(flags &amp; AE_DONT_WAIT))) &#123;</span><br><span class="line">        <span class="keyword">int</span> j;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">timeval</span> <span class="title">tv</span>, *<span class="title">tvp</span>;</span></span><br><span class="line">        <span class="keyword">int64_t</span> usUntilTimer = <span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 获取最近的时间事件</span></span><br><span class="line">        <span class="keyword">if</span> (flags &amp; AE_TIME_EVENTS &amp;&amp; !(flags &amp; AE_DONT_WAIT))</span><br><span class="line">            usUntilTimer = usUntilEarliestTimer(eventLoop);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1.1 使用 usUntilTimer 来决定文件事件的阻塞时间</span></span><br><span class="line">        <span class="keyword">if</span> (usUntilTimer &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">            tv.tv_sec = usUntilTimer / <span class="number">1000000</span>;</span><br><span class="line">            tv.tv_usec = usUntilTimer % <span class="number">1000000</span>;</span><br><span class="line">            tvp = &amp;tv;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 1.2 执行到这里，说明没有时间事件。那么根据 AE_DONT_WAIT 是否设置来决定是否阻塞，以及阻塞的时间长度</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (flags &amp; AE_DONT_WAIT) &#123;</span><br><span class="line">                <span class="comment">// 设置文件事件不阻塞</span></span><br><span class="line">                tv.tv_sec = tv.tv_usec = <span class="number">0</span>;</span><br><span class="line">                tvp = &amp;tv;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">/* Otherwise we can block */</span></span><br><span class="line">                <span class="comment">// 文件事件阻塞直到有事件到达为止</span></span><br><span class="line">                tvp = <span class="literal">NULL</span>; <span class="comment">/* wait forever */</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (eventLoop-&gt;flags &amp; AE_DONT_WAIT) &#123;</span><br><span class="line">            tv.tv_sec = tv.tv_usec = <span class="number">0</span>;</span><br><span class="line">            tvp = &amp;tv;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 2 前置回调函数 - beforeSleep */</span></span><br><span class="line">        <span class="keyword">if</span> (eventLoop-&gt;beforesleep != <span class="literal">NULL</span> &amp;&amp; flags &amp; AE_CALL_BEFORE_SLEEP)</span><br><span class="line">            eventLoop-&gt;beforesleep(eventLoop);</span><br><span class="line"></span><br><span class="line">     </span><br><span class="line">        <span class="number">3</span> 调用多路复用 API，只会在超时或某些事件触发时返回。即等待事件产生</span><br><span class="line">        numevents = aeApiPoll(eventLoop, tvp);</span><br><span class="line"></span><br><span class="line">    </span><br><span class="line">        <span class="comment">/* 4 后置回调函数 - beforeSleep */</span></span><br><span class="line">        <span class="keyword">if</span> (eventLoop-&gt;aftersleep != <span class="literal">NULL</span> &amp;&amp; flags &amp; AE_CALL_AFTER_SLEEP)</span><br><span class="line">            eventLoop-&gt;aftersleep(eventLoop);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 5 遍历所有已产生的事件，并调用相应的事件处理器来处理这些事件</span></span><br><span class="line">        <span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; numevents; j++) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 5.1 从已就绪数组中获取文件描述符信息</span></span><br><span class="line">            aeFileEvent *fe = &amp;eventLoop-&gt;events[eventLoop-&gt;fired[j].fd];</span><br><span class="line">            <span class="keyword">int</span> mask = eventLoop-&gt;fired[j].mask;</span><br><span class="line">            <span class="keyword">int</span> fd = eventLoop-&gt;fired[j].fd;</span><br><span class="line">            <span class="keyword">int</span> fired = <span class="number">0</span>; <span class="comment">/* Number of events fired for current fd. */</span></span><br><span class="line"></span><br><span class="line">            <span class="keyword">int</span> invert = fe-&gt;mask &amp; AE_BARRIER;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 5.2 如果是套接字上发生读事件，调用读事件处理器处理读事件</span></span><br><span class="line">            <span class="keyword">if</span> (!invert &amp;&amp; fe-&gt;mask &amp; mask &amp; AE_READABLE) &#123;</span><br><span class="line">                fe-&gt;rfileProc(eventLoop, fd, fe-&gt;clientData, mask);</span><br><span class="line">                fired++;</span><br><span class="line">                fe = &amp;eventLoop-&gt;events[fd]; <span class="comment">/* Refresh in case of resize. */</span></span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* Fire the writable event. */</span></span><br><span class="line">            <span class="comment">// 5.3 如果是套接字上发生写事件，调用写事件处理器处理写事件</span></span><br><span class="line">            <span class="keyword">if</span> (fe-&gt;mask &amp; mask &amp; AE_WRITABLE) &#123;</span><br><span class="line">                <span class="keyword">if</span> (!fired || fe-&gt;wfileProc != fe-&gt;rfileProc) &#123;</span><br><span class="line">                    fe-&gt;wfileProc(eventLoop, fd, fe-&gt;clientData, mask);</span><br><span class="line">                    fired++;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* If we have to invert the call, fire the readable event now</span></span><br><span class="line"><span class="comment">             * after the writable one.</span></span><br><span class="line"><span class="comment">             *</span></span><br><span class="line"><span class="comment">             * 如果需要反转调用，在可写事件之后触发可读事件</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            <span class="keyword">if</span> (invert) &#123;</span><br><span class="line">                fe = &amp;eventLoop-&gt;events[fd]; <span class="comment">/* Refresh in case of resize. */</span></span><br><span class="line">                <span class="keyword">if</span> ((fe-&gt;mask &amp; mask &amp; AE_READABLE) &amp;&amp;</span><br><span class="line">                    (!fired || fe-&gt;wfileProc != fe-&gt;rfileProc)) &#123;</span><br><span class="line">                    fe-&gt;rfileProc(eventLoop, fd, fe-&gt;clientData, mask);</span><br><span class="line">                    fired++;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            processed++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="comment">// 6 如果是时间事件</span></span><br><span class="line">    <span class="keyword">if</span> (flags &amp; AE_TIME_EVENTS)</span><br><span class="line">        <span class="comment">// 执行时间事件</span></span><br><span class="line">        processed += processTimeEvents(eventLoop);</span><br><span class="line">    <span class="keyword">return</span> processed; <span class="comment">/* return the number of processed file/time events */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从上述代码片段中也可以看到，主线程在不断轮询时间事件和文件事件，找到就尝试执行。上述代码虽然简短，但是却几乎包含了 Redis 的所有功能，秘密就在以下几个组件中：</p>
+<ul>
+<li>前置处理器 beforeSleep </li>
+<li>IO多路复用库（及多种回调函数）</li>
+<li>后置处理器 afterSleep</li>
+</ul>
+<p>关于以上代码片段背后的信息，会在后面的文章中介绍 Redis 事件一文中详细说明，这里先不展开。下面对以上方法进行概括：</p>
+<p><img src="/posts/19fe4bc5/redis-outline-multi-process.jpg" alt></p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章简单介绍了 Redis 启动的入口以及执行的主干流程，这里有个印象即可，后续会对每个模块展开说明。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/19fe4bc5/" title="Redis原理 - Redis主流程" target="_blank" rel="external">https://gentryhuang.com/posts/19fe4bc5/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    
+    <li class="next">
+      <a href="/posts/b25f5b99/" title="网络通信 - IO多路复用"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
