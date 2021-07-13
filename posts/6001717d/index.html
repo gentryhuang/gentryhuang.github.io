@@ -17,21 +17,21 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>标签: Netty | gentryhuang的博客</title>
-  <meta name="description" content="博客">
-<meta property="og:type" content="website">
-<meta property="og:title" content="gentryhuang‘s blog">
-<meta property="og:url" content="https://gentryhuang.com/tags/Netty/index.html">
+  <title>Gossip 协议 | gentryhuang的博客</title>
+  <meta name="description" content="前言通过对 Raft 等算法的了解，我们知道它们都需要大多数节点正常运行才能稳定运行。如果我们需要系统在极端的情况下也要保证正常运行，比如集群中只有一个节点，那么就必须另辟蹊径了。其实，要求系统在极端的情况下也能稳定运行，根据 BASE 理论，这需要实现最终一致性，而 Gossip 协议就能实现这种系统。 概述Gossip 协议，顾名思义就像流言蜚语一样，利用一种随机、带有传染性的方式，将信息传播">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Gossip 协议">
+<meta property="og:url" content="https://gentryhuang.com/posts/6001717d/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="博客">
+<meta property="og:description" content="前言通过对 Raft 等算法的了解，我们知道它们都需要大多数节点正常运行才能稳定运行。如果我们需要系统在极端的情况下也要保证正常运行，比如集群中只有一个节点，那么就必须另辟蹊径了。其实，要求系统在极端的情况下也能稳定运行，根据 BASE 理论，这需要实现最终一致性，而 Gossip 协议就能实现这种系统。 概述Gossip 协议，顾名思义就像流言蜚语一样，利用一种随机、带有传染性的方式，将信息传播">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-04-28T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-07-13T11:56:45.438Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="求职">
-<meta property="article:tag" content="技术">
-<meta property="article:tag" content="生活">
+<meta property="article:tag" content="Gossip">
 <meta name="twitter:card" content="summary">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/tags/Netty/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/6001717d/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -383,96 +383,178 @@
 </aside>
 
   
-  <main class="main" role="main">
-  <article class="content article article-tags post-type-list" itemscope="">
-    <header class="article-header">
-      <h1 itemprop="name" class="hidden-xs">标签: Netty</h1>
-      <p class="text-muted hidden-xs">共 1 篇文章</p>
-      <nav role="navigation" id="nav-main" class="okayNav">
-        <ul>
-          <li><a href="/tags">All</a></li>
-          
-          <li><a href="/tags/Raft/">Raft</a></li>
-          
-          <li><a href="/tags/共识算法/">共识算法</a></li>
-          
-          <li><a href="/tags/Gossip/">Gossip</a></li>
-          
-          <li><a href="/tags/JUC/">JUC</a></li>
-          
-          <li><a href="/tags/AQS/">AQS</a></li>
-          
-          <li><a href="/tags/缓存/">缓存</a></li>
-          
-          <li><a href="/tags/设计模式/">设计模式</a></li>
-          
-          <li><a href="/tags/I-O/">I/O</a></li>
-          
-          <li><a href="/tags/Dubbo/">Dubbo</a></li>
-          
-          <li><a href="/tags/代理/">代理</a></li>
-          
-          <li><a href="/tags/Javassist/">Javassist</a></li>
-          
-          <li><a href="/tags/RPC/">RPC</a></li>
-          
-          <li><a href="/tags/Protocol/">Protocol</a></li>
-          
-          <li><a href="/tags/SPI/">SPI</a></li>
-          
-          <li><a href="/tags/Filter/">Filter</a></li>
-          
-          <li><a href="/tags/Mina/">Mina</a></li>
-          
-          <li><a href="/tags/Netty/">Netty</a></li>
-          
-          <li><a href="/tags/Spring/">Spring</a></li>
-          
-          <li><a href="/tags/Redis/">Redis</a></li>
-          
-          <li><a href="/tags/Zookeeper/">Zookeeper</a></li>
-          
-          <li><a href="/tags/慢查询日志/">慢查询日志</a></li>
-          
-          <li><a href="/tags/Redis数据结构/">Redis数据结构</a></li>
-          
-        </ul>
-      </nav>
-    </header>
-    <!-- /header -->
-    <div class="article-body">
-      <div class="row">
-        
-<div class="col-md-6">
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">2.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#思考"><span class="toc-number">3.</span> <span class="toc-text">思考</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#过程"><span class="toc-number">4.</span> <span class="toc-text">过程</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#类型"><span class="toc-number">5.</span> <span class="toc-text">类型</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#反熵"><span class="toc-number">5.1.</span> <span class="toc-text">反熵</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#谣言传播"><span class="toc-number">5.2.</span> <span class="toc-text">谣言传播</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#通信模式"><span class="toc-number">6.</span> <span class="toc-text">通信模式</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#特点"><span class="toc-number">7.</span> <span class="toc-text">特点</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#优势"><span class="toc-number">7.1.</span> <span class="toc-text">优势</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#缺点"><span class="toc-number">7.2.</span> <span class="toc-text">缺点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">8.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-architecture/Gossip协议" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
-<article class="panel panel-default hover-shadow hover-grow" itemscope itemtype="http://schema.org/BlogPosting">
-  <div class="panel-body">
-     <div class="article-meta">
-       <time datetime="2020-05-29T16:00:00.000Z" itemprop="datePublished">2020-05-30</time>
-     </div>
-     <h3 class="article-title" itemprop="name">
-       <a class="article-link" href="/posts/4468445c/">Dubbo源码分析 - Netty4网络通信</a>
-     </h3>
-   </div>
-   
-   <div class="panel-footer">
-     
-      <a href="/tags/Dubbo/" class="label label-default mb">Dubbo</a>
-     
-      <a href="/tags/Netty/" class="label label-default mb">Netty</a>
-     
-     
-   </div>
-   
-</article>
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Gossip 协议
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/6001717d/" class="article-date">
+	  <time datetime="2021-04-28T16:00:00.000Z" itemprop="datePublished">2021-04-29</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Gossip/" rel="tag">Gossip</a>
+  </span>
 
 
-</div>
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/6001717d/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.6k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 5(分)</span>
+	
 
       </div>
     </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>通过对 Raft 等算法的了解，我们知道它们都需要大多数节点正常运行才能稳定运行。如果我们需要系统在极端的情况下也要保证正常运行，比如集群中只有一个节点，那么就必须另辟蹊径了。其实，要求系统在极端的情况下也能稳定运行，根据 BASE 理论，这需要实现最终一致性，而 Gossip 协议就能实现这种系统。</p>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Gossip 协议，顾名思义就像流言蜚语一样，利用一种随机、带有传染性的方式，将信息传播到整个网络中，并在一定时间内，使得系统内的所有节点数据一致。</p>
+<h1 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h1><p>集群中一个节点上有数据被改动，如果想让这个改动迅速传遍整个集群中的节点，进而达到一致性的状态。一般常见的做法是发生改动的节点将最新的数据发送到其它节点，或者其它节点去定期拉取数据。但是上述的解决方案在分布式的情况下会存在以下问题：</p>
+<ul>
+<li>发生改动的节点还没有将最新数据给到其它节点宕机了</li>
+<li>由于网络原因，可能存在某个或某些节点不能连接上发生改动的节点，那么也不能获取到数据，即使其它节点已经同步到了最新的数据。<br>以上两个问题虽然在像 Raft 等算法中能解决，但是存在效率问题。而我们今天的主角 Gossip 协议就能很好的解决以上问题，以一传十，十传百的方式最后迅速传遍整个集群。</li>
+</ul>
+<h1 id="过程"><a href="#过程" class="headerlink" title="过程"></a>过程</h1><p>Gossip 过程是由种子节点发起，它会周期性的随机选择周围几个节点散播消息，收到消息的节点也会重复该过程，直至最终网络中所有的节点都收到了消息。这个过程可能需要一定的时间，由于不能保证某个时刻所有节点都收到消息，但是理论上最终所有节点都会收到消息，因此它是一个最终一致性协议。需要注意的是，Gossip 过程是异步的，也就是说发消息的节点不会关注对方是否收到，即不等待响应；</p>
+<h1 id="类型"><a href="#类型" class="headerlink" title="类型"></a>类型</h1><p>Gossip 有两种类型：</p>
+<ul>
+<li>反熵：传播所有的数据</li>
+<li>谣言传播：仅传播新到达的数据</li>
+</ul>
+<h2 id="反熵"><a href="#反熵" class="headerlink" title="反熵"></a>反熵</h2><p>反熵指的是集群中的节点，每隔段时间就随机选择其它节点，然后通过相互交换自己的<strong>所有数据</strong>来消除两者之间的差异，实现数据的最终一致性。</p>
+<p>需要注意的是，反熵需要节点两两交换和对比自己所有的数据，执行反熵时通讯成本会很高。其次，反熵虽然实用，但是执行反熵时相关的节点都是已知的，而且节点数量不能太多，如果是一个动态变化或节点比较多的分布式环境，这时反熵就不适用了。</p>
+<h2 id="谣言传播"><a href="#谣言传播" class="headerlink" title="谣言传播"></a>谣言传播</h2><p>谣言传播，指的是当一个节点有了新数据后，这个节点变成活跃状态，并周期性地联系其它节点向其发送数据，直到所有的节点都存储了该新数据。谣言传播非常具有传染性，它适合动态变化的分布式系统。</p>
+<h1 id="通信模式"><a href="#通信模式" class="headerlink" title="通信模式"></a>通信模式</h1><p>Gossip 协议最终目的是将数据分发到网络中的每一个节点。根据不同的具体应用场景，网络中两个节点之间存在三种通信方式。</p>
+<ul>
+<li>Push: 节点 A 将数据 (key,value,version) 及对应的版本号推送给 B 节点，B 节点更新 A 中比自己新的数据。</li>
+<li>Pull：A 仅将数据 key, version 推送给 B，B 将本地比 A 新的数据（Key, value, version）推送给 A，A 更新本地。</li>
+<li>Push/Pull：与 Pull 类似，只是多了一步，A 再将本地比 B 新的数据推送给 B，B 则更新本地。</li>
+</ul>
+<p>如果把两个节点数据同步一次定义为一个周期，则在一个周期内，Push 需通信 1 次，Pull 需 2 次，Push/Pull 则需 3 次。虽然消息数增加了，但从效果上来讲，Push/Pull 最好，理论上一个周期内可以使两个节点完全一致。直观上，Push/Pull 的收敛速度也是最快的。</p>
+<h1 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h1><h2 id="优势"><a href="#优势" class="headerlink" title="优势"></a>优势</h2><p><strong>扩展性：</strong>允许节点的任意增加和减少，新增节点的状态最终会与其他节点一致。<br><strong>容错性：</strong>任意节点的宕机和重启都不会影响 Gossip 消息的传播，一方面一个节点会多次传播信息，另一方面即使不能连通某个节点，其他被“感染”的节点也会尝试向这个节点传播信息。具有天然的分布式系统容错性。<br><strong>健壮性：</strong>无需中心节点，所有节点都是对等的，只要网络连通，任意节点可把消息散播到全网。</p>
+<h2 id="缺点"><a href="#缺点" class="headerlink" title="缺点"></a>缺点</h2><p><strong>消息延迟：</strong>节点随机向少数几个节点发送消息，消息最终是通过多个轮次的散播而到达全网；不可避免的造成消息延迟。<br><strong>消息冗余：</strong>节点会定期随机选择周围节点发送消息，而收到消息的节点也会重复该步骤，不可避免的引起同一节点消息多次接收，增加了消息处理压力。</p>
+<p>需要说明的是，Gossip 协议适用于 AP 场景的数据一致性。</p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>Gossip 协议基本思想是，一个节点想要分享一些信息给网络中的其他节点，会周期性的随机选择一些节点，并把信息传递给这些节点。这些收到信息的节点接下来会做同样的事情，即把这些信息传递给其他一些随机选择的节点。基于 Gossip 协议的一些系统，如 Apache Cassandra，Redis（Cluster模式），Consul等。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/6001717d/" title="Gossip 协议" target="_blank" rel="external">https://gentryhuang.com/posts/6001717d/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
   </article>
-   
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/4760cec/" title="Dubbo源码分析 - 健康检测"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/48468614/" title="Raft 共识算法"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
 </main>
 
   
@@ -544,6 +626,10 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 
 
 
+
+
+
+   
 
 
 
