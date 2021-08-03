@@ -25,15 +25,15 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述IO多路复用简单来说就是，单线程或单进程同时监测若干个文件描述符是否可以执行IO操作的能力，IO多路复用解决的本质问题是用更少的资源完成更多的事。需要说明的是，处理IO多路复用的问题需要操作系统提供内核级别的支持，操作系统充当观察者的角色。本篇文章我们就来分析IO多路复用底层实现原理，我们以 Linux 操作系统提供的IO复用API select、poll 以及epoll 为例，逐一进行分析。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-select-1.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-epoll-1.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-2.jpeg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/io-multi-select-1.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/io-multi-epoll-1.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/io-multi-2.jpeg">
 <meta property="article:published_time" content="2021-06-12T02:43:23.000Z">
-<meta property="article:modified_time" content="2021-07-05T03:46:38.216Z">
+<meta property="article:modified_time" content="2021-08-03T07:48:22.395Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="I&#x2F;O">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/b25f5b99/io-multi-select-1.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/io-multi-select-1.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/b25f5b99/index.html">
   
@@ -490,7 +490,7 @@
 <p>用户进程可以调用 FD_ISSET 函数判断文件描述符是否置位了，如果置位就说明对应的 Socket 已就绪。</p>
 </blockquote>
 <h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p><strong>准备监听的文件描述符上的事件</strong></p>
-<p>应用程序可以根据具体需要，将 Socket 对应的文件描述符放入到 fd_set 数组中，在调用 select 函数时根据要监听的事件类型传入对应的 fd_set 数组。注意，Socket 不限于客户端的 Socket，服务端的 Socket 也可以，比如监听服务端 Socket 的连接事件发生。其中的用户进程通过调用 FD_SET 函数，将文件描述符写入到 fd_set 数组中，也就是将对应的位设置为 1，具体如下：<br><img src="/posts/b25f5b99/io-multi-select-1.jpg" alt></p>
+<p>应用程序可以根据具体需要，将 Socket 对应的文件描述符放入到 fd_set 数组中，在调用 select 函数时根据要监听的事件类型传入对应的 fd_set 数组。注意，Socket 不限于客户端的 Socket，服务端的 Socket 也可以，比如监听服务端 Socket 的连接事件发生。其中的用户进程通过调用 FD_SET 函数，将文件描述符写入到 fd_set 数组中，也就是将对应的位设置为 1，具体如下：<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/io-multi-select-1.jpg" alt></p>
 <p>对于 select 模型，操作系统内核只是定义了文件描述符事件相关数据结构 fd_set，并没有在内核中提供维护文件描述符事件的数据结构。也就是说，应用程序需要根据系统系统内核提供的 fd_set 自行处理文件描述符相关数据。</p>
 <p><strong>等待文件描述符就绪</strong></p>
 <p>应用进程调用 select 函数，操作系统内核会依次遍历传入的每类 fd_set 数组，判断 fd_set 中元素对应的 Socket 有没有数据，这个过程的事件复杂度为 O(n)。如果有数据就对 fd_set 数组中的该 Socket 对应的元素进行置位，最后内核将 fd_set 拷贝回用户空间，不会阻塞当前调用进程。如果要监听的 fd_set 中的所有 Socket 都没有数据，那么进程将会阻塞在 select 函数上，直到超时或有 Socket 就绪，才会唤醒进程。</p>
@@ -536,7 +536,7 @@
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> &#123;</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// epoll_wait 使用的等待队列，和用户进程唤醒有关</span></span><br><span class="line">	<span class="keyword">wait_queue_head_t</span> wq;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 就绪队列，用于存放就绪的文件描述符事件信息</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">rdllist</span>;</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// 红黑树的根节点，这颗树中存储着所有添加到 epoll 中的文件描述符信息</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rb_root</span> <span class="title">rbr</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//.....</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
 
 
-<p>一般一个进程对应一个 <strong>epoll</strong> 实例，每个 <strong>epoll</strong> 实例都有一个独立的 <strong>eventpoll</strong> 结构体。更详细的结构如下图所示：<br><img src="/posts/b25f5b99/io-multi-epoll-1.jpg" alt></p>
+<p>一般一个进程对应一个 <strong>epoll</strong> 实例，每个 <strong>epoll</strong> 实例都有一个独立的 <strong>eventpoll</strong> 结构体。更详细的结构如下图所示：<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/io-multi-epoll-1.jpg" alt></p>
 <p>值得注意的是，进程在调用以上函数创建 <strong>epoll</strong> 对象的同时，会初始化以上三个核心数据结构：</p>
 <ul>
 <li><strong>wq:</strong> 等待队列链表。中断数据就绪的时候会通过 wq 来找到阻塞在 epoll 对象上的用户进程（调用 epoll_wait 函数的进程）。</li>
@@ -611,7 +611,7 @@
 <h2 id="边缘触发"><a href="#边缘触发" class="headerlink" title="边缘触发"></a>边缘触发</h2><p>边缘触发，相对跟水平触发相反，当内核有事件到达，只会通知应用程序一次，至于应用程序处理还是不处理，以后将不会再通知。这样减少了拷贝过程，增加了性能，但是会产生事件丢失的情况。</p>
 <p>对于 select 和 poll 来说，其触发都是水平触发。而 epoll 既支持水平触发也支持边缘触发。</p>
 <h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章对IO多路复用的实现方案进行了介绍，主要以 Linux 系统的 slect、poll 和 epoll 为主线进行说明。下面给出总结表：</p>
-<p><img src="/posts/b25f5b99/io-multi-2.jpeg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/io-multi-2.jpeg" alt></p>
 
       
     </div>

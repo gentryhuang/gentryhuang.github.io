@@ -25,18 +25,18 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言本篇文章将对网络通信相关的基本概念进行说明，并重点对常见的 I&#x2F;O 模型进行介绍，接着介绍套接字并引出 I&#x2F;O 多路复用。 基本概念I&#x2F;O输入输出(input&#x2F;output)的对象可以是文件(file)、网络(socket)、进程之间的管道。在Linux系统中，都用文件描述符(fd)来表示。 阻塞与非阻塞没有数据传过来时，读会阻塞直到有数据；缓冲区满了，写操作也会阻塞。非阻塞都是直接返回。阻塞">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/51fff883/net-io-base-1.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/51fff883/net-io-base-2.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/51fff883/net-io-base-3.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/51fff883/net-io-base-4.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/51fff883/socket-process-1.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/51fff883/socket-process-2.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-1.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-2.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-3.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-4.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/socket-process-1.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/socket-process-2.jpg">
 <meta property="article:published_time" content="2021-06-05T07:36:47.000Z">
-<meta property="article:modified_time" content="2021-07-05T04:33:01.496Z">
+<meta property="article:modified_time" content="2021-08-03T07:48:22.400Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="I&#x2F;O">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/51fff883/net-io-base-1.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-1.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/51fff883/index.html">
   
@@ -460,18 +460,18 @@
 <h1 id="网络IO模型"><a href="#网络IO模型" class="headerlink" title="网络IO模型"></a>网络IO模型</h1><p>Linux 网络IO模型包括：<strong>同步阻塞 I/O</strong>、<strong>同步非阻塞 I/O</strong>、<strong>I/O 多路复用</strong>、<strong>信号驱动 I/O</strong> 和<strong>异步 I/O</strong> 。需要说明的是，操作系统层面的IO模型和Java中的IO模型是一一对应的，Java只是堆操作系统API进行了封装。</p>
 <p>对于一个网络IO通信过程会涉及两个对象，一个是执行IO操作的用户线程，另一个是操作系统内核。一个进程的地址空间分为用户空间和内核空间，用户线程不能直接访问内核空间。</p>
 <h2 id="同步阻塞IO"><a href="#同步阻塞IO" class="headerlink" title="同步阻塞IO"></a>同步阻塞IO</h2><p>用户线程发起read 请求后就阻塞了，此时会让出 CPU 。内核等待网卡数据到来，把数据从网卡拷贝到内核空间，接着把数据拷贝到用户空间，再把用户线程唤醒。这样情况下，需要为每个连接都分配一个线程，在大量连接的场景下就需要大量的线程，会造成巨大的性能损耗，这也是传统阻塞IO的最大缺陷。</p>
-<p><img src="/posts/51fff883/net-io-base-1.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-1.png" alt></p>
 <h2 id="同步非阻塞IO"><a href="#同步非阻塞IO" class="headerlink" title="同步非阻塞IO"></a>同步非阻塞IO</h2><p>用户线程在发起 read 请求后立即返回，如果没读取到数据，用户线程会不断轮询发起 read 请求，直到数据到达（内核准备好数据）后才停止轮询，在等待数据从内核空间拷贝到用户空间这段时间里，线程还是阻塞的，等数据到了用户空间再把线程唤醒。非阻塞IO模型虽然避免了由于线程阻塞问题带来的大量线程消耗，但是频繁地重复轮询大大增加了请求次数，对CPU消耗也比较明显。</p>
-<p><img src="/posts/51fff883/net-io-base-2.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-2.png" alt></p>
 <h2 id="IO多路复用"><a href="#IO多路复用" class="headerlink" title="IO多路复用"></a>IO多路复用</h2><p>用户线程的读取操作分成两步了，线程先发起 select 调用，目的是问内核数据准备好了吗？等内核把数据准备好了，用户线程再发起 read 调用。在等待数据从内核空间拷贝到用户空间这段时间里，线程还是阻塞的。注意，等待 select 返回过程也是阻塞的，所以说IO多路复用并非完全非阻塞。那为什么叫 I/O 多路复用呢？因为一次 select 调用可以向内核查多个数据通道（Channel）的状态，所以叫多路复用。</p>
-<p><img src="/posts/51fff883/net-io-base-3.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-3.png" alt></p>
 <h2 id="信号驱动式IO"><a href="#信号驱动式IO" class="headerlink" title="信号驱动式IO"></a>信号驱动式IO</h2><p>用户线程发起 read 请求，会通过系统调用 sigaction 函数，给对应的套接字注册一个信号回调，此时不阻塞用户进程，进程会继续工作。当内核数据就绪时，内核就为该进程生成一个 SIGIO 信号，通过信号回调通知进程进行相关 IO 操作。</p>
 <h2 id="异步IO"><a href="#异步IO" class="headerlink" title="异步IO"></a>异步IO</h2><p>用户线程发起 read 请求的同时注册一个回调函数，read 立即返回，等内核已经读取完数据并把数据放到了应用进程的缓冲区中，再调用指定的回调函数完成处理。在这个过程中，用户线程一直没有阻塞。</p>
-<p><img src="/posts/51fff883/net-io-base-4.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/net-io-base-4.png" alt></p>
 <p>介绍完常见的网络IO模型后，下面我们对 Socket(套接字) 进行说明。</p>
 <h1 id="套接字"><a href="#套接字" class="headerlink" title="套接字"></a>套接字</h1><p>所谓套接字(Socket)，可以抽象成两个程序进行通讯连接中的一个端点，提供了应用层进程利用网络协议交换数据的机制。要通过互联网进行通信，至少需要一对套接字，一个运行于客户机端，另一个运行于服务器端。不同编程语言对套接字（Socket）都有对应的封装，如 Java 中的 <strong>ServerSocket/Socket</strong>，Python 中引用套接字的模式是 socket 。本质上来说，套接字是操作系统层面的产物，它既是一种编程模型，同时又是一个文件（操作系统提供支持网络通信的一种文件格式）。</p>
 <h2 id="Socket-编程模型"><a href="#Socket-编程模型" class="headerlink" title="Socket 编程模型"></a>Socket 编程模型</h2><p>套接字（Socket）通信过程如下图所示，这里以流式套接字（TCP）为例：</p>
-<p><img src="/posts/51fff883/socket-process-1.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/socket-process-1.jpg" alt></p>
 <p>下面对上图的流程简单说明：</p>
 <ol>
 <li>应用程序通过系统调用 <strong>socket</strong> 创建一个套接字，它是操作系统分配给应用程序的一个文件描述符（用来标识套接字（Socket）的）。</li>
@@ -481,7 +481,7 @@
 </ol>
 <h2 id="双向管道文件"><a href="#双向管道文件" class="headerlink" title="双向管道文件"></a>双向管道文件</h2><p>套接字（Socket）是一个支持网络通信的文件，存储的是数据。服务端 Socket 文件存储的是客户端 Socket 文件描述符；客户端 Socket 文件存储的是传输数据。</p>
 <p>当一个客户端连接到服务端的时候，操作系统就会创建一个客户端 Socket 的文件。然后操作系统将这个文件的文件描述符写入服务端程序创建的服务端 Socket 文件中。进程可以通过 accept() 方法，从服务端 Socket 文件中读出客户端的 Socket 文件描述符，从而拿到客户端的 Socket 文件。Socket 是一个双向的管道文件，当线程想要读取客户端传输来的数据时，就从客户端 Socket 文件中读取数据；当线程想要发送数据到客户端时，就向客户端 Socket 文件中写入数据。</p>
-<p><img src="/posts/51fff883/socket-process-2.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/IO/socket-process-2.jpg" alt></p>
 <p><strong>注意：</strong></p>
 <blockquote>
 <p>1 服务端维护的 Socket 数量是 N+1，包括 N 个与客户端对应的 Socket 和一个监听 Socket 。<br>2 操作系统创建的 Socket 是由文件系统管理的，内核中有一个文件列表(fd)管理这些 Socket。</p>
