@@ -29,8 +29,8 @@
 <meta property="og:image" content="https://gentryhuang.com/posts/5144880e/aqs-process-outline.jpg">
 <meta property="og:image" content="https://gentryhuang.com/posts/5144880e/aqs-process-addwaiter.jpg">
 <meta property="og:image" content="https://gentryhuang.com/posts/5144880e/aqs-propagate-error-process.jpg">
-<meta property="article:published_time" content="2020-11-15T11:10:01.000Z">
-<meta property="article:modified_time" content="2021-08-12T07:52:41.021Z">
+<meta property="article:published_time" content="2020-10-28T11:10:01.000Z">
+<meta property="article:modified_time" content="2021-08-13T04:34:27.303Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="JUC">
 <meta property="article:tag" content="AQS">
@@ -417,7 +417,7 @@
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
 	<a href="/posts/5144880e/" class="article-date">
-	  <time datetime="2020-11-15T11:10:01.000Z" itemprop="datePublished">2020-11-15</time>
+	  <time datetime="2020-10-28T11:10:01.000Z" itemprop="datePublished">2020-10-28</time>
 	</a>
 </span>
         
@@ -438,7 +438,7 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/5144880e/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 13.8k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 13.9k(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 54(分)</span>
@@ -451,7 +451,7 @@
         <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>Java 中的很多同步类，如 <code>ReentrantLock</code>、<code>CountDownLatch</code> 等都是基于 <strong>AbstractQueuedSynchronizer（简称为AQS）</strong>实现的。AQS 是一种提供<strong>原子式管理同步状态</strong>、<strong>阻塞和唤醒线程功能</strong>以及<strong>维护队列模型</strong>的抽象框架，用来构建锁或者其他同步组件。本篇文章将重点介绍 AQS 框架的实现原理，围绕独占模式和共享模式对同步状态的获取、释放，以及入队阻塞和唤醒出队流程展开说明。</p>
 <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>AQS 框架的整体架构图如下图所示：<br><img src="/posts/5144880e/aqs-architecture.jpg" alt></p>
 <p>AQS 框架大致分为上图中的五层，自上而下由浅入深，从 AQS 对外暴露的 API 到底层基础实现。AQS 设计基于模版方法模式，当需要自定义同步组件时，开发者只需要继承 AQS 并根据具体模式重写对应的 API 层方法，无需关注底层具体实现。当同步组件获取或释放同步状态时，AQS 模版方法会调用开发者重写的同步状态管理方法。</p>
-<h1 id="实现思路"><a href="#实现思路" class="headerlink" title="实现思路"></a>实现思路</h1><p>AQS 内部维护了一个双向链表作为一个同步队列来管理线程节点。线程会首先尝试获取同步状态，如果获取成功则将当前请求资源的线程设置为有效的工作线程。如果获取失败则将当前线程以及等待状态等信息封装成一个线程节点加入到同步队列中。接着会不断循环尝试获取同步状态（当前节点是队列头节点直接后继节点才会尝试），如果失败则阻塞挂起自己，直至被唤醒或中断。当持有同步状态的线程完全释放同步状态时，会唤醒队列中的后继节点。</p>
+<h1 id="实现思路"><a href="#实现思路" class="headerlink" title="实现思路"></a>实现思路</h1><p>AQS 内部维护了一个双向链表作为同步队列来管理线程节点。线程会首先尝试获取同步状态，如果获取成功则将当前线程设置为有效的工作线程。如果获取失败则将当前线程以及等待状态等信息封装成一个线程节点加入到同步队列中。接着会不断循环尝试获取同步状态（当前节点是队列头节点直接后继节点才会尝试），如果失败则阻塞挂起自己，直至被唤醒或中断。当持有同步状态的线程完全释放同步状态时，会唤醒队列中的后继节点。</p>
 <p>AQS 实现过程如下图所示：<br><img src="/posts/5144880e/aqs-process-outline.jpg" alt></p>
 <p>AQS 使用一个 <code>volatitle</code> 修饰的 <code>int</code> 类型的成员变量来表示同步状态，通过内部维护的同步队列来完成同步状态获取的排队工作。</p>
 <h2 id="主要工作"><a href="#主要工作" class="headerlink" title="主要工作"></a>主要工作</h2><p>AQS 框架主要的工作体现在 <code>同步状态的管理</code>、<code>线程的阻塞和唤醒</code> 以及 <code>同步队列的维护</code> ，这三个任务都是基于同步状态的变化而流转的。</p>
@@ -476,7 +476,7 @@
 <td align="left">使用 CAS 方式更新 state</td>
 </tr>
 </tbody></table>
-<p>同步状态的变化影响着线程的阻塞入队和唤醒出队。需要注意的是，以上操作同步状态的方法都无法重写，只能内部使用。此外，每一种同步组件的同步状态 state 表示的意义是不一样的。</p>
+<p>同步状态的变化影响着线程的阻塞入队和唤醒出队。需要注意的是，以上操作同步状态的方法都无法重写，只能内部使用。此外，每一种同步组件的同步状态 state 表示的语义是不一样的。</p>
 <h2 id="出口方法"><a href="#出口方法" class="headerlink" title="出口方法"></a>出口方法</h2><p>AQS 提供了大量用于自定义同步组件的出口方法，这些方法用于通过修改同步状态 state 的值来实现并发环境下的独占模式或者共享模式。自定义同步组件需要按需实现以下方法：</p>
 <table>
 <thead>
@@ -507,7 +507,7 @@
 </tr>
 </tbody></table>
 <p>一般来说，同步组件要么是独占模式，要么是共享模式，独占模式只需实现 <code>tryAcquire-tryRelease</code>，共享模式只需实现 <code>tryAcquireShared-tryReleaseShared</code>。当然 AQS 也支持同时实现独占和共享两种模式，如 <code>ReentrantReadWriteLock</code> 读写锁，而 <code>ReentrantLock</code> 是独占锁，因此需要实现 <code>tryAcquire-tryRelease</code> 。</p>
-<h2 id="模版方法"><a href="#模版方法" class="headerlink" title="模版方法"></a>模版方法</h2><p>AQS 内部将同步状态的管理以模版方法模式封装好了，下面列举核心的方法：</p>
+<h2 id="模版方法"><a href="#模版方法" class="headerlink" title="模版方法"></a>模版方法</h2><p>AQS 内部将同步状态的管理以模版方法模式封装好了，前文介绍的出口方法是交给具体子类实现的钩子方法，下面列举的核心方法是模版中共用的方法。</p>
 <table>
 <thead>
 <tr>
@@ -566,7 +566,7 @@
 </thead>
 <tbody><tr>
 <td align="left">0</td>
-<td align="left">Node 被初始化的时候的默认值</td>
+<td align="left">Node 被初始化时的默认值</td>
 </tr>
 <tr>
 <td align="left">CANCELLED (1)</td>
@@ -574,7 +574,7 @@
 </tr>
 <tr>
 <td align="left">SIGNAL (-1)</td>
-<td align="left">线程已经准备好了，就等同步状态释放。这个状态一般都是后继节点来设置前驱节点的</td>
+<td align="left">这个状态一般都是后继节点来设置前驱节点的，本质上代表的不是自己的状态，而是后继节点的状态。后继线程节点已经准备好了，就等前驱节点同步状态释放。</td>
 </tr>
 <tr>
 <td align="left">CONDITION (-2)</td>
@@ -813,12 +813,12 @@
   <ul class="pager pull-left">
     
     <li class="prev">
-      <a href="/posts/d7cef21d/" title="并发 - 线程池"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+      <a href="/posts/40e44c1f/" title="AQS 原理分析 - Condition实现原理"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
     </li>
     
     
     <li class="next">
-      <a href="/posts/37f29896/" title="并发 - Java并发工具类"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+      <a href="/posts/ef4cfe7a/" title="Dubbo源码分析 - 优雅停机"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
     </li>
     
     
