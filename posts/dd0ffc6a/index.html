@@ -17,21 +17,22 @@
   <meta http-equiv="window-target" content="_top" />
   
   
-  <title>接口隔离原则 | gentryhuang的博客</title>
-  <meta name="description" content="定义  用多个专门的接口，而不使用单一的总接口，客户端不应该依赖它不需要的接口。 注意点 一个类对一个类的依赖应该建立在最小的接口上（这里的类是泛指，也代表接口）。 建立单一接口，不要建立庞大臃肿的接口 尽量细化接口，接口中的方法尽量少 注意适度原则，一定要适度，虽然接口中的方法尽量少，但是也要有限度。优点符合我们常说的高内聚低耦合的设计思想，从而使得类具有很好的可读性、可扩展性和可维护性。和单一">
+  <title>并发 - ReentrantLock | gentryhuang的博客</title>
+  <meta name="description" content="概述ReentrantLock 是一个可重入锁，指的是一个线程能够对临界资源重复加锁，它是基于 AQS 的独占模式实现的同步组件，用同步状态 state 记录某个线程获取独占锁的次数，初始值为 0 ，获取锁时+1，释放锁时-1，并且它支持公平和非公平模式。 特性说起 ReentrantLock ，就不得不提 Synchronized 关键字，下面给出两者的对比关系：    特性 Reentrant">
 <meta property="og:type" content="article">
-<meta property="og:title" content="接口隔离原则">
-<meta property="og:url" content="https://gentryhuang.com/posts/e0ec8882/index.html">
+<meta property="og:title" content="并发 - ReentrantLock">
+<meta property="og:url" content="https://gentryhuang.com/posts/dd0ffc6a/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="定义  用多个专门的接口，而不使用单一的总接口，客户端不应该依赖它不需要的接口。 注意点 一个类对一个类的依赖应该建立在最小的接口上（这里的类是泛指，也代表接口）。 建立单一接口，不要建立庞大臃肿的接口 尽量细化接口，接口中的方法尽量少 注意适度原则，一定要适度，虽然接口中的方法尽量少，但是也要有限度。优点符合我们常说的高内聚低耦合的设计思想，从而使得类具有很好的可读性、可扩展性和可维护性。和单一">
+<meta property="og:description" content="概述ReentrantLock 是一个可重入锁，指的是一个线程能够对临界资源重复加锁，它是基于 AQS 的独占模式实现的同步组件，用同步状态 state 记录某个线程获取独占锁的次数，初始值为 0 ，获取锁时+1，释放锁时-1，并且它支持公平和非公平模式。 特性说起 ReentrantLock ，就不得不提 Synchronized 关键字，下面给出两者的对比关系：    特性 Reentrant">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2019-09-02T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-07-04T13:42:18.871Z">
+<meta property="article:published_time" content="2020-11-30T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-08-14T11:21:09.966Z">
 <meta property="article:author" content="gentryhuang">
-<meta property="article:tag" content="设计模式">
+<meta property="article:tag" content="JUC">
+<meta property="article:tag" content="AQS">
 <meta name="twitter:card" content="summary">
   <!-- Canonical links -->
-  <link rel="canonical" href="https://gentryhuang.com/posts/e0ec8882/index.html">
+  <link rel="canonical" href="https://gentryhuang.com/posts/dd0ffc6a/index.html">
   
     <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
   
@@ -388,21 +389,21 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#定义"><span class="toc-number">1.</span> <span class="toc-text">定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#注意点"><span class="toc-number">2.</span> <span class="toc-text">注意点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#优点"><span class="toc-number">3.</span> <span class="toc-text">优点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#和单一职责原则比较"><span class="toc-number">4.</span> <span class="toc-text">和单一职责原则比较</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#简单需求说明"><span class="toc-number">5.</span> <span class="toc-text">简单需求说明</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#coding"><span class="toc-number">6.</span> <span class="toc-text">coding</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#接口隔离原则反例"><span class="toc-number">6.1.</span> <span class="toc-text">接口隔离原则反例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#接口隔离原则正例"><span class="toc-number">6.2.</span> <span class="toc-text">接口隔离原则正例</span></a></li></ol></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#特性"><span class="toc-number">2.</span> <span class="toc-text">特性</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#源码分析"><span class="toc-number">3.</span> <span class="toc-text">源码分析</span></a></li></ol>
     </nav>
   </div>
 </aside>
 
 <main class="main" role="main">
   <div class="content">
-  <article id="post-design_pattern/principle/接口隔离原则" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+  <article id="post-concurrent/ReentrantLock" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
     <div class="article-header">
       
         
   
     <h1 class="article-title" itemprop="name">
-      接口隔离原则
+      并发 - ReentrantLock
     </h1>
   
 
@@ -410,64 +411,80 @@
       <div class="article-meta">
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
-	<a href="/posts/e0ec8882/" class="article-date">
-	  <time datetime="2019-09-02T16:00:00.000Z" itemprop="datePublished">2019-09-03</time>
+	<a href="/posts/dd0ffc6a/" class="article-date">
+	  <time datetime="2020-11-30T16:00:00.000Z" itemprop="datePublished">2020-12-01</time>
 	</a>
 </span>
         
   <span class="article-category">
     <i class="icon icon-folder"></i>
-    <a class="article-category-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a>
+    <a class="article-category-link" href="/categories/JDK/">JDK</a>
   </span>
 
         
   <span class="article-tag">
     <i class="icon icon-tags"></i>
-	<a class="article-tag-link" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" rel="tag">设计模式</a>
+	<a class="article-tag-link" href="/tags/AQS/" rel="tag">AQS</a>, <a class="article-tag-link" href="/tags/JUC/" rel="tag">JUC</a>
   </span>
 
 
         
 
-        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/e0ec8882/#comments" class="article-comment-link">评论</a></span>
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/dd0ffc6a/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 633(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 324(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 2(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 1(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><p>  用多个专门的接口，而不使用单一的总接口，客户端不应该依赖它不需要的接口。</p>
-<h2 id="注意点"><a href="#注意点" class="headerlink" title="注意点"></a>注意点</h2><ul>
-<li>一个类对一个类的依赖应该建立在最小的接口上（这里的类是泛指，也代表接口）。</li>
-<li>建立单一接口，不要建立庞大臃肿的接口</li>
-<li>尽量细化接口，接口中的方法尽量少</li>
-<li>注意适度原则，一定要适度，虽然接口中的方法尽量少，但是也要有限度。<h2 id="优点"><a href="#优点" class="headerlink" title="优点"></a>优点</h2>符合我们常说的高内聚低耦合的设计思想，从而使得类具有很好的可读性、可扩展性和可维护性。<h2 id="和单一职责原则比较"><a href="#和单一职责原则比较" class="headerlink" title="和单一职责原则比较"></a>和单一职责原则比较</h2>单一职责原则指的是类、接口和方法的职责是单一的，强调的是职责，如果职责是单一的那么在类或者接口中具有多个<br>方法都是可以的，因为它们都是一类的，比如叫声，不同的动物有不同的叫。接口隔离原则注重地是对接口依赖的隔离。<h2 id="简单需求说明"><a href="#简单需求说明" class="headerlink" title="简单需求说明"></a>简单需求说明</h2>使用统一的接口定义多个功能的方法，但是有的实现不一定会全部用到，最好是将这个统一的接口根据不同的维度进行拆分成多个接口，实现根据<br>需要进行接口的实现。   </li>
-</ul>
-<h2 id="coding"><a href="#coding" class="headerlink" title="coding"></a>coding</h2><h3 id="接口隔离原则反例"><a href="#接口隔离原则反例" class="headerlink" title="接口隔离原则反例"></a>接口隔离原则反例</h3><p><strong>接口</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IAnimalAction</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><strong>狗实现类</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DogCaseOne</span> <span class="keyword">implements</span> <span class="title">IAnimalAction</span></span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 注：这里是空方法，狗不会飞，所以明显设计的不合理，最好不要有太多的空方法</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><strong>鸟实现类</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LarkCaseOne</span> <span class="keyword">implements</span> <span class="title">IAnimalAction</span></span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 很明显，百灵鸟不会游泳，此处为空方法，设计不合理</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="接口隔离原则正例"><a href="#接口隔离原则正例" class="headerlink" title="接口隔离原则正例"></a>接口隔离原则正例</h3><p><strong>吃东西接口</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IEat</span></span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 吃东西</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>飞翔接口</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">IFly</span></span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 飞翔</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><strong>游泳接口</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ISwim</span></span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 游泳</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>狗实现类</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 狗只用实现 吃和游泳方法即可</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DogCaseTwo</span> <span class="keyword">implements</span> <span class="title">IEat</span>,<span class="title">ISwim</span></span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      log.info(<span class="string">"狗吃东西!"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">swim</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      log.info(<span class="string">"狗游泳"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>鸟实现类</strong></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 鸟实现 吃和飞方法即可</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LarkCaseTwo</span> <span class="keyword">implements</span> <span class="title">IEat</span>,<span class="title">IFly</span></span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">eat</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      log.info(<span class="string">"鸟吃东西"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">fly</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      log.info(<span class="string">"鸟飞翔"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>ReentrantLock 是一个可重入锁，指的是一个线程能够对临界资源重复加锁，它是基于 AQS 的独占模式实现的同步组件，用同步状态 <code>state</code> 记录某个线程获取独占锁的次数，初始值为 0 ，获取锁时+1，释放锁时-1，并且它支持公平和非公平模式。</p>
+<h1 id="特性"><a href="#特性" class="headerlink" title="特性"></a>特性</h1><p>说起 ReentrantLock ，就不得不提 Synchronized 关键字，下面给出两者的对比关系：</p>
+<table>
+<thead>
+<tr>
+<th align="left">特性</th>
+<th align="left">ReentrantLock</th>
+<th align="left">Synchronized</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">灵活性</td>
+<td align="left">支持响应中断、超时，尝试获取锁</td>
+<td align="left">不灵活</td>
+</tr>
+<tr>
+<td align="left">锁类型</td>
+<td align="left">公平锁或非公平锁</td>
+<td align="left">非公平锁</td>
+</tr>
+<tr>
+<td align="left">条件队列</td>
+<td align="left">可关联多个条件队列</td>
+<td align="left">关联一个条件队列</td>
+</tr>
+<tr>
+<td align="left">锁实现机制</td>
+<td align="left">依赖 AQS</td>
+<td align="left">JVM 监视器模式</td>
+</tr>
+<tr>
+<td align="left">可重入性</td>
+<td align="left">可重入</td>
+<td align="left">可重入</td>
+</tr>
+<tr>
+<td align="left">释放锁</td>
+<td align="left">必须显示调用 unlock() 释放锁</td>
+<td align="left">自动释放</td>
+</tr>
+</tbody></table>
+<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><p>可重入锁 ReentrantLock 是基于 AQS 实现的独占模式的同步组件，既然是基于 AQS 实现，必然遵循使用 AQS 的固定步骤，在分析源码的过程会有所体现。由于可重入锁支持公平和非公平模式，并且实现方式有所区别，因此在分析源码过程中会按照这两种情况分别说明。</p>
 
       
     </div>
@@ -477,7 +494,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="https://gentryhuang.com/posts/e0ec8882/" title="接口隔离原则" target="_blank" rel="external">https://gentryhuang.com/posts/e0ec8882/</a>
+      <a href="https://gentryhuang.com/posts/dd0ffc6a/" title="并发 - ReentrantLock" target="_blank" rel="external">https://gentryhuang.com/posts/dd0ffc6a/</a>
     </li>
     
     <li class="post-copyright-license">
@@ -514,10 +531,6 @@
   </article>
   
     
-  <section id="comments">
-  	
-  </section>
-
 
   
 </div>
@@ -528,12 +541,12 @@
   <ul class="pager pull-left">
     
     <li class="prev">
-      <a href="/posts/ebdadec7/" title="迪米特法则"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+      <a href="/posts/d7cef21d/" title="并发 - 线程池"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
     </li>
     
     
     <li class="next">
-      <a href="/posts/91021fa8/" title="依赖倒置原则"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+      <a href="/posts/37f29896/" title="并发 - Java并发工具类"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
     </li>
     
     
@@ -636,8 +649,6 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 
 
 
-
-   
 
 
   <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
