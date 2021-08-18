@@ -32,7 +32,7 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/juc/aqs/aqs-share-process.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/juc/aqs/aqs-propagate-error-process.jpg">
 <meta property="article:published_time" content="2020-10-28T11:10:01.000Z">
-<meta property="article:modified_time" content="2021-08-17T12:04:44.013Z">
+<meta property="article:modified_time" content="2021-08-17T14:23:06.660Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="JUC">
 <meta property="article:tag" content="AQS">
@@ -736,13 +736,23 @@
 <p>某一时刻我们假定同步队列中的节点排队情况如下图所示：<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/juc/aqs/aqs-propagate-error-process.jpg" alt></p>
 <p><strong>接下来我们根据早期 JDK 中共享模式下释放同步状态源码流程简单走一遍：</strong></p>
 <blockquote>
-<p><strong>时刻1：</strong>t3 调用 <code>releaseShared</code>，释放同步状态（许可证由 0 变为 1）成功，此时 <code>h != null &amp;&amp; h.waitStatus != 0</code> 条件成立，接着执行 <code>unparkSuccessor(h)</code> ，head 的 waitStatus 由 -1 变为 0 。<br><strong>时刻2：</strong>t1 由于 t3 释放了同步状态被 t3 唤醒，t1 醒来后调用 <code>Semaphore.NonfairSync的tryAcquireShared</code> 获取同步状态（许可证），返回值为 0 （许可证由 1 减为 0）。<br><strong>时刻3：</strong>t4 调用 <code>releaseShared</code>，释放同步状态（许可证由 0 变为 1）成功，但此时 t1 还没有占领头节点，头节点仍然是时刻1 的 head ，也就是 t3 占领的。由于 <code>h.waitStatus == 0</code> ，不满足条件，因此 t4 不会执行唤醒后继线程的 <code>unparkSuccessor(h)</code> 。<strong>理论来说，t4 应该唤醒还挂在队列中的 t2，但是却没有</strong>。<br><strong>时刻4：</strong>t1 获取同步状态成功后，接着调用 <code>setHeadAndPropagate</code> 占领头节点，然后尝试传播唤醒，但由于不满足 propagate &gt; 0（此时 propagate == 0，也就是时间2的结果），因此也不会传播唤醒后继节点。</p>
+<ul>
+<li><strong>时刻1：</strong>t3 调用 <code>releaseShared</code>，释放同步状态（许可证由 0 变为 1）成功，此时 <code>h != null &amp;&amp; h.waitStatus != 0</code> 条件成立，接着执行 <code>unparkSuccessor(h)</code> ，head 的 waitStatus 由 -1 变为 0 。</li>
+<li><strong>时刻2：</strong>t1 由于 t3 释放了同步状态被 t3 唤醒，t1 醒来后调用 <code>Semaphore.NonfairSync的tryAcquireShared</code> 获取同步状态（许可证），返回值为 0 （许可证由 1 减为 0）。</li>
+<li><strong>时刻3：</strong>t4 调用 <code>releaseShared</code>，释放同步状态（许可证由 0 变为 1）成功，但此时 t1 还没有占领头节点，头节点仍然是时刻1 的 head ，也就是 t3 占领的。由于 <code>h.waitStatus == 0</code> ，不满足条件，因此 t4 不会执行唤醒后继线程的 <code>unparkSuccessor(h)</code> 。<strong>理论来说，t4 应该唤醒还挂在队列中的 t2，但是却没有</strong>。</li>
+<li><strong>时刻4：</strong>t1 获取同步状态成功后，接着调用 <code>setHeadAndPropagate</code> 占领头节点，然后尝试传播唤醒，但由于不满足 propagate &gt; 0（此时 propagate == 0，也就是时间2的结果），因此也不会传播唤醒后继节点。</li>
+</ul>
 </blockquote>
 <p>最终的结果是，线程 t2 无法被唤醒，AQS 的同步队列死掉。</p>
 <p>引入 <code>PROPAGATE</code> 后有两处地方调整。释放同步状态的 <code>releaseShared</code> 方法不再是简单粗暴地直接 <code>unparkSuccessor</code> ，而是将整个流程进行调整并抽成一个 <code>doReleaseShared</code> 方法，具体该方法见前文。该方法处理了并发释放同步状态的逻辑，虽然不能执行 unparkSuccessor ，但为了保证唤醒能够正确传递下去，设置读取到的 head 节点状态为 PROPAGATE。这样的话获取同步状态的线程在执行 <code>setHeadAndPropagate</code> 时可以读到 PROPAGATE，从而由获取同步状态的线程去释放后继等待节点；占领头节点并传播唤醒的 <code>setHeadAndPropagate</code> 方法增加了唤醒后继节点的条件，也就是我们的主角 <code>PROPAGATE</code> 状态，具体的方法见前文。</p>
 <p><strong>下面我们再看引入 <code>PROPAGATE</code> 等待状态是如何规避上述问题的：</strong></p>
 <blockquote>
-<p><strong>时刻1：</strong>t3 调用 <code>releaseShared</code>，释放同步状态（许可证由 0 变为 1）成功，进入自旋逻辑将 head 的 waitStatus 由 -1 变为 0 ，接着执行 <code>unparkSuccessor(h)</code> 唤醒后继线程。<br><strong>时刻2：</strong>t1 由于 t3 释放了同步状态被 t3 唤醒，t1 醒来后调用 <code>Semaphore.NonfairSync的tryAcquireShared</code> 获取同步状态（许可证），返回值为 0 （许可证由 1 减为 0）。<br><strong>时刻3：</strong>t4 调用 <code>releaseShared</code>，释放同步状态（许可证由 0 变为 1）成功，进入自旋逻辑，此时 t1 还没有占领头节点，头节点仍然是时刻1 的 head ，也就是 t3 占领的。由于 <code>h.waitStatus == 0</code> ，于是 t4 将读取到的头节点 head 的 waitStatus 设置为 <code>PROPAGATE</code> (-3) 。<br><strong>时刻4：</strong>t1 获取同步状态成功后，接着调用 <code>setHeadAndPropagate</code> 占领头节点，然后尝试传播唤醒，虽然不满足 propagate &gt; 0（此时 propagate == 0，也就是时间2的结果），但是满足 <code>h.waitStatus &lt; 0</code> 条件，因此会传播唤醒后继节点，也就是线程 t2。</p>
+<ul>
+<li><strong>时刻1：</strong>t3 调用 <code>releaseShared</code>，释放同步状态（许可证由 0 变为 1）成功，进入自旋逻辑将 head 的 waitStatus 由 -1 变为 0 ，接着执行 <code>unparkSuccessor(h)</code> 唤醒后继线程。</li>
+<li><strong>时刻2：</strong>t1 由于 t3 释放了同步状态被 t3 唤醒，t1 醒来后调用 <code>Semaphore.NonfairSync的tryAcquireShared</code> 获取同步状态（许可证），返回值为 0 （许可证由 1 减为 0）。</li>
+<li><strong>时刻3：</strong>t4 调用 <code>releaseShared</code>，释放同步状态（许可证由 0 变为 1）成功，进入自旋逻辑，此时 t1 还没有占领头节点，头节点仍然是时刻1 的 head ，也就是 t3 占领的。由于 <code>h.waitStatus == 0</code> ，于是 t4 将读取到的头节点 head 的 waitStatus 设置为 <code>PROPAGATE</code> (-3) 。</li>
+<li><strong>时刻4：</strong>t1 获取同步状态成功后，接着调用 <code>setHeadAndPropagate</code> 占领头节点，然后尝试传播唤醒，虽然不满足 propagate &gt; 0（此时 propagate == 0，也就是时间2的结果），但是满足 <code>h.waitStatus &lt; 0</code> 条件，因此会传播唤醒后继节点，也就是线程 t2。</li>
+</ul>
 </blockquote>
 <h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>上述会产生线程无法唤醒的 Bug 的案例在引入 <code>PROPAGATE</code> 等待状态后可以被规避掉。在引入 <code>PROPAGATE</code> 之前之所以会出现线程 hang 住的情况，就是在于 <code>releaseShared</code> 有竞争的情况。线程 t3 释放同步状态后会唤醒同步队列中等待的线程 t1 ，t1 醒来后获取到了同步状态但还来得及占领头节点 head ，此时线程 t4 又来释放同步状态，但是读到的还是 t3 占领的头节点 head ，由于此时 head 的等待状态为 0 ，因此导致不会执行后续的唤醒后继节点流程。最终后一个挂起的线程既没有被释放同步状态线程（t4）唤醒，也没有被持有同步状态的线程（t1）唤醒。</p>
 <p>综上所述，在共享模式下仅仅依靠 <code>tryAcquireShared</code> 的返回值来决定是否要将唤醒传递下去是不充分的。</p>
