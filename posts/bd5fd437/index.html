@@ -25,13 +25,13 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言ArrayList 是一个非线程安全集合，需要使用方自行处理线程安全问题，或者使用 Collections.synchronizedList 包装。从 JDK 1.5 开始 JUC 中提供了使用写时复制机制实现的并发容器 CopyOnWriteArrayList。 概述CopyOnWriteArrayList 遵从 CopyOnWrite，顾名思义就是写时复制。简单来说就是当我们操作容器时并不">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/bd5fd437/copy-on-write-array-list.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/collection/copy-on-write-array-list.jpg">
 <meta property="article:published_time" content="2021-01-24T11:14:17.000Z">
-<meta property="article:modified_time" content="2021-08-20T06:10:36.406Z">
+<meta property="article:modified_time" content="2021-08-21T09:35:51.858Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="CopyOnWrite">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/bd5fd437/copy-on-write-array-list.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/collection/copy-on-write-array-list.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/bd5fd437/index.html">
   
@@ -446,7 +446,7 @@
       
         <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>ArrayList 是一个非线程安全集合，需要使用方自行处理线程安全问题，或者使用 <code>Collections.synchronizedList</code> 包装。从 JDK 1.5 开始 JUC 中提供了使用<strong>写时复制</strong>机制实现的并发容器 <code>CopyOnWriteArrayList</code>。</p>
 <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p><code>CopyOnWriteArrayList</code> 遵从 <strong>CopyOnWrite</strong>，顾名思义就是写时复制。简单来说就是当我们操作容器时并不直接操作当前容器，而是先根据当前容器复制出一个新的容器，然后在这个新的容器上操作，完成操作后再将原容器引用指向新容器。</p>
-<h1 id="源码解析"><a href="#源码解析" class="headerlink" title="源码解析"></a>源码解析</h1><p><strong>CopyOnWriteArrayList 的类继承关系类图如下:</strong><br><img src="/posts/bd5fd437/copy-on-write-array-list.jpg" alt></p>
+<h1 id="源码解析"><a href="#源码解析" class="headerlink" title="源码解析"></a>源码解析</h1><p><strong>CopyOnWriteArrayList 的类继承关系类图如下:</strong><br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/collection/copy-on-write-array-list.jpg" alt></p>
 <h2 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CopyOnWriteArrayList</span>&lt;<span class="title">E</span>&gt;</span></span><br><span class="line"><span class="class">        <span class="keyword">implements</span> <span class="title">List</span>&lt;<span class="title">E</span>&gt;, <span class="title">RandomAccess</span>, <span class="title">Cloneable</span>, <span class="title">java</span>.<span class="title">io</span>.<span class="title">Serializable</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">8673264195747942595L</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 保护所有更改操作的锁</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">transient</span> ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 内部数组。</span></span><br><span class="line"><span class="comment">     * 所有的读操作都是基于当前 array 进行的；所有的写操作都会复制一个新的 array，然后在新复制的数组上执行操作。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">transient</span> <span class="keyword">volatile</span> Object[] array;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p><strong>CopyOnWriteArrayList</strong> 核心属性就是以上两个。<code>lock</code> 用于保护所有更改操作，控制并发写操作。<code>array</code> 作为内部数组用于保存数据，读操作都是操作当前 <code>array</code>，写操作都是根据当前 <code>array</code> 复制一个新的 <code>array</code>，然后在这个新的数组中进行操作。</p>
