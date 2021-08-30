@@ -28,7 +28,7 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/thread/thread-local-struct.png">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/thread/thread-local-uml.jpg">
 <meta property="article:published_time" content="2021-08-21T04:30:12.000Z">
-<meta property="article:modified_time" content="2021-08-30T12:49:00.780Z">
+<meta property="article:modified_time" content="2021-08-30T12:56:09.525Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Thread">
 <meta name="twitter:card" content="summary">
@@ -435,7 +435,7 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/151f44ae/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 7.3k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 7.4k(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 30(分)</span>
@@ -594,6 +594,7 @@
 <li>多线程之间需要拥有同一个信息，那么通常可以采用 <code>initialValue()</code> 方法进行初始化，直接将需要拥有的变量副本存储到 ThreadLocal 中。</li>
 <li>多个线程中存储不同的信息，那么需要使用 set() 方法设置变量副本到 ThreadLocal 中。</li>
 </ul>
+<p>上述描述<strong>存储到 ThreadLocal 中</strong>是不对的，需要注意，数据其实是存储到线程持有的 ThreadLocalMap 对象中，该对象是一个散列表。</p>
 <h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章对 ThreadLocal 进行了深入的分析，它能保证数据安全是因为每个线程都有自己的线程变量，不会发生多个线程共享变量的情况。首先对 ThreadLocal 的关系进行了介绍，从总体上认识 ThreadLocal 。接着对 ThreadLocal 进行了分析，从其属性到暴露的 API 。然后对 ThreadLocal 底层的支持类 ThreadLocalMap 进行了分析，同样从属性到支撑上层的方法的分析。最后对父子线程就 ThreadLocal 如何共享线程变量进行了分析。在文章的最后，对内存泄漏问题进行了介绍。</p>
 <p><strong>参考资料</strong><br><a href="https://www.cnblogs.com/lqlqlq/p/13302901.html" target="_blank" rel="noopener">https://www.cnblogs.com/lqlqlq/p/13302901.html</a></p>
 
