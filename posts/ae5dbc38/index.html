@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>网络通信 - Reactor模型 | gentryhuang的博客</title>
+  <meta name="description" content="概述Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Reactor 编程模型具有以下特征：  三种事件类型：连接事件、读事件、写事件 三种关键角色： Reactor、Acceptor、Handler   Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。 事件类型React">
+<meta property="og:type" content="article">
+<meta property="og:title" content="网络通信 - Reactor模型">
+<meta property="og:url" content="https://gentryhuang.com/posts/ae5dbc38/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Reactor 编程模型具有以下特征：  三种事件类型：连接事件、读事件、写事件 三种关键角色： Reactor、Acceptor、Handler   Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。 事件类型React">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/ae5dbc38/reactor-basic-design.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/ae5dbc38/reactor-worker-thread-pool.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/ae5dbc38/reactor-multiple-reactor.jpg">
+<meta property="article:published_time" content="2021-06-22T13:10:23.000Z">
+<meta property="article:modified_time" content="2021-09-11T15:54:23.986Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="求职">
+<meta property="article:tag" content="技术">
+<meta property="article:tag" content="生活">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/ae5dbc38/reactor-basic-design.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/ae5dbc38/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">14</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">66</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.38px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.75px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.13px;">I/O</a> <a href="/tags/JUC/" style="font-size: 13.5px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.25px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.13px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.25px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.63px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.13px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.25px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.25px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.13px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.88px;">设计模式</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/dbdf391f/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/dbdf391f/" class="title">并发 - Thread</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-09-04T01:50:21.000Z" itemprop="datePublished">2021-09-04</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/151f44ae/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/151f44ae/" class="title">并发 - ThreadLocal</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-08-21T04:30:12.000Z" itemprop="datePublished">2021-08-21</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/55ae5a2b/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/55ae5a2b/" class="title">Java基础 - Reference</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-08-14T02:30:12.000Z" itemprop="datePublished">2021-08-14</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/1d01ceec/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/1d01ceec/" class="title">时间轮算法 - HashedWheelTimer</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-07-24T02:06:24.000Z" itemprop="datePublished">2021-07-24</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/f3292e6c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/f3292e6c/" class="title">并发 - ReentrantReadWriteLock</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-07-10T12:46:36.000Z" itemprop="datePublished">2021-07-10</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#事件类型"><span class="toc-number">2.</span> <span class="toc-text">事件类型</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#关键角色"><span class="toc-number">3.</span> <span class="toc-text">关键角色</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#分类"><span class="toc-number">4.</span> <span class="toc-text">分类</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#单Reactor单线程模型"><span class="toc-number">4.1.</span> <span class="toc-text">单Reactor单线程模型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#单Reactor多线程模型"><span class="toc-number">4.2.</span> <span class="toc-text">单Reactor多线程模型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#多Reactor多线程模型"><span class="toc-number">4.3.</span> <span class="toc-text">多Reactor多线程模型</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#事件驱动框架"><span class="toc-number">5.</span> <span class="toc-text">事件驱动框架</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-network/Reactor模型" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      网络通信 - Reactor模型
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/ae5dbc38/" class="article-date">
+	  <time datetime="2021-06-22T13:10:23.000Z" itemprop="datePublished">2021-06-22</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a>
+  </span>
+
+        
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/ae5dbc38/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.1k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 3(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Reactor 编程模型具有以下特征：</p>
+<ul>
+<li><strong>三种事件类型：</strong>连接事件、读事件、写事件</li>
+<li><strong>三种关键角色：</strong> Reactor、Acceptor、Handler </li>
+</ul>
+<p>Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。</p>
+<h1 id="事件类型"><a href="#事件类型" class="headerlink" title="事件类型"></a>事件类型</h1><p>Reactor 模型处理的是客户端和服务器端的交互过程，而<strong>连接事件</strong>、<strong>读事件</strong>、<strong>写事件</strong>对应了客户端和服务器端交互过程中不同类型的请求在服务器端引发的待处理事件。</p>
+<p>具体引发的待处理事件如下：</p>
+<ul>
+<li>客户端向服务器端发送连接请求以建立连接，这对应了服务器端的一个<strong>连接事件</strong>。</li>
+<li>连接建立后，客户端会给服务器端发送读或写请求，服务器端需要从客户端读取请求内容，这对应了服务器端的<strong>读事件</strong>。</li>
+<li>服务器端在处理完请求后，需要向客户端写回数据，这对应了服务器端的<strong>写事件</strong>。</li>
+</ul>
+<h1 id="关键角色"><a href="#关键角色" class="headerlink" title="关键角色"></a>关键角色</h1><p>Reactor 模型中的不同类型事件的处理是由对应的角色完成的，三种关键角色的任务如下：</p>
+<ul>
+<li>Acceptor 用于处理客户端连接事件，负责接收连接。</li>
+<li>Handler 用于处理读写事件。</li>
+<li>Reactor 负责监听和分配事件。当有连接请求时，Reactor 将产生的连接事件交给 Acceptor 处理；当有读写请求时，Reactor 将读写事件交给 Handler 处理。</li>
+</ul>
+<p>需要注意的是，以上三种角色是 Reactor 模型中实现功能的抽象。遵循 Reactor 模型进行服务器端网络框架开发时，需要对 Reactor、Acceptor 以及 Handler 进行逻辑实现。</p>
+<h1 id="分类"><a href="#分类" class="headerlink" title="分类"></a>分类</h1><p>根据 Reactor 的数量和处理资源的线程数量的不同，可以分为三类：</p>
+<ul>
+<li>单 Reactor 单线程模型</li>
+<li>单 Reactor 多线程模型</li>
+<li>多 Reactor 多线程模型</li>
+</ul>
+<p>下面依次介绍以上三种 Reactor 线程模型。</p>
+<h2 id="单Reactor单线程模型"><a href="#单Reactor单线程模型" class="headerlink" title="单Reactor单线程模型"></a>单Reactor单线程模型</h2><p><img src="/posts/ae5dbc38/reactor-basic-design.jpg" alt></p>
+<p>在单 Reactor 单线程模型下，监听、分配事件由 Reactor 完成，处理连接事件由 Acceptor 完成，处理读写事件和业务逻辑由 Handler 完成，但始终只有一个线程去完成所有的工作。</p>
+<p><strong>缺点如下：</strong></p>
+<ul>
+<li>仅使用一个线程完成所有工作，不能充分利用多核机器资源</li>
+<li>当处理任务导致线程负载过高，处理速度会下降，任务会堆积。请求并发量比较低的时候还是可以抗住的，一旦高并发可能将不堪重负</li>
+<li>单线程不能保证可靠性</li>
+</ul>
+<h2 id="单Reactor多线程模型"><a href="#单Reactor多线程模型" class="headerlink" title="单Reactor多线程模型"></a>单Reactor多线程模型</h2><p><img src="/posts/ae5dbc38/reactor-worker-thread-pool.jpg" alt></p>
+<p>单 Reactor 多线程模型下，不再采用所有工作都由 Reactor 线程独自完成。监听、分配事件由 Reactor 完成，处理连接事件由 Acceptor 完成，处理读写事件由 Handler 完成，这些操作由 Reactor 线程执行。对于业务逻辑的处理交给线程池（多线程），不再是 Reactor 线程。相比 单 Reactor 单线程模型，充分利用多核机器的资源、提高性能并且增加可靠性。</p>
+<p><strong>缺点如下：</strong><br>Reactor 线程承担了所有事件的处理，没有解决高并发场景下单线程存在的性能问题。如并发太高，Reactor 线程来不及处理连接请求和读写数据。</p>
+<h2 id="多Reactor多线程模型"><a href="#多Reactor多线程模型" class="headerlink" title="多Reactor多线程模型"></a>多Reactor多线程模型</h2><p><img src="/posts/ae5dbc38/reactor-multiple-reactor.jpg" alt></p>
+<p>多 Reactor 多线程模型是将 Reactor 拆分成了 mainReactor 和 subReactor 两个部分。主要有一个 mainReactor，多个 subReactor 以及每个 subReactor 附带一个线程池。mainReactor 主要负责监听客户端的连接请求，当有连接请求到达会分配给 Acceptor（位于 mainReactor 中）处理，并将产生的连接信息交给 subReactor ，后续 subReactor 监听到读写事件后，分配给 Handler 处理，业务逻辑交给线程池处理。</p>
+<h1 id="事件驱动框架"><a href="#事件驱动框架" class="headerlink" title="事件驱动框架"></a>事件驱动框架</h1><p>至此，我们已经了解了 Reactor 模型的组件和工作机制，但是 Reactor 中的角色和事件是怎么联动起来的呢？这就需要事件驱动框架了。</p>
+<p>在实现 Reactor 模型时，利用事件驱动框架对整体流程进行控制。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/ae5dbc38/" title="网络通信 - Reactor模型" target="_blank" rel="external">https://gentryhuang.com/posts/ae5dbc38/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/19fe4bc5/" title="Redis原理 - Redis主流程"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/b25f5b99/" title="网络通信 - IO多路复用"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
