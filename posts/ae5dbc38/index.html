@@ -18,12 +18,12 @@
   
   
   <title>网络通信 - Reactor模型 | gentryhuang的博客</title>
-  <meta name="description" content="概述Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Reactor 编程模型具有以下特征：  三种事件类型：连接事件、读事件、写事件 三种关键角色： Reactor、Acceptor、Handler   Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。 演化 为了高效处理">
+  <meta name="description" content="概述Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Reactor 编程模型具有以下特征：  三种事件类型：连接事件、读事件、写事件 三种关键角色： Reactor、Acceptor、Handler   Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。 演化 上图是传统阻">
 <meta property="og:type" content="article">
 <meta property="og:title" content="网络通信 - Reactor模型">
 <meta property="og:url" content="https://gentryhuang.com/posts/ae5dbc38/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="概述Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Reactor 编程模型具有以下特征：  三种事件类型：连接事件、读事件、写事件 三种关键角色： Reactor、Acceptor、Handler   Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。 演化 为了高效处理">
+<meta property="og:description" content="概述Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Reactor 编程模型具有以下特征：  三种事件类型：连接事件、读事件、写事件 三种关键角色： Reactor、Acceptor、Handler   Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。 演化 上图是传统阻">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://gentryhuang.com/posts/ae5dbc38/reactor-classic-service-design-.jpg">
 <meta property="og:image" content="https://gentryhuang.com/posts/ae5dbc38/reactor-basic-design.jpg">
@@ -31,7 +31,7 @@
 <meta property="og:image" content="https://gentryhuang.com/posts/ae5dbc38/reactor-multiple-reactor.jpg">
 <meta property="og:image" content="https://gentryhuang.com/posts/ae5dbc38/reactor-event-process.jpg">
 <meta property="article:published_time" content="2021-09-12T13:10:23.000Z">
-<meta property="article:modified_time" content="2021-09-12T03:36:47.210Z">
+<meta property="article:modified_time" content="2021-09-12T04:26:58.515Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
@@ -435,7 +435,7 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/ae5dbc38/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.5k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.7k(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 5(分)</span>
@@ -452,7 +452,15 @@
 </ul>
 <p>Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。</p>
 <h1 id="演化"><a href="#演化" class="headerlink" title="演化"></a>演化</h1><p><img src="/posts/ae5dbc38/reactor-classic-service-design-.jpg" alt></p>
-<p>为了高效处理网络 IO 的事件，演化出了 Reactor 模型。</p>
+<p>上图是传统阻塞IO模型。</p>
+<p><strong>缺点如下：</strong></p>
+<p>每个连接都需要独立线程处理，当并发数大时会创建多个线程，过度消耗资源。由于每个连接都对应一个线程，当连接没有就绪时线程就会阻塞等待。</p>
+<p><strong>优化方案：</strong></p>
+<ul>
+<li>基于 IO 多路复用模型，多个连接可以共用一个线程。</li>
+<li>使用线程池，将业务逻辑交给线程池处理。</li>
+</ul>
+<p>基于以上问题，为了高效处理网络 IO 的事件，演化出了 Reactor 模型，该模型的思想就是基于IO多路复用和线程池的结合。</p>
 <h1 id="事件类型"><a href="#事件类型" class="headerlink" title="事件类型"></a>事件类型</h1><p>Reactor 模型处理的是客户端和服务器端的交互过程，而<strong>连接事件</strong>、<strong>读事件</strong>、<strong>写事件</strong>对应了客户端和服务器端交互过程中不同类型的请求在服务器端引发的待处理事件。</p>
 <p>具体引发的待处理事件如下：</p>
 <ul>
