@@ -27,7 +27,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo-frame.jpg">
 <meta property="article:published_time" content="2020-03-07T16:00:00.000Z">
-<meta property="article:modified_time" content="2020-10-17T05:29:32.637Z">
+<meta property="article:modified_time" content="2021-11-18T02:41:06.953Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta property="article:tag" content="RPC">
@@ -455,7 +455,7 @@
 <li>图中绿色小块的为扩展接口，蓝色小块为实现类，图中只显示用于关联各层的实现类。</li>
 <li>图中蓝色虚线为初始化过程，即启动时组装链，红色实线为方法调用过程，即运行时调时链，紫色三角箭头为继承，可以把子类看作父类的同一个节点，线上的文字为调用的方法。</li>
 </ul>
-<h4 id="总体分层"><a href="#总体分层" class="headerlink" title="总体分层"></a>总体分层</h4><p>从整体设计设计图可知悉，dubbo的总体分为业务层(Business)、RPC层、Remote三层，每一层细分共可分成十层。Service和Config两层可以认为是API层，主要提供给API使用者，使用者无须关心底层的实现，只需要配置和完成业务代码即可。其它八层合在一起可以认为是SPI层，用于扩展，即开放者可以基于SPI层自定义一些组件来完成具体业务，也可以基于dubbo框架做定制性的二次开发。</p>
+<h4 id="总体分层"><a href="#总体分层" class="headerlink" title="总体分层"></a>总体分层</h4><p>从整体设计设计图可知悉，dubbo的总体分为业务层(Business)、RPC层、Remoting 三层，每一层细分共可分成十层。Service和Config两层可以认为是API层，主要提供给API使用者，使用者无须关心底层的实现，只需要配置和完成业务代码即可。其它八层合在一起可以认为是SPI层，用于扩展，即开发者可以基于SPI层自定义一些组件来完成具体业务，也可以基于dubbo框架做定制性的二次开发。</p>
 <h4 id="dubbo核心组件"><a href="#dubbo核心组件" class="headerlink" title="dubbo核心组件"></a>dubbo核心组件</h4><p>dubbo中每层都代表了不同的逻辑实现，它们是一个个组件，这些组件构成了整个dubbo体系。对于使用方来说更多接触到的是配置，按照dubbo配置规则选择适合当前业务的配置项即可轻松实现rpc调用。正是由于dubbo的各个组件职责分明的设计，才使得dubbo框架能够做到高扩展性。dubbo核心组件如下表：</p>
 <table>
 <thead>
