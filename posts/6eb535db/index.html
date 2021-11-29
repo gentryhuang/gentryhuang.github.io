@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Dubbo源码分析 - 远程暴露 | gentryhuang的博客</title>
+  <meta name="description" content="概述在 本地暴露 中已经对服务暴露的整个流程进行了介绍，并深入分析了本地服务暴露，本篇文章将接着本地服务暴露，继续分析远程服务暴露。远程服务暴露相比本地服务暴露，区别点如下：  暴露并启动服务，本地暴露是无需启动服务的 服务注册，本地暴露无需注册到注册中心 配置订阅，订阅配置信息，当配置发生变化尝试重新暴露  远程暴露由于服务暴露的主干流程在本地暴露中已经详细说明，这里对远程暴露的细节进行说明。下">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dubbo源码分析 - 远程暴露">
+<meta property="og:url" content="https://gentryhuang.com/posts/6eb535db/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述在 本地暴露 中已经对服务暴露的整个流程进行了介绍，并深入分析了本地服务暴露，本篇文章将接着本地服务暴露，继续分析远程服务暴露。远程服务暴露相比本地服务暴露，区别点如下：  暴露并启动服务，本地暴露是无需启动服务的 服务注册，本地暴露无需注册到注册中心 配置订阅，订阅配置信息，当配置发生变化尝试重新暴露  远程暴露由于服务暴露的主干流程在本地暴露中已经详细说明，这里对远程暴露的细节进行说明。下">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-10-18T03:02:18.000Z">
+<meta property="article:modified_time" content="2021-11-29T06:31:27.563Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="Dubbo">
+<meta name="twitter:card" content="summary">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/6eb535db/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.38px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.75px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.13px;">I/O</a> <a href="/tags/JMM/" style="font-size: 13px;">JMM</a> <a href="/tags/JUC/" style="font-size: 13.5px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.25px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.13px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.25px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.63px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.13px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.25px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.25px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.13px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13.13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.88px;">设计模式</a> <a href="/tags/%E9%99%90%E6%B5%81/" style="font-size: 13px;">限流</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/32609cb8/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/32609cb8/" class="title">限流算法</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-11-23T16:00:00.000Z" itemprop="datePublished">2021-11-24</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/11b0627b/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/11b0627b/" class="title">并发 - JMM</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-09-20T01:14:12.000Z" itemprop="datePublished">2021-09-20</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/ae5dbc38/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/ae5dbc38/" class="title">网络通信 - Reactor模型</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-09-12T13:10:23.000Z" itemprop="datePublished">2021-09-12</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/151f44ae/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/151f44ae/" class="title">并发 - ThreadLocal</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-09-03T04:30:12.000Z" itemprop="datePublished">2021-09-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/55ae5a2b/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/55ae5a2b/" class="title">Java基础 - Reference</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-08-21T02:30:12.000Z" itemprop="datePublished">2021-08-21</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#远程暴露"><span class="toc-number">2.</span> <span class="toc-text">远程暴露</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#协议暴露服务"><span class="toc-number">2.1.</span> <span class="toc-text">协议暴露服务</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#不基于注册中心发布服务"><span class="toc-number">2.1.1.</span> <span class="toc-text">不基于注册中心发布服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#基于注册中心发布服务"><span class="toc-number">2.1.2.</span> <span class="toc-text">基于注册中心发布服务</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RegistryProtocol"><span class="toc-number">2.1.2.1.</span> <span class="toc-text">RegistryProtocol</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#暴露并启动服务"><span class="toc-number">2.1.2.2.</span> <span class="toc-text">暴露并启动服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#服务注册与订阅"><span class="toc-number">2.1.2.3.</span> <span class="toc-text">服务注册与订阅</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">3.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-rpc/远程导出" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Dubbo源码分析 - 远程暴露
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/6eb535db/" class="article-date">
+	  <time datetime="2020-10-18T03:02:18.000Z" itemprop="datePublished">2020-10-18</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/RPC/">RPC</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/Dubbo/" rel="tag">Dubbo</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/6eb535db/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.2k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 13(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>在 <a href="https://gentryhuang.com/posts/751c0982/">本地暴露</a> 中已经对服务暴露的整个流程进行了介绍，并深入分析了本地服务暴露，本篇文章将接着本地服务暴露，继续分析远程服务暴露。远程服务暴露相比本地服务暴露，区别点如下：</p>
+<ul>
+<li>暴露并启动服务，本地暴露是无需启动服务的</li>
+<li>服务注册，本地暴露无需注册到注册中心</li>
+<li>配置订阅，订阅配置信息，当配置发生变化尝试重新暴露</li>
+</ul>
+<h1 id="远程暴露"><a href="#远程暴露" class="headerlink" title="远程暴露"></a>远程暴露</h1><p>由于服务暴露的主干流程在本地暴露中已经详细说明，这里对远程暴露的细节进行说明。下面我们继续从服务 URL 入手分析。<strong>经过服务暴露准备操作之后，得到的服务 URL 如下所示：</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">dubbo:&#x2F;&#x2F;10.1.1.202:20880&#x2F;com.alibaba.dubbo.demo.DemoService?</span><br><span class="line">anyhost&#x3D;true</span><br><span class="line">&amp;application&#x3D;demo-provider</span><br><span class="line">&amp;bean.name&#x3D;com.alibaba.dubbo.demo.DemoService</span><br><span class="line">&amp;bind.ip&#x3D;10.1.17.202</span><br><span class="line">&amp;bind.port&#x3D;20880</span><br><span class="line">&amp;dubbo&#x3D;2.0.2</span><br><span class="line">&amp;generic&#x3D;false</span><br><span class="line">&amp;group&#x3D;abc</span><br><span class="line">&amp;interface&#x3D;com.alibaba.dubbo.demo.DemoService</span><br><span class="line">&amp;methods&#x3D;sayHello</span><br><span class="line">&amp;owner&#x3D;gentryhuang</span><br><span class="line">&amp;pid&#x3D;1665&amp;qos.port&#x3D;22222</span><br><span class="line">&amp;server&#x3D;netty4&amp;</span><br><span class="line">side&#x3D;provider</span><br><span class="line">&amp;timestamp&#x3D;1638155815325</span><br></pre></td></tr></table></figure>
+
+<h2 id="协议暴露服务"><a href="#协议暴露服务" class="headerlink" title="协议暴露服务"></a>协议暴露服务</h2><p>完成服务 URL 的组装后，服务暴露的准备工作也就完成了，接下来就可以执行服务暴露工作了。宏观层面上服务暴露逻辑如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br></pre></td><td class="code"><pre><span class="line">+--- ServiceConfig</span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 使用不同的协议，逐个向注册中心分组暴露服务。该方法中包含了本地和远程两种暴露方式</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> protocolConfig 协议配置对象</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> registryURLs   处理过的注册中心分组集合【已经添加了ApplicationConfig和RegistryConfig的参数】</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doExportUrlsFor1Protocol</span><span class="params">(ProtocolConfig protocolConfig, List&lt;URL&gt; registryURLs)</span> </span>&#123;</span><br><span class="line">      </span><br><span class="line">    <span class="comment">// $&#123;省略其它代码&#125;</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果存在当前协议对应的 ConfiguratorFactory 扩展实现，就创建配置规则器 Configurator，将配置规则应用到url todo 这里应该不会存在把？</span></span><br><span class="line">        <span class="keyword">if</span> (ExtensionLoader.getExtensionLoader(ConfiguratorFactory<span class="class">.<span class="keyword">class</span>).<span class="title">hasExtension</span>(<span class="title">url</span>.<span class="title">getProtocol</span>())) </span>&#123;</span><br><span class="line">            <span class="comment">// 加载ConfiguratorFactory ，并生成Configurator，将配置规则应用到url中</span></span><br><span class="line">            url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory<span class="class">.<span class="keyword">class</span>).<span class="title">getExtension</span>(<span class="title">url</span>.<span class="title">getProtocol</span>()).<span class="title">getConfigurator</span>(<span class="title">url</span>).<span class="title">configure</span>(<span class="title">url</span>)</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 从URL中获取暴露方式</span></span><br><span class="line">        String scope = url.getParameter(Constants.SCOPE_KEY);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果 scope = none，则不进行暴露，直接结束</span></span><br><span class="line">        <span class="keyword">if</span> (!Constants.SCOPE_NONE.equalsIgnoreCase(scope)) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// scope != remote，本地暴露</span></span><br><span class="line">            <span class="keyword">if</span> (!Constants.SCOPE_REMOTE.equalsIgnoreCase(scope)) &#123;</span><br><span class="line">                exportLocal(url);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// scope != local，远程暴露，包含了服务暴露和服务注册两个过程</span></span><br><span class="line">            <span class="keyword">if</span> (!Constants.SCOPE_LOCAL.equalsIgnoreCase(scope)) &#123;</span><br><span class="line">                <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                    logger.info(<span class="string">"Export dubbo service "</span> + interfaceClass.getName() + <span class="string">" to url "</span> + url);</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 至少一个注册中心</span></span><br><span class="line">                <span class="keyword">if</span> (registryURLs != <span class="keyword">null</span> &amp;&amp; !registryURLs.isEmpty()) &#123;</span><br><span class="line">                    <span class="comment">// 遍历注册中心URL数组，向每个注册中心发布服务</span></span><br><span class="line">                    <span class="keyword">for</span> (URL registryURL : registryURLs) &#123;</span><br><span class="line">                        <span class="comment">// dynamic属性：服务是否动态注册，如果设为false,注册后将显示disable状态，需要人工启用，并且服务提供者停止时，也不会自动下线，需要人工禁用</span></span><br><span class="line">                        url = url.addParameterIfAbsent(Constants.DYNAMIC_KEY, registryURL.getParameter(Constants.DYNAMIC_KEY));</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// 获取监控中心URL</span></span><br><span class="line">                        URL monitorUrl = loadMonitor(registryURL);</span><br><span class="line"></span><br><span class="line">                        <span class="keyword">if</span> (monitorUrl != <span class="keyword">null</span>) &#123;</span><br><span class="line">                            <span class="comment">// 监控URL不能空，就将监控中心的URL作为monitor参数添加到服务提供者的URL中，并且需要编码。通过这样方式，服务提供者的URL中就包含了监控中心的配置</span></span><br><span class="line">                            url = url.addParameterAndEncoded(Constants.MONITOR_KEY, monitorUrl.toFullString());</span><br><span class="line">                        &#125;</span><br><span class="line"></span><br><span class="line">                        <span class="keyword">if</span> (logger.isInfoEnabled()) &#123;</span><br><span class="line">                            logger.info(<span class="string">"Register dubbo service "</span> + interfaceClass.getName() + <span class="string">" url "</span> + url + <span class="string">" to registry "</span> + registryURL);</span><br><span class="line">                        &#125;</span><br><span class="line"></span><br><span class="line">                     </span><br><span class="line">                        <span class="comment">// 获取配置的动态代理的生成方式 &lt;dubbo:service proxy=""/&gt;,可选jdk/javassist,默认使用javassist</span></span><br><span class="line">                        String proxy = url.getParameter(Constants.PROXY_KEY);</span><br><span class="line">                        <span class="keyword">if</span> (StringUtils.isNotEmpty(proxy)) &#123;</span><br><span class="line">                            registryURL = registryURL.addParameter(Constants.PROXY_KEY, proxy);</span><br><span class="line">                        &#125;</span><br><span class="line">                     </span><br><span class="line">                        <span class="comment">//为服务实现类的对象创建相应的Invoker，getInvoker()方法的第三个参数中，会将服务URL作为export参数添加到RegistryURL中</span></span><br><span class="line">                        Invoker&lt;?&gt; invoker = proxyFactory.getInvoker(</span><br><span class="line">                                ref,</span><br><span class="line">                                (Class) interfaceClass,</span><br><span class="line">                                registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString())</span><br><span class="line">                        );</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// 创建 DelegateProviderMetaDataInvoker 装饰对象，在Invoker对象基础上，增加了当前服务提供者ServiceConfig对象，即把Invoker和ServiceConfig结合在了一起</span></span><br><span class="line">                        DelegateProviderMetaDataInvoker wrapperInvoker = <span class="keyword">new</span> DelegateProviderMetaDataInvoker(invoker, <span class="keyword">this</span>);</span><br><span class="line">  </span><br><span class="line">                        <span class="comment">// 暴露服务，生成Exporter:</span></span><br><span class="line">                        Exporter&lt;?&gt; exporter = protocol.export(wrapperInvoker);</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// 添加到 Exporter 集合</span></span><br><span class="line">                        exporters.add(exporter);</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                     <span class="comment">// 不存在或无效注册中心，仅暴露服务，不会将服务信息发布到注册中心。Consumer没法在注册中心找到该服务的信息，但是可以直连。</span></span><br><span class="line">                     <span class="comment">// 服务暴露过程都是类似的</span></span><br><span class="line">                &#125; <span class="keyword">else</span> &#123; </span><br><span class="line">                    <span class="comment">// 使用ProxyFactory 创建 Invoker 对象</span></span><br><span class="line">                    Invoker&lt;?&gt; invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);</span><br><span class="line">                    <span class="comment">// 创建 DelegateProviderMetaDataInvoker 对象</span></span><br><span class="line">                    DelegateProviderMetaDataInvoker wrapperInvoker = <span class="keyword">new</span> DelegateProviderMetaDataInvoker(invoker, <span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 使用Protocol 暴露Invoker 对象</span></span><br><span class="line">                    Exporter&lt;?&gt; exporter = protocol.export(wrapperInvoker);</span><br><span class="line">                    <span class="comment">// 添加到 Exporter 集合</span></span><br><span class="line">                    exporters.add(exporter);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">this</span>.urls.add(url);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在服务暴露的流程中可知，会尝试向每个注册中心发布服务。如果不存在或无效注册中心，那么仅暴露服务，不会将服务信息发布到注册中心。Consumer没法在注册中心找到该服务的信息，但是<strong>可以直连</strong>。其中，无效的原因可能是<strong>服务只订阅不注册，这样的话就不会向注册中心发布</strong>。</p>
+<p>在服务暴露的流程中，会先将服务对象 ref 通过 ProxyFactory 包装成 AbstractProxyInvoker 对象，完成包装后才会根据 Dubbo SPI 使用对应的 Protocol 实现暴露服务。<strong>由于可能有注册中心，也可能没有注册中心，因此暴露流程分为两个分支：</strong></p>
+<ul>
+<li>有注册中心：会遍历全部 RegistryURL，并根据 RegistryURL 选择对应的 Protocol 扩展实现进行发布。因为 RegistryURL 是 <strong>registry://</strong> 协议，所以这里使用的是 RegistryProtocol 实现。这个协议是注册中心、服务提供者以及服务消费者连接的强梁。</li>
+<li>没有注册中心：直接根据服务提供者 URL 选择对应的 Protocol 扩展实现进行发布。由于服务提供者可能使用不同协议暴露，因此这里可能是 <strong>dubbo://</strong>、<strong>http://</strong> 等协议，针对不同的协议使用对应的 Protocol 实现暴露服务即可。</li>
+</ul>
+<h3 id="不基于注册中心发布服务"><a href="#不基于注册中心发布服务" class="headerlink" title="不基于注册中心发布服务"></a>不基于注册中心发布服务</h3><p>不基于注册中心发布服务，就是直接使用服务提供者 URL 对应的协议实现发布服务。</p>
+<p>针对 <code>dubbo://</code> 协议暴露实现，参考 <a href="https://gentryhuang.com/posts/a064181a/#%E6%9C%8D%E5%8A%A1%E6%9A%B4%E9%9C%B2">Dubbo协议-服务暴露</a></p>
+<p>针对 <code>http://</code> 协议暴露实现，参考 <a href="https://gentryhuang.com/posts/c5a37c18/#%E6%9C%8D%E5%8A%A1%E6%9A%B4%E9%9C%B2">Http协议-服务暴露</a></p>
+<h3 id="基于注册中心发布服务"><a href="#基于注册中心发布服务" class="headerlink" title="基于注册中心发布服务"></a>基于注册中心发布服务</h3><p>基于注册中心发布服务需要使用到注册中心，Dubbo 通过封装 <code>RegistryProtocol</code> 来完成。<strong>这个过程包含以下四个核心步骤：</strong></p>
+<ul>
+<li>服务暴露</li>
+<li>服务 Server 启动</li>
+<li>服务注册</li>
+<li>服务配置订阅</li>
+</ul>
+<h4 id="RegistryProtocol"><a href="#RegistryProtocol" class="headerlink" title="RegistryProtocol"></a>RegistryProtocol</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RegistryProtocol</span> <span class="keyword">implements</span> <span class="title">Protocol</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">static</span> Logger logger = LoggerFactory.getLogger(RegistryProtocol<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 单例，在dubbo SPI中，被初始化，有且仅有一次。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> RegistryProtocol INSTANCE;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 订阅URL与监听器的映射关系</span></span><br><span class="line"><span class="comment">     * key: 服务提供方订阅 URL</span></span><br><span class="line"><span class="comment">     * value: 监听器</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Map&lt;URL, NotifyListener&gt; overrideListeners = <span class="keyword">new</span> ConcurrentHashMap&lt;URL, NotifyListener&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 服务暴露映射关系</span></span><br><span class="line"><span class="comment">     * key: 服务提供者的 URL 字符串形式</span></span><br><span class="line"><span class="comment">     * value: 服务暴露器 Export</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Map&lt;String, ExporterChangeableWrapper&lt;?&gt;&gt; bounds = <span class="keyword">new</span> ConcurrentHashMap&lt;String, ExporterChangeableWrapper&lt;?&gt;&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Cluster 自适应拓展实现类对象</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> Cluster cluster;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Protocol 自适应拓展实现类，通过Dubbo SPI自动注入 【Dubbo IOC ，Setter注入 】</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> Protocol protocol;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * RegistryFactory 自适应拓展实现类，通过Dubbo SPI自动注入</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> RegistryFactory registryFactory;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 代理工厂</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> ProxyFactory proxyFactory;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">RegistryProtocol</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        INSTANCE = <span class="keyword">this</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> RegistryProtocol <span class="title">getRegistryProtocol</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (INSTANCE == <span class="keyword">null</span>) &#123;</span><br><span class="line">            ExtensionLoader.getExtensionLoader(Protocol<span class="class">.<span class="keyword">class</span>).<span class="title">getExtension</span>(<span class="title">Constants</span>.<span class="title">REGISTRY_PROTOCOL</span>)</span>; <span class="comment">// load</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> INSTANCE;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="暴露并启动服务"><a href="#暴露并启动服务" class="headerlink" title="暴露并启动服务"></a>暴露并启动服务</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">+--- RegistryProtocol</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 暴露服务，并启动 Server</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> originInvoker 封装服务的 AbstractProxyInvoker 对象</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> &lt;T&gt;</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>)</span><br><span class="line">    <span class="keyword">private</span> &lt;T&gt; <span class="function">ExporterChangeableWrapper&lt;T&gt; <span class="title">doLocalExport</span><span class="params">(<span class="keyword">final</span> Invoker&lt;T&gt; originInvoker)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 获得在 bounds 缓存中的key</span></span><br><span class="line">        <span class="comment">// 其实是服务提供者暴露地址, 即从Invoker的URL中Map属性集合中获取key为'export'的服务提供者暴露地址然后去除不需要的信息，该地址要写到注册中心上。</span></span><br><span class="line">        String key = getCacheKey(originInvoker);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2 从 bounds 缓存中获得，是否存在已经暴露过的服务</span></span><br><span class="line">        ExporterChangeableWrapper&lt;T&gt; exporter = (ExporterChangeableWrapper&lt;T&gt;) bounds.get(key);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3 不存在则会进行服务暴露，并启动 Server</span></span><br><span class="line">        <span class="keyword">if</span> (exporter == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">synchronized</span> (bounds) &#123;</span><br><span class="line">                exporter = (ExporterChangeableWrapper&lt;T&gt;) bounds.get(key);</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 未暴露过，进行暴露服务</span></span><br><span class="line">                <span class="keyword">if</span> (exporter == <span class="keyword">null</span>) &#123;</span><br><span class="line">                    <span class="comment">/**</span></span><br><span class="line"><span class="comment">                     * 1 创建InvokerDelegete 对象</span></span><br><span class="line"><span class="comment">                     * 2 InvokerDelegete 继承了 InvokerWrapper类，增加了getInvoker方法，获取非InvokerDelegete的Invoker对象，</span></span><br><span class="line"><span class="comment">                     *  通过getInvoker方法可以看出来，可能会存在InvokerDelete.invoker也是InvokerDelegete类型的情况</span></span><br><span class="line"><span class="comment">                     * 3 todo InvokerDelegete 中的 URL 是服务提供者的URL，在使用 protocol.export 时，使用具体协议暴露服务</span></span><br><span class="line"><span class="comment">                     */</span></span><br><span class="line">                    <span class="keyword">final</span> Invoker&lt;?&gt; invokerDelegete = <span class="keyword">new</span> InvokerDelegete&lt;T&gt;(originInvoker, getProviderUrl(originInvoker));</span><br><span class="line">                    <span class="comment">/**</span></span><br><span class="line"><span class="comment">                     * 🌟使用服务提供者的协议将 InvokerDelegete 转换成 Exporter</span></span><br><span class="line"><span class="comment">                     * 1 使用Protocol协议暴露服务并创建ExporterChangeableWrapper 对象 （构造参数： Exporter,Invoker,这样Invoker和Exporter就形成了绑定关系）</span></span><br><span class="line"><span class="comment">                     * 2 具体调用哪个协议的export方法，看Dubbo SPI选择哪个，就调用对应协议的XXXProtocol#export(Invoker)</span></span><br><span class="line"><span class="comment">                     *   - todo 注意这里使用 SPI 找具体的 Protocol 实现时的过程，该方法是一个标注 <span class="doctag">@Adaptive</span> 方法，会根据 InvokerDelegete 获取 url ，而该 url 是 originInvoker 中的 Provider URL ，如对应的协议为 Dubbo</span></span><br><span class="line"><span class="comment">                     * 3 底层启动服务</span></span><br><span class="line"><span class="comment">                     */</span></span><br><span class="line">                    exporter = <span class="keyword">new</span> ExporterChangeableWrapper&lt;T&gt;((Exporter&lt;T&gt;) protocol.export(invokerDelegete), originInvoker);</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 添加到 bounds 缓存</span></span><br><span class="line">                    bounds.put(key, exporter);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4 返回 Export</span></span><br><span class="line">        <span class="keyword">return</span> exporter;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>以上方法做了以下两件事：</strong></p>
+<ul>
+<li>通过具体的 Protocol 协议实现，如 DubboProtocol 暴露服务。其中，在通过具体 Protocol 协议暴露服务的过程中会启动 Server。</li>
+<li>缓存暴露的 Export，key 是服务提供方的 URL 剪枝后的 URL 串。</li>
+</ul>
+<p>具体协议暴露服务和启动 Server 的细节可参考：</p>
+<ul>
+<li>针对 <code>dubbo://</code> 协议暴露实现，参考 <a href="https://gentryhuang.com/posts/a064181a/#%E6%9C%8D%E5%8A%A1%E6%9A%B4%E9%9C%B2">Dubbo协议-服务暴露</a>；</li>
+<li>针对 <code>http://</code> 协议暴露实现，参考 <a href="https://gentryhuang.com/posts/c5a37c18/#%E6%9C%8D%E5%8A%A1%E6%9A%B4%E9%9C%B2">Http协议-服务暴露</a></li>
+</ul>
+<h4 id="服务注册与订阅"><a href="#服务注册与订阅" class="headerlink" title="服务注册与订阅"></a>服务注册与订阅</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line">+--- RegistryProtocol</span><br><span class="line"> <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">Exporter&lt;T&gt; <span class="title">export</span><span class="params">(<span class="keyword">final</span> Invoker&lt;T&gt; originInvoker)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 暴露服务并启动 Server 服务</span></span><br><span class="line">        <span class="comment">// 此处Local指的是，本地启动服务(不同协议会启动不动的服务Server，如：NettyServer，tomcat等)，打开端口，但是不包括向注册中心注册服务。</span></span><br><span class="line">        <span class="keyword">final</span> ExporterChangeableWrapper&lt;T&gt; exporter = doLocalExport(originInvoker);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2 将 "registry://"协议转换成注册中心协议，以zk为例：zookeeper://127.0.0.1/com.xxx...XxxService?kev=value&amp;kev=value...</span></span><br><span class="line">        URL registryUrl = getRegistryUrl(originInvoker);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3 根据 registryUrl 获得（创建）注册中心对象，如ZookeeperRegistry</span></span><br><span class="line">        <span class="keyword">final</span> Registry registry = getRegistry(originInvoker);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4 获得真正要注册到注册中心的URL,其中会删除一些多余的参数信息</span></span><br><span class="line">        <span class="keyword">final</span> URL registeredProviderUrl = getRegisteredProviderUrl(originInvoker);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 服务提供者URL参数项 register , 服务提供者是否注册到配置中心。默认是true</span></span><br><span class="line">        <span class="keyword">boolean</span> register = registeredProviderUrl.getParameter(<span class="string">"register"</span>, <span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 5 向本地注册表中记录服务提供者信息（包含服务对应的注册中心地址），该信息用于Dubbo QOS</span></span><br><span class="line">        ProviderConsumerRegTable.registerProvider(originInvoker, registryUrl, registeredProviderUrl);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 6 根据 register 的值决定是否注册服务</span></span><br><span class="line"><span class="comment">         * 注意：</span></span><br><span class="line"><span class="comment">         *   服务注册对于Dubbo 来说不是必需的，通过服务直连的方式就可以绕过注册中心。但是一般不这样做，直连方式不利于服务治理，仅推荐在测试环境测试服务时使用。</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">if</span> (register) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 将服务提供者地址写入到注册中心【如：使用zk会先创建服务提供者的节点路径】</span></span><br><span class="line">            register(registryUrl, registeredProviderUrl);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 标记向本地注册表已经注册了服务提供者</span></span><br><span class="line">            ProviderConsumerRegTable.getProviderWrapper(originInvoker).setReg(<span class="keyword">true</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/** 7 使用OverrideListener 对象，服务暴露时会订阅配置规则 configurators [为了在服务配置发生变化时，重新导出服务。具体的使用场景应该当我们通过 Dubbo 管理后台修改了服务配置后，Dubbo 得到服务配置被修改的通知，然后重新导出服务] */</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 7.1 基于 registeredProviderUrl 构建服务提供方订阅URL，如 provider://...?...&amp;category=configurators&amp;check=false</span></span><br><span class="line">        <span class="keyword">final</span> URL overrideSubscribeUrl = getSubscribedOverrideUrl(registeredProviderUrl);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 7.2 创建 OverrideListener 监听器，用于监听订阅的URL映射的目录有没有发生变化</span></span><br><span class="line">        <span class="comment">// 即 获取要监听的配置目录，这里会在ProviderURL的基础上添加category=configurators参数，并封装成对 OverrideListener 记录到 overrideListeners 集合中</span></span><br><span class="line">        <span class="keyword">final</span> OverrideListener overrideSubscribeListener = <span class="keyword">new</span> OverrideListener(overrideSubscribeUrl, originInvoker);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 7.3 将订阅放入缓存</span></span><br><span class="line">        overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 7.4 向注册中心进行订阅，主要是监听该服务的configurators节点</span></span><br><span class="line">        registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 8 创建并返回DestroyableExporter</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> DestroyableExporter&lt;T&gt;(exporter, originInvoker, overrideSubscribeUrl, registeredProviderUrl);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章介绍了 Dubbo 远程暴露的实现。远程暴露需要实现 <code>暴露服务</code>、<code>启动 Server</code>、<code>服务注册</code> 和 <code>服务配置订阅</code>。前两个是由具体 Protocol 实现的，如 DubboProtocol 会将传入的 Invoker 包装成 DubboExporter 对象，并以服务键作为缓存 key 缓存起来，接着启动服务，具体来说是 Netty 服务器。后两个是有 RegistryProtocol 逻辑实现，需要根据是否有有效的注册中心，决定是否注册服务和订阅服务配置，否则只暴露和启动Server，这样情况下只能直连。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/6eb535db/" title="Dubbo源码分析 - 远程暴露" target="_blank" rel="external">https://gentryhuang.com/posts/6eb535db/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/4140f093/" title="Dubbo源码分析 - 服务引用"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/751c0982/" title="Dubbo源码分析 - 本地暴露"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2021 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>

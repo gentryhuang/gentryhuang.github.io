@@ -18,18 +18,18 @@
   
   
   <title>Dubbo源码分析 - 领域模型扩展 | gentryhuang的博客</title>
-  <meta name="description" content="概述常见的领域模型在之前的文章中有所介绍，如：AbstractExpoter、AbstractInvoker、DubboExpoter、DubboInvoker、InjvmExpoter、InjvmInvoker 等，关于集群容错中涉及的领域模型将在介绍集群容错篇章进行介绍。本篇文章将对领域模型相关的扩展进行介绍，涉及的类图如下：  上图描述的是 服务暴露的监听、服务引用的监听 以及 过滤器链的构">
+  <meta name="description" content="概述常见的领域模型在之前的文章中有所介绍，如：AbstractExpoter、AbstractInvoker、DubboExpoter、DubboInvoker、InjvmExpoter、InjvmInvoker 等，关于集群容错中涉及的领域模型已在集群容错篇章进行介绍。本篇文章将对领域模型相关的扩展进行介绍，涉及的类图如下：  上图描述的是 服务暴露的监听、服务引用的监听 以及 过滤器链的构建">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Dubbo源码分析 - 领域模型扩展">
 <meta property="og:url" content="https://gentryhuang.com/posts/946483bd/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="概述常见的领域模型在之前的文章中有所介绍，如：AbstractExpoter、AbstractInvoker、DubboExpoter、DubboInvoker、InjvmExpoter、InjvmInvoker 等，关于集群容错中涉及的领域模型将在介绍集群容错篇章进行介绍。本篇文章将对领域模型相关的扩展进行介绍，涉及的类图如下：  上图描述的是 服务暴露的监听、服务引用的监听 以及 过滤器链的构">
+<meta property="og:description" content="概述常见的领域模型在之前的文章中有所介绍，如：AbstractExpoter、AbstractInvoker、DubboExpoter、DubboInvoker、InjvmExpoter、InjvmInvoker 等，关于集群容错中涉及的领域模型已在集群容错篇章进行介绍。本篇文章将对领域模型相关的扩展进行介绍，涉及的类图如下：  上图描述的是 服务暴露的监听、服务引用的监听 以及 过滤器链的构建">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-invoker-exporter-extra-uml.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-exporter-model-extral-uml.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-exporter-model-extral-uml.jpg">
 <meta property="article:published_time" content="2020-10-11T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-04-06T08:28:59.091Z">
+<meta property="article:modified_time" content="2021-11-29T01:17:52.767Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Dubbo">
 <meta name="twitter:card" content="summary">
@@ -216,7 +216,7 @@
   <div class="widget">
     <h3 class="widget-title">分类</h3>
     <div class="widget-body">
-      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">66</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
     </div>
   </div>
 
@@ -446,7 +446,7 @@
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>常见的领域模型在之前的文章中有所介绍，如：<code>AbstractExpoter</code>、<code>AbstractInvoker</code>、<code>DubboExpoter</code>、<code>DubboInvoker</code>、<code>InjvmExpoter</code>、<code>InjvmInvoker</code> 等，关于集群容错中涉及的领域模型将在介绍集群容错篇章进行介绍。本篇文章将对领域模型相关的扩展进行介绍，涉及的类图如下：</p>
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>常见的领域模型在之前的文章中有所介绍，如：<code>AbstractExpoter</code>、<code>AbstractInvoker</code>、<code>DubboExpoter</code>、<code>DubboInvoker</code>、<code>InjvmExpoter</code>、<code>InjvmInvoker</code> 等，关于集群容错中涉及的领域模型已在集群容错篇章进行介绍。本篇文章将对领域模型相关的扩展进行介绍，涉及的类图如下：</p>
 <p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/rpc/dubbo/dubbo-invoker-exporter-extra-uml.jpg" alt></p>
 <p>上图描述的是 <strong>服务暴露的监听</strong>、<strong>服务引用的监听</strong> 以及 <strong>过滤器链的构建</strong> 关系。</p>
 <h1 id="ProtocolListenerWrapper"><a href="#ProtocolListenerWrapper" class="headerlink" title="ProtocolListenerWrapper"></a>ProtocolListenerWrapper</h1><p><code>ProtocolListenerWrapper</code> 本身是 <code>Protocol</code> 扩展点的 <strong>Wrapper类</strong>， 在服务暴露和服务引用时以 Dubbo AOP 的能力分别将具有监听功能的 <code>ExporterListener</code> 和 <code>InvokerListener</code> 绑定到流程中，便于用户在 Dubbo 服务暴露和服务引用后添加自定义的业务逻辑。</p>
