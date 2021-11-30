@@ -25,14 +25,14 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言限流顾名思义是限制流量，目的是为了保障服务稳定运行，避免服务被流量冲垮。 为什么要限流？因为再厉害的系统总有所能承载的能力上限，一旦流量突破这个上限，就会引起实例宕机，进而发生系统雪崩，带来灾难性后果。限流是系统自我保护的最直接手段，当流量超出服务处理能力时，部分请求将会被限流组件拦截，根据具体业务场景选择丢失。 限流算法计数器计算器算法的思想很简单，每当一个请求到来时，就将计数器加一，当计数">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/32609cb8/current-limiting-bucket.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/32609cb8/current-limiting-token.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/current_limiting/current-limiting-bucket.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/current_limiting/current-limiting-token.png">
 <meta property="article:published_time" content="2021-11-23T16:00:00.000Z">
-<meta property="article:modified_time" content="2021-11-24T08:19:19.813Z">
+<meta property="article:modified_time" content="2021-11-30T09:26:37.268Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="限流">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/32609cb8/current-limiting-bucket.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/current_limiting/current-limiting-bucket.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/32609cb8/index.html">
   
@@ -449,12 +449,12 @@
 <p>为什么要限流？因为再厉害的系统总有所能承载的能力上限，一旦流量突破这个上限，就会引起实例宕机，进而发生系统雪崩，带来灾难性后果。限流是系统自我保护的最直接手段，当流量超出服务处理能力时，部分请求将会被限流组件拦截，根据具体业务场景选择丢失。</p>
 <h1 id="限流算法"><a href="#限流算法" class="headerlink" title="限流算法"></a>限流算法</h1><h2 id="计数器"><a href="#计数器" class="headerlink" title="计数器"></a>计数器</h2><p>计算器算法的思想很简单，每当一个请求到来时，就将计数器加一，当计数器数值超过阈值后，就拒绝接收到的请求。在指定周期内，计数器会重置，开始新一轮的计数。计数器算法简单粗暴，易于实现。但是缺点也是很大的，容易造成前一个时间段非常忙碌，下一时间段又非常空闲。</p>
 <h2 id="漏通算法"><a href="#漏通算法" class="headerlink" title="漏通算法"></a>漏通算法</h2><p>漏桶算法由流量容器、流量入口和流量出口组成。流量入口一般就是业务请求，流量容器用于暂存一定大小的业务流量，流量出口则是我们设定的限速值，比如 1000 QPS。漏桶算法如下图：</p>
-<p><img src="/posts/32609cb8/current-limiting-bucket.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/current_limiting/current-limiting-bucket.png" alt></p>
 <p>如上图，流入漏桶流量的流速是不可控的，但流出流量的速度是恒定的，而漏桶的容量是有限的，这就会导致一旦流入流量超出漏桶容量，这部分流量只能被丢弃了。</p>
 <p>漏桶算法可以通过暂存一定的流量达到流量整形的目的，但是漏桶不能处理突发流量。</p>
 <h2 id="令牌桶算法"><a href="#令牌桶算法" class="headerlink" title="令牌桶算法"></a>令牌桶算法</h2><p>令牌桶和漏桶算法既有相似之处，又有很大的不同，不同之处也是令牌桶算法能够支持突发流量的原因。</p>
 <p>令牌桶算法需要一个令牌工厂以一定周期向令牌桶中放入令牌，当令牌桶满了之后，多出的令牌会被丢弃。每当一个请求到来时都会先从令牌桶中取令牌，由于令牌桶中可能存放了很多令牌，因此允许多个请求同时取令牌，如果令牌够多就可以在一定程度上支持突发流量。当令牌桶中没有令牌后，无法获取到令牌的请求可以丢弃，或者重试。令牌桶算法如下图：</p>
-<p><img src="/posts/32609cb8/current-limiting-token.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/current_limiting/current-limiting-token.png" alt></p>
 <h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>本篇文章简单介绍了常见的三种限流算法，它们被落地到不同的实现中，如 Dubbo 中的 <code>TpsLimitFilter</code> 使用的就是计算器限流算法，Google 提供的 <code>RateLimiter</code> 开源包使用的是基于令牌桶算法。</p>
 <p><strong>总体来说，限流既可以是在客户端限流，也可以是在服务端限流。此外，限流的实现方式既可支持 URL 以及方法级别的限流，也可支持基于 QPS 和线程的限流。</strong></p>
 
