@@ -18,23 +18,23 @@
   
   
   <title>Redis原理 - Redis主流程 | gentryhuang的博客</title>
-  <meta name="description" content="前言本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。需要说明的是，笔者阅读的 Redis 版本是 #define REDIS_VERSION &quot;6.2.4&quot;，之所以选择较新的版本，因为笔者对">
+  <meta name="description" content="概述本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。 main 函数Redis 服务器启动的入口是 main 函数，其它的无需多说，下面直接上代码。 1234567891011121314151617181920">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Redis原理 - Redis主流程">
 <meta property="og:url" content="https://gentryhuang.com/posts/19fe4bc5/index.html">
 <meta property="og:site_name" content="gentryhuang‘s blog">
-<meta property="og:description" content="前言本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。需要说明的是，笔者阅读的 Redis 版本是 #define REDIS_VERSION &quot;6.2.4&quot;，之所以选择较新的版本，因为笔者对">
+<meta property="og:description" content="概述本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。 main 函数Redis 服务器启动的入口是 main 函数，其它的无需多说，下面直接上代码。 1234567891011121314151617181920">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/19fe4bc5/redis-outline-main-process.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/19fe4bc5/redis-outline-multi-process.jpg">
-<meta property="article:published_time" content="2021-06-24T06:59:01.000Z">
-<meta property="article:modified_time" content="2021-09-12T02:21:24.471Z">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/themory/redis-outline-main-process.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/themory/redis-outline-multi-process.jpg">
+<meta property="article:published_time" content="2021-11-27T16:00:00.000Z">
+<meta property="article:modified_time" content="2021-12-07T03:19:06.132Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
 <meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/19fe4bc5/redis-outline-main-process.jpg">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/themory/redis-outline-main-process.jpg">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/19fe4bc5/index.html">
   
@@ -217,7 +217,7 @@
   <div class="widget">
     <h3 class="widget-title">分类</h3>
     <div class="widget-body">
-      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">5</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
     </div>
   </div>
 
@@ -236,7 +236,7 @@
   <div class="widget">
     <h3 class="widget-title">标签云</h3>
     <div class="widget-body tagcloud">
-      <a href="/tags/AQS/" style="font-size: 13.38px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.75px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.13px;">I/O</a> <a href="/tags/JMM/" style="font-size: 13px;">JMM</a> <a href="/tags/JUC/" style="font-size: 13.5px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.25px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.13px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.25px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.63px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.13px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.25px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.25px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.13px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13.13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.88px;">设计模式</a> <a href="/tags/%E9%99%90%E6%B5%81/" style="font-size: 13px;">限流</a>
+      <a href="/tags/AQS/" style="font-size: 13.38px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.75px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.13px;">I/O</a> <a href="/tags/JMM/" style="font-size: 13px;">JMM</a> <a href="/tags/JUC/" style="font-size: 13.5px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.25px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.13px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.25px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.63px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13.25px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.13px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.25px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.25px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.13px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13.13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.88px;">设计模式</a> <a href="/tags/%E9%99%90%E6%B5%81/" style="font-size: 13px;">限流</a>
     </div>
   </div>
 
@@ -253,6 +253,81 @@
     <div class="widget-body">
       <ul class="recent-post-list list-unstyled ">
         
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/f7ccc3b4/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/f7ccc3b4/" class="title">Redis数据结构 - SDS</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-12-04T08:34:15.000Z" itemprop="datePublished">2021-12-04</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/19fe4bc5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/19fe4bc5/" class="title">Redis原理 - Redis主流程</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-11-27T16:00:00.000Z" itemprop="datePublished">2021-11-28</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/adccc332/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/adccc332/" class="title">Redis 源码结构总览</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-11-27T06:59:01.000Z" itemprop="datePublished">2021-11-27</time>
+              </p>
+            </div>
+          </li>
+          
           <li>
             
             <div class="item-thumb">
@@ -303,81 +378,6 @@
             </div>
           </li>
           
-          <li>
-            
-            <div class="item-thumb">
-              <a href="/posts/ae5dbc38/" class="thumb">
-    
-    
-        <span class="thumb-image thumb-none"></span>
-    
-</a>
-
-            </div>
-            
-            <div class="item-inner">
-              <p class="item-category">
-                <a class="category-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a>
-              </p>
-              <p class="item-title">
-                <a href="/posts/ae5dbc38/" class="title">网络通信 - Reactor模型</a>
-              </p>
-              <p class="item-date">
-                <time datetime="2021-09-12T13:10:23.000Z" itemprop="datePublished">2021-09-12</time>
-              </p>
-            </div>
-          </li>
-          
-          <li>
-            
-            <div class="item-thumb">
-              <a href="/posts/151f44ae/" class="thumb">
-    
-    
-        <span class="thumb-image thumb-none"></span>
-    
-</a>
-
-            </div>
-            
-            <div class="item-inner">
-              <p class="item-category">
-                <a class="category-link" href="/categories/JDK/">JDK</a>
-              </p>
-              <p class="item-title">
-                <a href="/posts/151f44ae/" class="title">并发 - ThreadLocal</a>
-              </p>
-              <p class="item-date">
-                <time datetime="2021-09-03T04:30:12.000Z" itemprop="datePublished">2021-09-03</time>
-              </p>
-            </div>
-          </li>
-          
-          <li>
-            
-            <div class="item-thumb">
-              <a href="/posts/55ae5a2b/" class="thumb">
-    
-    
-        <span class="thumb-image thumb-none"></span>
-    
-</a>
-
-            </div>
-            
-            <div class="item-inner">
-              <p class="item-category">
-                <a class="category-link" href="/categories/JDK/">JDK</a>
-              </p>
-              <p class="item-title">
-                <a href="/posts/55ae5a2b/" class="title">Java基础 - Reference</a>
-              </p>
-              <p class="item-date">
-                <time datetime="2021-08-21T02:30:12.000Z" itemprop="datePublished">2021-08-21</time>
-              </p>
-            </div>
-          </li>
-          
       </ul>
     </div>
   </div>
@@ -393,14 +393,14 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#main-函数"><span class="toc-number">2.</span> <span class="toc-text">main 函数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#事件循环"><span class="toc-number">3.</span> <span class="toc-text">事件循环</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#main-函数"><span class="toc-number">2.</span> <span class="toc-text">main 函数</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#事件循环"><span class="toc-number">3.</span> <span class="toc-text">事件循环</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
     </nav>
   </div>
 </aside>
 
 <main class="main" role="main">
   <div class="content">
-  <article id="post-redis_theory/themory/Redis全流程" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+  <article id="post-redis/themory/Redis全流程" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
     
     <div class="article-header">
       
@@ -416,7 +416,7 @@
         <span class="article-date">
     <i class="icon icon-calendar-check"></i>
 	<a href="/posts/19fe4bc5/" class="article-date">
-	  <time datetime="2021-06-24T06:59:01.000Z" itemprop="datePublished">2021-06-24</time>
+	  <time datetime="2021-11-27T16:00:00.000Z" itemprop="datePublished">2021-11-28</time>
 	</a>
 </span>
         
@@ -432,17 +432,17 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/19fe4bc5/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.9k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 1.8k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 8(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 7(分)</span>
 	
 
       </div>
     </div>
     <div class="article-entry marked-body" itemprop="articleBody">
       
-        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。需要说明的是，笔者阅读的 Redis 版本是 <code>#define REDIS_VERSION &quot;6.2.4&quot;</code>，之所以选择较新的版本，因为笔者对 Redis 一些新特性比较感兴趣，特别是 Redis 在 6.0 版本中提出的 IO 多线程。</p>
+        <h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>本篇文章将从源码层面对 Redis 主干轮廓进行说明。以主线程执行流程为主干，对途径的枝枝蔓蔓简单介绍，不会过度展开，后续将针对每一个模块进行详细分析。由于 Redis 是用 C 语言实现的，当然应该从 main 函数开启阅读源码旅程。</p>
 <h1 id="main-函数"><a href="#main-函数" class="headerlink" title="main 函数"></a>main 函数</h1><p>Redis 服务器启动的入口是 main 函数，其它的无需多说，下面直接上代码。</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Redis Server 启动入口</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 说明：</span></span><br><span class="line"><span class="comment"> *  Redis是用C语言实现的，从 main 函数启动。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span> </span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">timeval</span> <span class="title">tv</span>;</span></span><br><span class="line">    <span class="keyword">int</span> j;</span><br><span class="line">    <span class="keyword">char</span> config_from_stdin = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> INIT_SETPROCTITLE_REPLACEMENT</span></span><br><span class="line">    <span class="comment">// 1 初始化库</span></span><br><span class="line">    spt_init(argc, argv);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2 检查服务器是否以 Sentinel 模式启动</span></span><br><span class="line">    <span class="comment">// 这一点非常重要，因为 Sentinel 和普通的实例不同</span></span><br><span class="line">    server.sentinel_mode = checkForSentinelMode(argc, argv);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3  初始化服务器配置</span></span><br><span class="line">    initServerConfig();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 4 ACL 初始化（6.0 对 ACL 进行了功能丰富）</span></span><br><span class="line">    ACLInit(); <span class="comment">/* The ACL subsystem must be initialized ASAP because the</span></span><br><span class="line"><span class="comment">                  basic networking code and client creation depends on it. */</span></span><br><span class="line"></span><br><span class="line">  </span><br><span class="line">    <span class="comment">// 5 如果服务器以 Sentinel 模式启动，那么需要进行 Sentinel 功能相关的初始化，并为要监视的主服务器创建一些相应的数据结构</span></span><br><span class="line">    <span class="keyword">if</span> (server.sentinel_mode) &#123;</span><br><span class="line">        <span class="comment">// Sentinel 所属的属性覆盖服务器默认的属性</span></span><br><span class="line">        initSentinelConfig();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 哨兵模式初始化</span></span><br><span class="line">        initSentinel();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line">    <span class="comment">// 6 是否需要在 redis-check-rdb/aof模式下启动，这样可以校验持久化文件</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">strstr</span>(argv[<span class="number">0</span>], <span class="string">"redis-check-rdb"</span>) != <span class="literal">NULL</span>)</span><br><span class="line">        redis_check_rdb_main(argc, argv, <span class="literal">NULL</span>);</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (<span class="built_in">strstr</span>(argv[<span class="number">0</span>], <span class="string">"redis-check-aof"</span>) != <span class="literal">NULL</span>)</span><br><span class="line">        redis_check_aof_main(argc, argv);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 7 检查用户是否指定了配置文件，或者配置选项</span></span><br><span class="line">    <span class="keyword">if</span> (argc &gt;= <span class="number">2</span>) &#123;...&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">int</span> <span class="built_in">background</span> = server.daemonize &amp;&amp; !server.supervised;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 8 将服务器设置为守护进程运行</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">background</span>) daemonize();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 9 创建并初始化服务器</span></span><br><span class="line">    initServer();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 🌟 服务器不是运行在 SENTINEL 模式，那么执行以下代码</span></span><br><span class="line">    <span class="keyword">if</span> (!server.sentinel_mode) &#123;</span><br><span class="line">       </span><br><span class="line">        <span class="comment">// 10  bio 和 io 线程的初始化</span></span><br><span class="line">        InitServerLast();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 11 从 AOF 文件或者 RDB 文件中载入数据</span></span><br><span class="line">        loadDataFromDisk();</span><br><span class="line">        <span class="keyword">if</span> (server.cluster_enabled) &#123;</span><br><span class="line">            <span class="keyword">if</span> (verifyClusterConfigWithData() == C_ERR) &#123;</span><br><span class="line">                serverLog(LL_WARNING,</span><br><span class="line">                          <span class="string">"You can't have keys in a DB different than DB 0 when in "</span></span><br><span class="line">                          <span class="string">"Cluster mode. Exiting."</span>);</span><br><span class="line">                <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      </span><br><span class="line">      <span class="comment">// 以 SENTINEL 模式运行</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        ACLLoadUsersAtStartup();</span><br><span class="line">        <span class="comment">// bio 和 io 线程的初始化</span></span><br><span class="line">        InitServerLast();</span><br><span class="line">        <span class="comment">// Sentinel 准备就绪后执行</span></span><br><span class="line">        sentinelIsRunning();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 12 🌟 启动事件处理循环</span></span><br><span class="line">    <span class="comment">// 主要围绕 IO多路复用 展开的，驱动注册的时间事件回调和 IO 事件回调</span></span><br><span class="line">    aeMain(server.el);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 12 退出事件循环，回收内存</span></span><br><span class="line">    aeDeleteEventLoop(server.el);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// retun 0</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -452,7 +452,7 @@
 <li>执行事件循环</li>
 </ul>
 <p>Redis 服务器初始化逻辑较为复杂，从底层的数据结构到服务器不同的角色，初始化的逻辑和属性都不一样，这里就不展开了。下面对流程进行概括：</p>
-<p><img src="/posts/19fe4bc5/redis-outline-main-process.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/themory/redis-outline-main-process.jpg" alt></p>
 <h1 id="事件循环"><a href="#事件循环" class="headerlink" title="事件循环"></a>事件循环</h1><p>事件循环逻辑是 Redis 核心的直接体现，它就是在这个循环中不断处理网络请求和内部自身逻辑的。下面我们直接上代码。</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">aeMain</span><span class="params">(aeEventLoop *eventLoop)</span> </span>&#123;</span><br><span class="line">    eventLoop-&gt;<span class="built_in">stop</span> = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 主线程进入主循环，一直处理事件，直到服务器关闭</span></span><br><span class="line">    <span class="keyword">while</span> (!eventLoop-&gt;<span class="built_in">stop</span>) &#123;</span><br><span class="line">        <span class="comment">// 开始处理事件</span></span><br><span class="line">        aeProcessEvents(eventLoop, AE_ALL_EVENTS |</span><br><span class="line">                                   AE_CALL_BEFORE_SLEEP |</span><br><span class="line">                                   AE_CALL_AFTER_SLEEP);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -467,7 +467,7 @@
 <li>后置处理器 afterSleep</li>
 </ul>
 <p>关于以上代码片段背后的信息，会在后面的文章中介绍 Redis 事件一文中详细说明，这里先不展开。下面对以上方法进行概括：</p>
-<p><img src="/posts/19fe4bc5/redis-outline-multi-process.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/themory/redis-outline-multi-process.jpg" alt></p>
 <h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章简单介绍了 Redis 启动的入口以及执行的主干流程，这里有个印象即可，后续会对每个模块展开说明。</p>
 
       
@@ -525,12 +525,12 @@
   <ul class="pager pull-left">
     
     <li class="prev">
-      <a href="/posts/f3292e6c/" title="并发 - ReentrantReadWriteLock"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+      <a href="/posts/f7ccc3b4/" title="Redis数据结构 - SDS"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
     </li>
     
     
     <li class="next">
-      <a href="/posts/b25f5b99/" title="网络通信 - IO多路复用"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+      <a href="/posts/adccc332/" title="Redis 源码结构总览"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
     </li>
     
     
