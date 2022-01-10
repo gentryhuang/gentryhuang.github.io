@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>分布式锁 | gentryhuang的博客</title>
+  <meta name="description" content="为什么需要分布式锁？分布式系统中，同一系统的不同主机共享同一资源，在访问的时候需要添加互斥语义以保护资源。这种情况下就需要使用分布式锁，锁是保存在一个共享存储系统中的，所有进程都可以去该系统上申请加锁和释放锁。 分布式锁实现用于存储“锁”的共享存储系统，可以是 MySQL、Redis、Zookeeper 以及 Etcd 等。对应的，每种共享存储系统都可以实现分布式锁。 基于数据库实现用于实现分布锁">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式锁">
+<meta property="og:url" content="https://gentryhuang.com/posts/4eb3381c/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="为什么需要分布式锁？分布式系统中，同一系统的不同主机共享同一资源，在访问的时候需要添加互斥语义以保护资源。这种情况下就需要使用分布式锁，锁是保存在一个共享存储系统中的，所有进程都可以去该系统上申请加锁和释放锁。 分布式锁实现用于存储“锁”的共享存储系统，可以是 MySQL、Redis、Zookeeper 以及 Etcd 等。对应的，每种共享存储系统都可以实现分布式锁。 基于数据库实现用于实现分布锁">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-01-08T02:10:15.000Z">
+<meta property="article:modified_time" content="2022-01-10T05:46:48.231Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="分布式锁">
+<meta name="twitter:card" content="summary">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/4eb3381c/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.38px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.75px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.13px;">I/O</a> <a href="/tags/JMM/" style="font-size: 13px;">JMM</a> <a href="/tags/JUC/" style="font-size: 13.5px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.25px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.13px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.25px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.63px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13.25px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.13px;">Redis数据结构</a> <a href="/tags/SPI/" style="font-size: 13.25px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.25px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.13px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13.13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" style="font-size: 13px;">分布式锁</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.88px;">设计模式</a> <a href="/tags/%E9%99%90%E6%B5%81/" style="font-size: 13px;">限流</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/4eb3381c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/4eb3381c/" class="title">分布式锁</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-01-08T02:10:15.000Z" itemprop="datePublished">2022-01-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/f7ccc3b4/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/f7ccc3b4/" class="title">Redis数据结构 - SDS</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-12-04T08:34:15.000Z" itemprop="datePublished">2021-12-04</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/19fe4bc5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/19fe4bc5/" class="title">Redis原理 - Redis主流程</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-11-27T16:00:00.000Z" itemprop="datePublished">2021-11-28</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/adccc332/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/adccc332/" class="title">Redis 源码结构总览</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-11-27T06:59:01.000Z" itemprop="datePublished">2021-11-27</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/32609cb8/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/32609cb8/" class="title">限流算法</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-11-23T16:00:00.000Z" itemprop="datePublished">2021-11-24</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#为什么需要分布式锁？"><span class="toc-number">1.</span> <span class="toc-text">为什么需要分布式锁？</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#分布式锁实现"><span class="toc-number">2.</span> <span class="toc-text">分布式锁实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#基于数据库实现"><span class="toc-number">2.1.</span> <span class="toc-text">基于数据库实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#基于-Zookeeper-实现"><span class="toc-number">2.2.</span> <span class="toc-text">基于 Zookeeper 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#安全性"><span class="toc-number">2.2.1.</span> <span class="toc-text">安全性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#特点"><span class="toc-number">2.2.2.</span> <span class="toc-text">特点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#基于单个-Redis-节点实现"><span class="toc-number">2.3.</span> <span class="toc-text">基于单个 Redis 节点实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SETNX-实现"><span class="toc-number">2.3.1.</span> <span class="toc-text">SETNX 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SET-实现"><span class="toc-number">2.3.2.</span> <span class="toc-text">SET 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#解决锁被被人释放问题"><span class="toc-number">2.3.2.1.</span> <span class="toc-text">解决锁被被人释放问题</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#锁提前过期问题"><span class="toc-number">2.3.2.2.</span> <span class="toc-text">锁提前过期问题</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-amp-A"><span class="toc-number">2.3.3.</span> <span class="toc-text">Q &amp; A</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#基于多个-Redis-节点实现"><span class="toc-number">2.4.</span> <span class="toc-text">基于多个 Redis 节点实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Redlock"><span class="toc-number">2.4.1.</span> <span class="toc-text">Redlock</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#算法步骤"><span class="toc-number">2.4.1.1.</span> <span class="toc-text">算法步骤</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#关键步骤分析"><span class="toc-number">2.4.1.2.</span> <span class="toc-text">关键步骤分析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Redlock-存在问题"><span class="toc-number">2.4.1.3.</span> <span class="toc-text">Redlock 存在问题</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#效率"><span class="toc-number">2.4.1.3.1.</span> <span class="toc-text">效率</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#安全性问题"><span class="toc-number">2.4.1.3.2.</span> <span class="toc-text">安全性问题</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#进程暂停"><span class="toc-number">2.4.1.3.2.1.</span> <span class="toc-text">进程暂停</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#时钟跳跃"><span class="toc-number">2.4.1.3.2.2.</span> <span class="toc-text">时钟跳跃</span></a></li></ol></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#解决-Redlock-问题"><span class="toc-number">2.4.1.4.</span> <span class="toc-text">解决 Redlock 问题</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#时钟跳跃问题"><span class="toc-number">2.4.1.4.1.</span> <span class="toc-text">时钟跳跃问题</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#进程暂停问题"><span class="toc-number">2.4.1.4.2.</span> <span class="toc-text">进程暂停问题</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Redlock-实践"><span class="toc-number">2.4.1.5.</span> <span class="toc-text">Redlock 实践</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#基于-Etcd-实现"><span class="toc-number">2.5.</span> <span class="toc-text">基于 Etcd 实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">2.6.</span> <span class="toc-text">小结</span></a></li></ol></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-architecture/分布式锁" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      分布式锁
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/4eb3381c/" class="article-date">
+	  <time datetime="2022-01-08T02:10:15.000Z" itemprop="datePublished">2022-01-08</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" rel="tag">分布式锁</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/4eb3381c/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 4.9k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 17(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h1 id="为什么需要分布式锁？"><a href="#为什么需要分布式锁？" class="headerlink" title="为什么需要分布式锁？"></a>为什么需要分布式锁？</h1><p>分布式系统中，同一系统的不同主机共享同一资源，在访问的时候需要添加互斥语义以保护资源。这种情况下就需要使用分布式锁，<strong>锁是保存在一个共享存储系统中的，所有进程都可以去该系统上申请加锁和释放锁</strong>。</p>
+<h1 id="分布式锁实现"><a href="#分布式锁实现" class="headerlink" title="分布式锁实现"></a>分布式锁实现</h1><p>用于存储“锁”的共享存储系统，可以是 <code>MySQL</code>、<code>Redis</code>、<code>Zookeeper</code> 以及 <code>Etcd</code> 等。对应的，每种共享存储系统都可以实现分布式锁。</p>
+<h2 id="基于数据库实现"><a href="#基于数据库实现" class="headerlink" title="基于数据库实现"></a>基于数据库实现</h2><p>用于实现分布锁的数据表结构定义如下：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> TDistributedLock (</span><br><span class="line">  <span class="string">`id`</span> <span class="built_in">int</span>(<span class="number">11</span>) <span class="keyword">NOT</span> <span class="literal">NULL</span> AUTO_INCREMENT <span class="keyword">COMMENT</span> <span class="string">' 主键 '</span>,</span><br><span class="line">  <span class="string">`lock_key`</span> <span class="built_in">varchar</span>(<span class="number">64</span>) <span class="keyword">NOT</span> <span class="literal">NULL</span> <span class="keyword">DEFAULT</span> <span class="string">''</span> <span class="keyword">COMMENT</span> <span class="string">' 锁的键值 '</span>,</span><br><span class="line">  <span class="string">`lock_timeout`</span> datetime <span class="keyword">NOT</span> <span class="literal">NULL</span> <span class="keyword">DEFAULT</span> <span class="keyword">NOW</span>() <span class="keyword">COMMENT</span> <span class="string">' 锁的超时时间 '</span></span><br><span class="line">  PRIMARY <span class="keyword">KEY</span>(<span class="string">`id`</span>),</span><br><span class="line">  <span class="keyword">UNIQUE</span> <span class="keyword">KEY</span> <span class="string">`uidx_lock_key`</span> (<span class="string">`lock_key`</span>) <span class="keyword">USING</span> BTREE</span><br><span class="line">) <span class="keyword">ENGINE</span>=<span class="keyword">InnoDB</span> <span class="keyword">DEFAULT</span> <span class="keyword">CHARSET</span>=utf8 <span class="keyword">COMMENT</span>=<span class="string">' 分布式锁表 '</span>;</span><br></pre></td></tr></table></figure>
+
+<p>当进程申请加锁时，只需要插入一条数据即可：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> TDistributedLock(lock_key, lock_timeout) <span class="keyword">values</span>(<span class="string">'order_lock_key'</span>, <span class="string">'2022-01-07 20:30:00'</span>);</span><br></pre></td></tr></table></figure>
+
+<p>当对共享资源的操作完毕后，可以释放锁：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">DELETE</span> <span class="keyword">FROM</span> TDistributedLock <span class="keyword">where</span> lock_key=<span class="string">'order_lock_key'</span>;</span><br></pre></td></tr></table></figure>
+
+<p>基于数据库实现的方案简单、方便，核心点是利用数据库表的<strong>唯一索引</strong>约束，保证多个进程同时申请加锁时，只有一个能获得锁。</p>
+<p>虽然基于数据库实现的方案简单，但是存在一些问题。下面我们对问题进行说明，并给出解决方式。</p>
+<ul>
+<li>获得锁的进程意外 crash ，来不及释放锁。<blockquote>
+<p>在插入锁记录时，同时设置了锁的过期时间 lock_timeout ，可以启动一个扫描清理线程 lock_cleaner，将超时的锁记录删除。</p>
+</blockquote>
+</li>
+<li>如何支持可重入锁<blockquote>
+<p>可以在锁记录表中增加一个字段，记录当前获取锁的主机信息和进程信息，在获取锁时先判断是否是重入锁。如果当前机器的主机信息和线程信息在数据库可以查到的话，直接把锁分配给它就可以了。此时需要考虑业务的复杂程度，判断是否要延长锁的更新时间。</p>
+</blockquote>
+</li>
+<li>锁的可靠性怎么保证<blockquote>
+<p>数据库支持主从、一主多从、多主多从等复制方案，可保证一个数据库实例宕机，其它实例可以接管过来继续提供服务。但是，有些复制方案是异步的，可能会导致锁丢失，进而导致分布锁失效。</p>
+</blockquote>
+</li>
+</ul>
+<h2 id="基于-Zookeeper-实现"><a href="#基于-Zookeeper-实现" class="headerlink" title="基于 Zookeeper 实现"></a>基于 Zookeeper 实现</h2><p>Zookeeper 是一个分布式协调框架，以目录结构的形式存储数据。基于 Zookeeper 的一些特性，实现分布式锁的逻辑如下：</p>
+<ol>
+<li>使用 Zookeeper 的临时有序节点，每个进程获取锁需要在 Zookeeper 上创建一个临时有序节点，如在 /lock/ 目录下；</li>
+<li>创建节点成功后，获取 /lock 目录下的所有临时节点，再判断当前进程创建的节点是否是所有的节点中序号最小的节点；</li>
+<li>如果当前进程创建的节点是所有节点序号最小的节点，则获取锁成功。</li>
+<li>如果当前进程创建的节点不是所有节点序号最小的节点，则对节点序号的前一个节点添加一个事件监听。 比如当前进程获取到的节点序号为/lock/003,然后所有的节点列表为 [/lock/001,/lock/002,/lock/003],则对 /lock/002 这个节点添加一个事件监听器。</li>
+</ol>
+<p>当进程处理完共享资源后，就可以释放锁了，也就是删除它创建的临时节点。Zookeeper 添加其上的监听器会捕捉到移除事件，然后唤醒下一个序号的节点，然后执行第 3 步，继续抢锁。比如/lock/001 被删除了，/lock/002 监听到事件，此时节点集合为[/lock/002,/lock/003],则 /lock/002 为最小序号节点，获取到锁。</p>
+<p><strong>注意：</strong>不使用 Zookeeper 的持久节点，是避免加锁成功后出现异常，节点来不及删除，导致后面的节点会一直等待节点删除，从而出现死锁，临时节点因为会随着客户端的下线被删除，可以避免死锁的问题。</p>
+<h3 id="安全性"><a href="#安全性" class="headerlink" title="安全性"></a>安全性</h3><p>Zookeeper <strong>无需考虑锁的过期时间问题</strong>，它采用的是临时节点和主动删除策略。客户端获取到锁后，只要连接不断开，除非主动删除临时节点，否则一直持有锁。即使客户端异常宕机，因为是临时节点，因此会自动删除，避免了死锁。</p>
+<p>没有锁过期的问题，而且还能在异常时自动释放锁。一切看起来很安全，但是我们考虑下客户端获取到锁后，连接断开的情况。</p>
+<p>我们知道，客户端和 Zookeeper 之间的连接是通过客户端<strong>定时心跳</strong>来维持的，如果 Zookeeper 长时间收不到客户端的心跳，就认为这个连接过期了，会把这个临时节点删除。对于长时间的 GC ，客户端应用程序就无法给 Zookeeper 发送心跳，一旦超时 Zookeeper 就会把锁节点删除，GC 结束后其它客户端也来获取锁，也获取到了。此时，同时有两个客户端持有锁，这是有问题的。</p>
+<p>可以知道，<strong>Zookeeper 在进程 GC、网络延迟异常场景下的安全性得不到保证</strong>。</p>
+<h3 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h3><p><strong>优点</strong></p>
+<ul>
+<li>数据一致性得到保证</li>
+<li>不需要考虑锁的过期时间</li>
+<li>使用 watch 机制，避免了等候锁的客户端不停地轮循锁是否可用，当锁的状态发生变化时可以自动得到通知。</li>
+</ul>
+<p><strong>劣势</strong></p>
+<ul>
+<li>性能问题，体现在读写和数据同步上</li>
+<li>客户端与 Zookeeper 长时间失联，锁被释放问题</li>
+<li>羊群效应，要尽量避免大量节点监控一个节点的行为，做到按需监听</li>
+</ul>
+<h2 id="基于单个-Redis-节点实现"><a href="#基于单个-Redis-节点实现" class="headerlink" title="基于单个 Redis 节点实现"></a>基于单个 Redis 节点实现</h2><p>Redis 本身可以被多个客户端共享访问，正好就是一个共享存储系统，可以用来保存分布式锁。而且 Redis 的读写性能高，可以应对高并发的锁操作场景。</p>
+<h3 id="SETNX-实现"><a href="#SETNX-实现" class="headerlink" title="SETNX 实现"></a>SETNX 实现</h3><p>SETNX 命令在执行时会判断键是否存在，如果不存在，就设置键值对，如果存在，就不做任何设置。</p>
+<p>我们可以用 SETNX 和 DEL 命令组合来实现加锁和释放锁操作。下面的伪代码示例显示了锁操作的过程:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 加锁</span></span><br><span class="line">SETNX lock_key <span class="number">1</span></span><br><span class="line"><span class="comment">// 业务逻辑</span></span><br><span class="line">DO THINGS</span><br><span class="line"><span class="comment">// 释放锁</span></span><br><span class="line">DEL lock_key</span><br></pre></td></tr></table></figure>
+
+<p>不难看出，上述方案存在很多问题，如下：</p>
+<ul>
+<li>没有过期时间，进程异常退出会导致死锁</li>
+<li>不能区分来自不同客户端的锁操作，容易导致误删锁</li>
+</ul>
+<p>避免死锁的一个最直接的方法就是设置一个过期时间，也就是租期。假设业务逻辑不会超过 3s，那么在加锁时，可以设置 3s 过期时间：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 加锁</span></span><br><span class="line">SETNX lock_key <span class="number">1</span></span><br><span class="line"><span class="comment">// 设置 3s 租期</span></span><br><span class="line">EXPIRE lock_key <span class="number">3</span></span><br><span class="line"><span class="comment">// 业务逻辑</span></span><br><span class="line">DO THINGS</span><br><span class="line"><span class="comment">// 释放锁</span></span><br><span class="line">DEL lock_key</span><br></pre></td></tr></table></figure>
+
+<p>设置了租期后，也不能保证不会死锁。因为加锁、设置过期是 2 个操作，可能只执行了第一个操作，第二个操作没有执行，这种情况就有潜在的风险，死锁仍然可能发生。</p>
+<p>好在 Redis 扩展了 SET 命令，可以使用一条命令替换上述存在问题的两条命令：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 加锁并设置 3s 租期</span></span><br><span class="line">SET lock_key <span class="number">1</span> EX <span class="number">3</span> NX</span><br><span class="line"><span class="comment">// 业务逻辑</span></span><br><span class="line">DO THINGS</span><br><span class="line"><span class="comment">// 释放锁</span></span><br><span class="line">DEL lock_key</span><br></pre></td></tr></table></figure>
+
+<p>这样就解决了死锁问题。</p>
+<h3 id="SET-实现"><a href="#SET-实现" class="headerlink" title="SET 实现"></a>SET 实现</h3><p>为了能达到和 SETNX 命令一样的效果，Redis 扩展了 SET 命令：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SET key value [EX seconds | PX milliseconds]  [NX]</span><br></pre></td></tr></table></figure>
+
+<p>虽然 SET 命令可以解决 SETNX 命令中存在的<strong>死锁问题</strong>，但是没有解决误删锁问题。这个问题的主要原因是，每个客户端在释放锁时，都是直接操作，<strong>没有检查锁是否还是自己持有</strong>。如以下场景：</p>
+<ol>
+<li>客户端 A 加锁成功，开始操作共享资源；</li>
+<li>客户端 A 操作共享资源的时间超过了锁的过期时间，执行还没有完成，锁就自动释放了；</li>
+<li>客户端 B 加锁成功，开始操作共享资源；</li>
+<li>客户端 A 执行完成，释放锁，此时释放的事客户端 B 的锁。</li>
+</ol>
+<p>导致以上问题的关键有两个：</p>
+<ul>
+<li><strong>锁过期</strong>：客户端 A 执行时间过长，导致锁提前释放了，之后被客户端 B 持有。</li>
+<li><strong>误释放锁</strong>：客户端 A 执行完成后，以为还是自己的锁，结果释放了客户端 B 的锁。</li>
+</ul>
+<p>下面我们对以上两个潜在问题进行分析并解决。</p>
+<h4 id="解决锁被被人释放问题"><a href="#解决锁被被人释放问题" class="headerlink" title="解决锁被被人释放问题"></a>解决锁被被人释放问题</h4><p>在加锁操作中，每个客户端都使用一个唯一标识，如下所示：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// $uuid 是当前客户端的唯一标识</span><br><span class="line">127.0.0.1:6379&gt; SET lock_key $uuid EX 3 NX</span><br></pre></td></tr></table></figure>
+
+<p>在释放锁操作时，我们需要判断锁变量的值，是否等于执行释放锁操作的客户端的唯一标识，如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//释放锁 比较unique_value是否相等，避免误释放</span></span><br><span class="line"><span class="keyword">if</span> redis.call(<span class="string">"get"</span>,KEYS[<span class="number">1</span>]) == ARGV[<span class="number">1</span>] then</span><br><span class="line">    <span class="keyword">return</span> redis.call(<span class="string">"del"</span>,KEYS[<span class="number">1</span>])</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line"><span class="built_in">end</span></span><br></pre></td></tr></table></figure>
+
+<p>上面是使用 Lua 脚本（unlock.script）实现的释放锁操作的伪代码，其中，KEYS[1]表示 lock_key，ARGV[1]是当前客户端的唯一标识，这两个值都是我们在执行 Lua 脚本时作为参数传入的。</p>
+<p><strong>在释放锁操作中，我们使用了 Lua 脚本，这是因为，释放锁操作的逻辑也包含了读取锁变量、判断值、删除锁变量的多个操作，而 Redis 在执行 Lua 脚本时，可以以原子性的方式执行，从而保证了锁释放操作的原子性。</strong></p>
+<h4 id="锁提前过期问题"><a href="#锁提前过期问题" class="headerlink" title="锁提前过期问题"></a>锁提前过期问题</h4><p>锁的过期时间如果评估不好，那么就会有提前释放的风险。但是，面对不同的业务场景过期时间很难精确预估。这个时候，我们可以使用<strong>续租</strong>的方式，延续锁的过期时间。</p>
+<p>在加锁时，先设置一个过期时间，然后启动一个后台线程，定时检测锁的实效时间，如果锁快要过期了，但操作共享资源还没有处理完成，那么就对锁进行续期，重新设置过期时间。Java 中的 Redission 在使用分布式锁时，就采用了自动续期的方式来避免锁提前过期，这个后台线程一般称做<strong>看门狗线程</strong>。</p>
+<h3 id="Q-amp-A"><a href="#Q-amp-A" class="headerlink" title="Q &amp; A"></a>Q &amp; A</h3><p>下面对基于 Redis 实现的分布式锁出现的问题以及解决方案进行梳理：</p>
+<ul>
+<li>针对死锁问题，可以通过设置过期时间来解决；</li>
+<li>针对锁提前释放，可以使用自动续期来解决；</li>
+<li>针对锁被误删除，可以通过检查锁的唯一标识来决定是否可以释放。</li>
+</ul>
+<h2 id="基于多个-Redis-节点实现"><a href="#基于多个-Redis-节点实现" class="headerlink" title="基于多个 Redis 节点实现"></a>基于多个 Redis 节点实现</h2><p>在使用 Redis 时，为了可靠性，一般会采用哨兵或集群的方式部署。那这种可靠性对于分布式锁有什么影响呢？我们以哨兵模式为例，分析主从切换对分布式锁的影响。</p>
+<ol>
+<li>客户端 A 在主库上执行 SET 命令申请加锁成功；</li>
+<li>主库异常宕机，申请加锁的 SET 命令还未同步到从库上；</li>
+<li>从库被提升为新主库，此时锁的数据在新的主库上丢失了；</li>
+<li>其它客户端向主库申请加锁也会成功，此时分布式锁失效了。</li>
+</ol>
+<p>可以看到，因为 Redis 的主从复制是异步的，高可用机制不能保证锁的可靠性。因此，Redis 的作者提出了 Redlock 方案。</p>
+<h3 id="Redlock"><a href="#Redlock" class="headerlink" title="Redlock"></a>Redlock</h3><p>Redlock 算法的基本思路，是让客户端和多个独立的 Redis 实例依次请求加锁，如果客户端能够和半数以上的实例成功地完成加锁操作，并且总耗时不超过锁的有效时间，那么就认为客户端成功地获得分布式锁了，否则加锁失败。这样一来，即使有单个 Redis 实例发生故障，还有其它实例，锁的可靠性得到了保障。</p>
+<p>可以看出，Redlock 的特点如下：</p>
+<ul>
+<li>不是部署主从库，而是只部署主库；</li>
+<li>主库要部署多个，官方推荐至少 5 个实例；</li>
+</ul>
+<p>也就是说，Redlock 要求至少部署 5 个 Redis 实例，而且都是主库，它们之间没有任何关系，都是一个个孤立的实例。</p>
+<h4 id="算法步骤"><a href="#算法步骤" class="headerlink" title="算法步骤"></a>算法步骤</h4><p>Redlock 算法的步骤一共分为 5 步：</p>
+<ol>
+<li>客户端获取当前时间戳。</li>
+<li>客户端按顺序依次向 N 个 Redis 实例执行加锁操作。这里的加锁操作和在单实例上执行的加锁操作一样，使用 SET 命令，带上 NX，EX/PX 选项，以及带上客户端的唯一标识。为了保证某个实例加锁失败（实例宕机、网络超时、锁被其它客户端持有） Redlock 算法能够继续运行，需要给加锁操作设置一个超时时间。如果客户端在和一个 Redis 实例请求加锁时，一直到超时都没有成功，那么此时，客户端会和下一个 Redis 实例继续请求加锁。加锁操作的超时时间需要远远地小于锁的有效时间，一般也就是设置为几十毫秒。</li>
+<li>客户端只有在满足下面的这两个条件时，才能认为是加锁成功。<ul>
+<li>客户端从超过半数（大于等于 N/2+1）的 Redis 实例上成功获取到了锁；</li>
+<li>计算客户端获取锁的总耗时，必须没有超过锁的有效时间。</li>
+</ul>
+</li>
+<li>加锁成功，操作共享资源。</li>
+<li>加锁失败，向全部节点发起释放锁的请求。和在单实例上释放锁的操作一样，只要执行释放锁的 Lua 脚本就可以了。</li>
+</ol>
+<h4 id="关键步骤分析"><a href="#关键步骤分析" class="headerlink" title="关键步骤分析"></a>关键步骤分析</h4><p>Redlock 算法的关键如下：</p>
+<ul>
+<li>必须是大多数节点加锁成功；<blockquote>
+<p>为了实现容错功能。</p>
+</blockquote>
+</li>
+<li>大多数节点加锁的总耗时要小于锁设置的过期时间；<blockquote>
+<p>即使大多数节点加锁成功，但如果加锁的累计耗时已经超过了锁的过期时间，那此时有些实例上的锁可能已经失效了，这个锁也就没有意义了。</p>
+</blockquote>
+</li>
+<li>释放锁要向全部节点发起释放锁请求。<blockquote>
+<p>可能存在实例上加锁成功了，但是获取响应结果时是失败的，如网络问题导致超时。</p>
+</blockquote>
+</li>
+</ul>
+<h4 id="Redlock-存在问题"><a href="#Redlock-存在问题" class="headerlink" title="Redlock 存在问题"></a>Redlock 存在问题</h4><h5 id="效率"><a href="#效率" class="headerlink" title="效率"></a>效率</h5><p>为了效率可以使用单节点 Redis ，即使偶尔发生锁失效（宕机、主从切换），有些业务不会产生严重后果，最差可以做幂等。毕竟，使用 Redlock 太重了。</p>
+<h5 id="安全性问题"><a href="#安全性问题" class="headerlink" title="安全性问题"></a>安全性问题</h5><p>在进程暂停、时钟跳跃、节点奔溃恢复等情况下，Redlock 是不安全的。</p>
+<h6 id="进程暂停"><a href="#进程暂停" class="headerlink" title="进程暂停"></a>进程暂停</h6><p>在 Java 中进行 GC 时，会使进程暂停，时间序列如下：</p>
+<ol>
+<li>客户端 1 依次向节点 A、B、C、D、E 请求加锁；</li>
+<li>客户端 1 获得锁后，进入 GC ，这个时间假设很长；</li>
+<li>大多数或全部 Redis 节点上的锁都过期了；</li>
+<li>客户端 2 依次向节点 A、B、C、D、E 请求加锁，获取锁成功；</li>
+<li>客户端 1 和客户端 2 都获取到了锁，发生了冲突。</li>
+</ol>
+<h6 id="时钟跳跃"><a href="#时钟跳跃" class="headerlink" title="时钟跳跃"></a>时钟跳跃</h6><p>当多个 Redis 节点时钟发生问题时，也会导致 Redlock 锁失效。</p>
+<ol>
+<li>客户端 1 依次向节点 A、B、C、D、E 请求加锁，获取到了节点 A、B、C 上的锁，但由于网络问题，无法访问 D 和 E；</li>
+<li>节点 C 上的时钟向前跳跃，导致锁过期了。</li>
+<li>客户端 2 依次向节点 A、B、C、D、E 请求加锁，获取节点 C、D、E 上的锁，由于网络问题，无法访问 A 和 B；</li>
+<li>客户端 1 和客户端 2 都获取到了锁，发生了冲突。</li>
+</ol>
+<p>机器的时钟发生错误，是很有可能发生的，比如：</p>
+<ul>
+<li>系统管理员手动修改了机器时钟</li>
+<li>机器时钟在同步 NTP 时间时，发生了大的跳跃</li>
+</ul>
+<p>Redis 节点奔溃重启，如果锁信息没有持久化，那么也会造成和时钟跳跃一样的问题。</p>
+<h4 id="解决-Redlock-问题"><a href="#解决-Redlock-问题" class="headerlink" title="解决 Redlock 问题"></a>解决 Redlock 问题</h4><h5 id="时钟跳跃问题"><a href="#时钟跳跃问题" class="headerlink" title="时钟跳跃问题"></a>时钟跳跃问题</h5><p>针对时钟问题，Redlock 并不需要完全一致的时钟，只需要大体一致就可以了。避免手动修改机器时钟，并通过正确的运维保证机器时钟不会大幅度跳跃。</p>
+<h5 id="进程暂停问题"><a href="#进程暂停问题" class="headerlink" title="进程暂停问题"></a>进程暂停问题</h5><p>对于 Redlock 来说，如果进程暂停、网络延迟发生在获得锁之前，那么 Redlock 是可以检测出来的，如果超出了锁设置的过期时间，就认为加锁失败，之后释放所有节点的锁；如果发生在获得锁之后，也就是在客户端操作共享资源的过程发生问题导致锁失效，那 Redlock 确实没有办法了，但是这不仅仅是 Redlock 的问题，其它分布式锁实现也有类似问题，比如 Zookeeper 实现的分布式锁也会因一定时间没有保持心跳而断开连接，导致分布式锁失效。</p>
+<p>总的来说，Redlock 在保证时钟正确的基础上，是可以保证正确性的。</p>
+<h4 id="Redlock-实践"><a href="#Redlock-实践" class="headerlink" title="Redlock 实践"></a>Redlock 实践</h4><p>追求性能，并能容忍一定的可靠性和安全，可以直接使用单节点的 Redis；对可靠性有追求，可以考虑使用 Redis 的可靠性机制。毕竟，Redlock 较重，而且部署成本高，时钟跳跃问题也不是那么容易解决或避免。</p>
+<h2 id="基于-Etcd-实现"><a href="#基于-Etcd-实现" class="headerlink" title="基于 Etcd 实现"></a>基于 Etcd 实现</h2><p>Etcd 是 CoreOS 团队于 2013 年 6 月发起的开源项目，它的目标是构建一个高可用的分布式键值 (key-value) 数据库。Etcd 内部基于 raft 一致性算法，使用 Go 语言实现。</p>
+<p>Etcd 分布式锁的逻辑如下：</p>
+<ul>
+<li>Lease 机制:即租约机制(TTL，Time To Live)，etcd 可以为存储的 KV 对设置租约，当租约到期，KV 将失效删除;同时也支持续约， 即 KeepAlive。</li>
+<li>Revision 机制:每个 key 带有一个 Revision 属性值，etcd 每进行一次事务对应的全局 Revision 值都会加一，因此每个 key 对应的 Revision 属性值都是全局唯一的。通过比较 Revision 的大小就可以知道进行写操作的顺序。 </li>
+<li>在实现分布式锁时，多个程序同时抢锁，根据 Revision 值大小依次获得锁，可以避免 “羊群效应” (也称 “惊群效应”)，实现公平 锁。</li>
+<li>Prefix 机制:即前缀机制，也称目录机制。可以根据前缀(目录)获取该目录下所有的 key 及对应的属性(包括 key, value 以及 revision 等)。</li>
+<li>Watch 机制:即监听机制，Watch 机制支持 Watch 某个固定的 key，也支持 Watch 一个目录(前缀机制)，当被 Watch 的 key 或目录 发生变化，客户端将收到通知。</li>
+</ul>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>本篇文章对分布式锁的几种实现方式进行了介绍，重点分析了 Redis 分布式锁的实现方式，通过不断演进，最终出现了 Redlock ，并对 Redlock 存在的问题进行了说明。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/4eb3381c/" title="分布式锁" target="_blank" rel="external">https://gentryhuang.com/posts/4eb3381c/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    
+    <li class="next">
+      <a href="/posts/f7ccc3b4/" title="Redis数据结构 - SDS"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2022 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
