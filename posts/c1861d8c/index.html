@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>Redis原理 - SCAN 原理 | gentryhuang的博客</title>
+  <meta name="description" content="概述SCAN 命令在 Redis 早期版本中就支持，主要是为了解决 Redis 去批量获取 key 时造成的阻塞情况。如 KEYS 命令是获取所有命令，这是一种阻塞操作，这里就可以使用 SCAN 命令来尽可能避免 Redis 的阻塞。 SCAN 命令的复杂度虽然是 O(N)，但它是分次进行的，不会阻塞线程。 SCAN 命令集SCAN 命令及其相关的 SSCAN 命令、 HSCAN 命令和 ZSCA">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis原理 - SCAN 原理">
+<meta property="og:url" content="https://gentryhuang.com/posts/c1861d8c/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述SCAN 命令在 Redis 早期版本中就支持，主要是为了解决 Redis 去批量获取 key 时造成的阻塞情况。如 KEYS 命令是获取所有命令，这是一种阻塞操作，这里就可以使用 SCAN 命令来尽可能避免 Redis 的阻塞。 SCAN 命令的复杂度虽然是 O(N)，但它是分次进行的，不会阻塞线程。 SCAN 命令集SCAN 命令及其相关的 SSCAN 命令、 HSCAN 命令和 ZSCA">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/c1861d8c/redis-practice-53.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/c1861d8c/redis-practice-54.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/c1861d8c/redis-practice-54.png">
+<meta property="article:published_time" content="2022-03-01T14:14:47.000Z">
+<meta property="article:modified_time" content="2022-03-01T14:31:31.295Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="SCAN">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/c1861d8c/redis-practice-53.png">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/c1861d8c/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">15</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.44px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.78px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.11px;">I/O</a> <a href="/tags/JMM/" style="font-size: 13px;">JMM</a> <a href="/tags/JUC/" style="font-size: 13.56px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.22px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.11px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.22px;">Protocol</a> <a href="/tags/RPC/" style="font-size: 13.67px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13.33px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.11px;">Redis数据结构</a> <a href="/tags/SCAN/" style="font-size: 13px;">SCAN</a> <a href="/tags/SPI/" style="font-size: 13.22px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.22px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.11px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13.11px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" style="font-size: 13px;">分布式锁</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.89px;">设计模式</a> <a href="/tags/%E9%99%90%E6%B5%81/" style="font-size: 13px;">限流</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/c1861d8c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/c1861d8c/" class="title">Redis原理 - SCAN 原理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-03-01T14:14:47.000Z" itemprop="datePublished">2022-03-01</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/4eb3381c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/4eb3381c/" class="title">分布式锁</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-01-08T02:10:15.000Z" itemprop="datePublished">2022-01-08</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/1a7fe47d/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/1a7fe47d/" class="title">Redis数据结构 - SDS续</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-12-12T03:10:07.000Z" itemprop="datePublished">2021-12-12</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/f7ccc3b4/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/f7ccc3b4/" class="title">Redis数据结构 - SDS</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-12-04T08:34:15.000Z" itemprop="datePublished">2021-12-04</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/19fe4bc5/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/19fe4bc5/" class="title">Redis原理 - Redis主流程</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2021-11-27T16:00:00.000Z" itemprop="datePublished">2021-11-28</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SCAN-命令集"><span class="toc-number">2.</span> <span class="toc-text">SCAN 命令集</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SCAN-命令的基本用法"><span class="toc-number">3.</span> <span class="toc-text">SCAN 命令的基本用法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#使用"><span class="toc-number">3.1.</span> <span class="toc-text">使用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#返回值"><span class="toc-number">3.2.</span> <span class="toc-text">返回值</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SCAN-选项"><span class="toc-number">3.3.</span> <span class="toc-text">SCAN 选项</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#COUNT-选项"><span class="toc-number">3.3.1.</span> <span class="toc-text">COUNT 选项</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#MATCH-选项"><span class="toc-number">3.3.2.</span> <span class="toc-text">MATCH 选项</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SCAN-命令的保证"><span class="toc-number">3.4.</span> <span class="toc-text">SCAN 命令的保证</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SCAN-原理"><span class="toc-number">3.5.</span> <span class="toc-text">SCAN 原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SCAN-源码分析"><span class="toc-number">3.6.</span> <span class="toc-text">SCAN 源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#解析参数"><span class="toc-number">3.6.1.</span> <span class="toc-text">解析参数</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#判断要扫描的是否是哈希表"><span class="toc-number">3.6.2.</span> <span class="toc-text">判断要扫描的是否是哈希表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#扫描哈希表"><span class="toc-number">3.6.3.</span> <span class="toc-text">扫描哈希表</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#高位加法进位遍历"><span class="toc-number">3.6.3.1.</span> <span class="toc-text">高位加法进位遍历</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#未处于-rehash-过程"><span class="toc-number">3.6.3.1.1.</span> <span class="toc-text">未处于 rehash 过程</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#处于-rehash-过程"><span class="toc-number">3.6.3.1.2.</span> <span class="toc-text">处于 rehash 过程</span></a></li></ol></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#扫描内存紧凑型结构"><span class="toc-number">3.6.4.</span> <span class="toc-text">扫描内存紧凑型结构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#匹配过滤"><span class="toc-number">3.6.5.</span> <span class="toc-text">匹配过滤</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#返回扫描结果"><span class="toc-number">3.6.6.</span> <span class="toc-text">返回扫描结果</span></a></li></ol></li></ol></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-redis/themory/SCAN原理" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      Redis原理 - SCAN 原理
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/c1861d8c/" class="article-date">
+	  <time datetime="2022-03-01T14:14:47.000Z" itemprop="datePublished">2022-03-01</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/Redis/">Redis</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/SCAN/" rel="tag">SCAN</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/c1861d8c/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 6.3k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 24(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>SCAN 命令在 Redis 早期版本中就支持，主要是为了解决 Redis 去批量获取 key 时造成的阻塞情况。如 KEYS 命令是获取所有命令，这是一种阻塞操作，这里就可以使用 SCAN 命令来尽可能避免 Redis 的阻塞。</p>
+<p>SCAN 命令的复杂度虽然是 O(N)，但它是分次进行的，不会阻塞线程。</p>
+<h2 id="SCAN-命令集"><a href="#SCAN-命令集" class="headerlink" title="SCAN 命令集"></a>SCAN 命令集</h2><p>SCAN 命令及其相关的 SSCAN 命令、 HSCAN 命令和 ZSCAN 命令<strong>都用于增量地迭代集合类元素</strong>。</p>
+<ul>
+<li>SCAN 命令用于迭代当前数据库中的数据库键；</li>
+<li>SSCAN 命令用于迭代集合键中的元素；</li>
+<li>HSCAN 命令用于迭代哈希键中的键值对；</li>
+<li>ZSCAN 命令用于迭代有序集合中的元素（包括元素成员和元素分值）;</li>
+</ul>
+<p>以上列出的四个命令都支持<strong>增量式迭代</strong>， 它们每次执行都只会返回少量元素， 所以这些命令可以用于生产环境， 而不会出现像 KEYS 命令、 SMEMBERS 命令带来的问题。当 KEYS 命令被用于处理一个大的数据库时，又或者 SMEMBERS 命令被用于处理一个大的集合键时，它们可能会阻塞服务器达数秒之久。</p>
+<p>不过，增量式迭代命令也有很大的缺点，比如在对键进行增量式迭代的过程中，键可能会被修改；字典在进行 rehash 时，缩容的情况会造成重复读取数据；在增量迭代过程，如果增加或删除元素在一定程度上也会导致问题（如果把增量迭代看作完整的过程）。所以增量式迭代命令只能对被返回的元素提供有限的保证。</p>
+<h2 id="SCAN-命令的基本用法"><a href="#SCAN-命令的基本用法" class="headerlink" title="SCAN 命令的基本用法"></a>SCAN 命令的基本用法</h2><p> SCAN 、 SSCAN 、 HSCAN 和 ZSCAN 四个命令的工作方式都非常相似，它们的区别如下：</p>
+<ul>
+<li>SSCAN 命令、 HSCAN 命令和 ZSCAN 命令的第一个参数总是一个数据库键；</li>
+<li>SCAN 命令则不需要在第一个参数提供任何数据库键 —— 因为它迭代的是当前数据库中的所有数据库键。</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> SCAN 命令</span></span><br><span class="line">127.0.0.1:6379&gt; SCAN cursor [MATCH pattern] [COUNT count] [TYPE type]</span><br><span class="line"><span class="meta">#</span><span class="bash"> SSCAN 命令</span></span><br><span class="line">127.0.0.1:6379&gt; SSCAN key cursor [MATCH pattern] [COUNT count]</span><br></pre></td></tr></table></figure>
+
+<p>SCAN 命令是一个基于游标的迭代器，也就是 SCAN 命令每次被调用之后， 都会向用户返回一个新的游标， 用户在下次迭代时需要使用这个新游标作为 SCAN 命令的游标参数， 以此来延续之前的迭代过程。</p>
+<p>当 SCAN 命令的游标参数被设置为 0 时， 服务器将开始一次新的迭代， 而当服务器向用户返回值为 0 的游标时， 表示迭代已结束。</p>
+<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><p>以下是一个 SCAN 命令的迭代过程：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">redis 127.0.0.1:6379&gt; scan 0</span><br><span class="line">1) "17"</span><br><span class="line">2)  1) "key:12"</span><br><span class="line">    2) "key:8"</span><br><span class="line">    3) "key:4"</span><br><span class="line">    4) "key:14"</span><br><span class="line">    5) "key:16"</span><br><span class="line">    6) "key:17"</span><br><span class="line">    7) "key:15"</span><br><span class="line">    8) "key:10"</span><br><span class="line">    9) "key:3"</span><br><span class="line">    10) "key:7"</span><br><span class="line">    11) "key:1"</span><br><span class="line"></span><br><span class="line">redis 127.0.0.1:6379&gt; scan 17</span><br><span class="line">1) "0"</span><br><span class="line">2) 1) "key:5"</span><br><span class="line">   2) "key:18"</span><br><span class="line">   3) "key:0"</span><br><span class="line">   4) "key:2"</span><br><span class="line">   5) "key:19"</span><br><span class="line">   6) "key:13"</span><br><span class="line">   7) "key:6"</span><br><span class="line">   8) "key:9"</span><br><span class="line">   9) "key:11"</span><br></pre></td></tr></table></figure>
+
+<p>从上面的示例可以看到， SCAN 命令的回复是一个包含两个元素的数组， 第一个数组元素是用于进行下一次迭代的新游标， 而第二个数组元素则是一个数组， 这个数组中包含了所有被迭代的元素。</p>
+<p>在第二次调用 SCAN 命令时， 命令返回了游标 0 ， 这表示迭代已经结束， 整个数据集已经被完整遍历过了。以 0 作为游标开始一次新的迭代， 一直调用 SCAN 命令， 直到命令返回游标 0 ， 我们称这个过程为一次完整遍历。</p>
+<h3 id="返回值"><a href="#返回值" class="headerlink" title="返回值"></a>返回值</h3><p>SCAN 命令、 SSCAN 命令、 HSCAN 命令和 ZSCAN 命令都返回一个包含两个元素的 multi-bulk 回复： </p>
+<ul>
+<li>回复的第一个元素是字符串表示的无符号 64 位整数（游标）</li>
+<li>回复的第二个元素是另一个 multi-bulk 回复， 这个 multi-bulk 回复包含了本次被迭代的元素。</li>
+</ul>
+<p>SCAN 命令返回的每个元素都是一个数据库键。</p>
+<p>SSCAN 命令返回的每个元素都是一个集合成员。</p>
+<p>HSCAN 命令返回的每个元素都是一个键值对，一个键值对由一个键和一个值组成。</p>
+<p>ZSCAN 命令返回的每个元素都是一个有序集合元素，一个有序集合元素由一个成员（member）和一个分值（score）组成。</p>
+<h3 id="SCAN-选项"><a href="#SCAN-选项" class="headerlink" title="SCAN 选项"></a>SCAN 选项</h3><h4 id="COUNT-选项"><a href="#COUNT-选项" class="headerlink" title="COUNT 选项"></a>COUNT 选项</h4><p>虽然增量式迭代命令不保证每次迭代所返回的元素数量， 但我们可以使用 <code>COUNT</code> 选项， 对命令的行为进行一定程度上的调整。 <code>COUNT</code> 选项的作用就是让用户告知迭代命令， 在每次迭代中应该从数据集里返回多少元素。注意， <code>COUNT</code> 选项只是对增量式迭代命令的一种提示，它只是一个参考值，因为 Redis 扫描数据是以哈希桶为单位的。</p>
+<ul>
+<li><code>COUNT</code> 参数的默认值为 <code>10</code> ；</li>
+<li>在迭代一个足够大的、由哈希表实现的数据库、集合键、哈希键或者有序集合键时， 如果用户没有使用 <code>MATCH</code> 选项， 那么命令返回的元素数量通常和 <code>COUNT</code> 选项指定的一样， 或者比 <code>COUNT</code> 选项指定的数量稍多一些。</li>
+<li>在迭代一个编码为整数集合（intset，一个只由整数值构成的小集合）、 或者编码为压缩列表（ziplist，由不同值构成的一个小哈希或者一个小有序集合）时， 增量式迭代命令通常会无视 <code>COUNT</code> 选项指定的值， 在第一次迭代就将数据集包含的<strong>所有元素</strong>都返回给用户。</li>
+</ul>
+<h4 id="MATCH-选项"><a href="#MATCH-选项" class="headerlink" title="MATCH 选项"></a>MATCH 选项</h4><p>和<code>keys</code>命令一样， 增量式迭代命令也可以通过提供一个 glob 风格的模式参数， 让命令只返回和给定模式相匹配的元素， 这一点可以通过在执行增量式迭代命令时， 通过给定 <code>MATCH &lt;pattern&gt;</code> 参数来实现。</p>
+<p>需要注意的是， 对元素的模式匹配工作是在命令从数据集中取出元素之后， 向客户端返回元素之前的这段时间内进行的， 所以如果被迭代的数据集中只有少量元素和模式相匹配， 那么迭代命令或许会在多次执行中都不返回任何元素。</p>
+<h3 id="SCAN-命令的保证"><a href="#SCAN-命令的保证" class="headerlink" title="SCAN 命令的保证"></a>SCAN 命令的保证</h3><p>SCAN 命令， 以及其他增量式迭代命令， 在进行完整遍历的情况下可以为用户带来以下保证： 从完整遍历开始直到完整遍历结束期间， 一直存在于数据集内的所有元素都会被完整遍历返回； 这意味着， 如果有一个元素， 它从遍历开始直到遍历结束期间都存在于被遍历的数据集当中， 那么 SCAN 命令总会在某次迭代中将这个元素返回给用户。</p>
+<p>然而因为增量式命令<strong>仅仅使用游标来记录迭代状态</strong>， 所以这些命令带有以下缺点：</p>
+<ul>
+<li>同一个元素可能会被返回多次。 处理重复元素的工作交由应用程序负责， 比如说， 可以考虑将迭代返回的元素仅仅用于可以安全地重复执行多次的操作上。</li>
+<li>如果一个元素是在迭代过程中被添加到数据集的， 又或者是在迭代过程中从数据集中被删除的， 那么这个元素可能会被返回， 也可能不会。</li>
+</ul>
+<p>因为迭代的所有状态都保存在游标里面， 而服务器无须为迭代保存任何状态， 所以客户端可以在中途停止一个迭代， 而无须对服务器进行任何通知。</p>
+<p>使用间断的（broken）、负数、超出范围或者其他非正常的游标来执行增量式迭代并不会造成服务器崩溃， 但可能会让命令产生未定义的行为。未定义行为指的是， 增量式命令对返回值所做的保证可能会不再为真。只有两种游标是合法的：</p>
+<ol>
+<li>在开始一个新的迭代时， 游标必须为 <code>0</code> 。</li>
+<li>增量式迭代命令在执行之后返回的， 用于延续（continue）迭代过程的游标。</li>
+</ol>
+<h3 id="SCAN-原理"><a href="#SCAN-原理" class="headerlink" title="SCAN 原理"></a>SCAN 原理</h3><p>Redis 使用了 Hash 表作为底层实现：</p>
+<p><img src="/posts/c1861d8c/redis-practice-53.png" alt></p>
+<p>SCAN 命令就是对这个一维数组进行遍历，每次返回的游标值也都是这个数组的索引。如果不考虑字典的扩容缩容，直接按数组下标挨个遍历就行了。COUNT 参数表示遍历数据的数量，该值只是起到一个大致约束的作用，所以返回的结果取决于索引下挂接链表的长度，有些槽位可能是空的，还有些槽位上挂接的链表上的元素可能会有多个。</p>
+<p>如果不考虑扩容与缩容，那么无论是从前遍历还是从后遍历都可以获取所有的key值。但是有扩容、缩容后就需要考虑遍历的<strong>准确性</strong>，是否存在重复遍历，是否存在遗漏的遍历。如果我们<strong>按照低位加法，即从前向后遍历</strong>，当扩容或者缩容时进行的rehash操作使得<strong>数据分散到不同的槽位，这就有可能发生重复遍历与遗漏遍历的情况</strong>。</p>
+<p>因此，Redis 采用了<strong>高位加法进位</strong>计算游标的方式遍历集合，Redis 的 SCAN 命令遍历流程如下图：</p>
+<p><img src="/posts/c1861d8c/redis-practice-54.png" alt></p>
+<p>观察这张图，我们发现<strong>采用高位加法进位计算游标的遍历顺序，rehash 时游标指向的槽位在遍历顺序上是相邻的</strong>。这得益于 Redis rehash 机制:</p>
+<ul>
+<li>扩容时：原来属于 <code>1xx</code>槽位的所有元素分散到 <code>01xx</code>和 <code>11xx</code>槽位中，其中前者是原数组的槽位，后者是扩容的新数组的槽位；</li>
+<li>缩容时：<code>1xx</code>槽位的所有元素由 <code>01xx</code>和11<code>xx</code>槽位中元素融合；</li>
+</ul>
+<p>假设当前即将要遍历 110 这个槽位 (橙色)，那么扩容发生时，当前槽位上所有的元素分散在槽位 0110 和 1110(深绿色)中，也就是在槽位的二进制数增加一个高位 0 或 1，其中 1110 就是通过<strong>高位加法进位</strong>算出的下个要扫描的槽位，该槽位对应了扩容的新数组的位置。这时我们可以直接从 0110 这个槽位开始往后继续遍历，0110 槽位之前的所有槽位都是已经遍历过的，这样就可以避免扩容后对已经遍历过的槽位进行重复遍历。注意，主线程在 <code>SCAN</code> 和 rehash 时只能进行一个。</p>
+<p>再考虑缩容，假设当前即将要遍历 110 这个槽位 (橙色)，那么缩容时，当前槽位所有的元素分散在槽位 10(深绿色)和 110(橙色)中，其中槽位 10 也就是去掉槽位二进制最高位，这是通过<strong>高位加法进位</strong>算出的，该槽位对应了缩容的新数组的位置。这时我们可以直接从 10 这个槽位继续往后遍历，10 槽位之前的所有槽位都是已经遍历过的，但图中 010 这个槽位上的元素已经被遍历过了。可以理解为，对于遍历来说，缩容后 10 槽位的元素是 010 和 110 上挂接的元素的融合。</p>
+<p>在使用SCAN命令时，<strong>不会漏key，但可能会得到重复的key，这主要和Redis的rehash机制有关</strong>。Redis的所有key存在一个全局的哈希表中，如果存入的key慢慢变多，在达到一定阈值后，为了避免哈希冲突导致查询效率降低，这个哈希表会进行扩容。与之对应的，key数量逐渐变少时，这个哈希表会缩容以节省空间。</p>
+<ul>
+<li>为什么不会漏 key：Redis在SCAN遍历全局哈希表时，采用<strong>高位加法进位</strong>的方式遍历哈希桶，当哈希表扩容后，通过这种算法遍历，旧哈希表中的数据映射到新哈希表，<strong>依旧会保留原来的先后顺序</strong>，这样就可以保证遍历时不会遗漏也不会重复。</li>
+<li>为什么会得到重复的key：这个情况主要发生在哈希表缩容。已经遍历过的哈希桶在缩容时，可能会映射到新哈希表没有遍历到的位置，所以继续遍历就会对同一个key返回多次。</li>
+</ul>
+<p>SCAN是遍历整个实例的所有key，另外Redis针对Hash/Set/Sorted Set也提供了HSCAN/SSCAN/ZSCAN命令，用于遍历一个key中的所有元素，建议在获取一个bigkey的所有数据时使用，避免发生阻塞风险。</p>
+<p>Hash/Set/Sorted Set元素数量比较少时，底层会采用intset/ziplist方式存储，如果以这种方式存储，在执行HSCAN/SSCAN/ZSCAN命令时，会无视count参数，直接把所有元素一次性返回。</p>
+<p>在分片集群场景下 SCAN 命令是无法跨节点扫描的，只能是一个节点一个节点的进行扫描。</p>
+<h3 id="SCAN-源码分析"><a href="#SCAN-源码分析" class="headerlink" title="SCAN 源码分析"></a>SCAN 源码分析</h3><p>Redis 对 SCAN 命令集处理的底层函数是 <code>scanGenericCommand</code> 。下面我们对该函数处理的主要过程进行说明。</p>
+<h4 id="解析参数"><a href="#解析参数" class="headerlink" title="解析参数"></a>解析参数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scanGenericCommand</span><span class="params">(client *c, robj *o, <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="built_in">cursor</span>)</span> </span>&#123;</span><br><span class="line">  ...</span><br><span class="line">    <span class="comment">// 默认是 10</span></span><br><span class="line">    <span class="keyword">long</span> count = <span class="number">10</span>;</span><br><span class="line">   </span><br><span class="line">    <span class="comment">// 输入类型检查，必须针对 集合类型或者数据库</span></span><br><span class="line">    serverAssert(o == <span class="literal">NULL</span> || o-&gt;type == OBJ_SET || o-&gt;type == OBJ_HASH ||</span><br><span class="line">                 o-&gt;type == OBJ_ZSET);</span><br><span class="line">    <span class="comment">// 设置第一个选项参数的索引位置</span></span><br><span class="line">    <span class="comment">// 0    1      2      3</span></span><br><span class="line">    <span class="comment">// SCAN OPTION &lt;op_arg&gt;         SCAN 命令的选项值从索引 2 开始</span></span><br><span class="line">    <span class="comment">// HSCAN &lt;key&gt; OPTION &lt;op_arg&gt;  而其他 *SCAN 命令的选项值从索引 3 开</span></span><br><span class="line">    i = (o == <span class="literal">NULL</span>) ? <span class="number">2</span> : <span class="number">3</span>; <span class="comment">/* Skip the key argument if needed. */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1 解析参数</span></span><br><span class="line">    <span class="comment">// 如 zscan key cursor [MATCH pattern] [COUNT count]</span></span><br><span class="line">    <span class="comment">// 如 scan cursor [MATCH pattern] [COUNT count] [TYPE type]</span></span><br><span class="line">    <span class="keyword">while</span> (i &lt; c-&gt;argc) &#123;</span><br><span class="line">        j = c-&gt;argc - i;</span><br><span class="line">        <span class="comment">// 1.1 todo COUNT count 参数，指定了扫描哈希桶的个数</span></span><br><span class="line">        <span class="keyword">if</span> (!strcasecmp(c-&gt;argv[i]-&gt;ptr, <span class="string">"count"</span>) &amp;&amp; j &gt;= <span class="number">2</span>) &#123;</span><br><span class="line">            ...</span><br><span class="line">            i += <span class="number">2</span>;</span><br><span class="line">            <span class="comment">// 1.2 MATCH pattern 参数，指定 key 的匹配模式</span></span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(c-&gt;argv[i]-&gt;ptr, <span class="string">"match"</span>) &amp;&amp; j &gt;= <span class="number">2</span>) &#123;</span><br><span class="line">            ...</span><br><span class="line">            i += <span class="number">2</span>;</span><br><span class="line">            <span class="comment">// 1.3 特定类型参数 type ，只能用于 scan DB，也就是 scan 命令，不像 zscan 这种</span></span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(c-&gt;argv[i]-&gt;ptr, <span class="string">"type"</span>) &amp;&amp; o == <span class="literal">NULL</span> &amp;&amp; j &gt;= <span class="number">2</span>) &#123;</span><br><span class="line">            ...</span><br><span class="line">            i += <span class="number">2</span>;</span><br><span class="line">            <span class="comment">// 1.4 error 参数项无法识别</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            addReplyErrorObject(c, shared.syntaxerr);</span><br><span class="line">            <span class="keyword">goto</span> cleanup;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">   ... </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果给定了对象 o ，那么它必须是一个哈希对象或者集合对象，如果 o 为 NULL 的话，函数将使用当前数据库作为迭代对象。</p>
+<h4 id="判断要扫描的是否是哈希表"><a href="#判断要扫描的是否是哈希表" class="headerlink" title="判断要扫描的是否是哈希表"></a>判断要扫描的是否是哈希表</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scanGenericCommand</span><span class="params">(client *c, robj *o, <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="built_in">cursor</span>)</span> </span>&#123;</span><br><span class="line">...</span><br><span class="line">  <span class="comment">/* Handle the case of a hash table. */</span></span><br><span class="line">    <span class="comment">// 处理哈希表的情况</span></span><br><span class="line">    ht = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="comment">// 扫描数据库</span></span><br><span class="line">    <span class="keyword">if</span> (o == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        ht = c-&gt;db-&gt;dict;</span><br><span class="line">        <span class="comment">// set 数据类型，使用哈希表编码</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (o-&gt;type == OBJ_SET &amp;&amp; o-&gt;encoding == OBJ_ENCODING_HT) &#123;</span><br><span class="line">        ht = o-&gt;ptr;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// hash 数据类型，使用哈希表编码</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (o-&gt;type == OBJ_HASH &amp;&amp; o-&gt;encoding == OBJ_ENCODING_HT) &#123;</span><br><span class="line">        ht = o-&gt;ptr;</span><br><span class="line">        count *= <span class="number">2</span>; <span class="comment">/* We return key / value for this type. */</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// zset 数据类型，非压缩编码</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (o-&gt;type == OBJ_ZSET &amp;&amp; o-&gt;encoding == OBJ_ENCODING_SKIPLIST) &#123;</span><br><span class="line">        zset *zs = o-&gt;ptr;</span><br><span class="line">        ht = zs-&gt;dict;</span><br><span class="line">        count *= <span class="number">2</span>; <span class="comment">/* We return key / value for this type. */</span></span><br><span class="line">    &#125;  </span><br><span class="line"> ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>判断要扫描的集合，是否使用内存紧凑型结构。如果对象的底层实现为 ziplist 、intset 而不是哈希表，那么这些对象通常都只包含了少量元素， 因此，为了避免服务器记录迭代状态，我们将 ziplist 或者 intset 里面的所有元素都一次返回给调用者，无视 count 参数，并向调用者返回游标 cursor 0 。</p>
+<h4 id="扫描哈希表"><a href="#扫描哈希表" class="headerlink" title="扫描哈希表"></a>扫描哈希表</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scanGenericCommand</span><span class="params">(client *c, robj *o, <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="built_in">cursor</span>)</span> </span>&#123;</span><br><span class="line">...</span><br><span class="line"> <span class="comment">// 3.1 哈希表编码情况</span></span><br><span class="line">    <span class="keyword">if</span> (ht) &#123;</span><br><span class="line">        <span class="keyword">void</span> *privdata[<span class="number">2</span>];</span><br><span class="line">        <span class="comment">/* </span></span><br><span class="line"><span class="comment">         * 我们将最大迭代次数设置为指定 COUNT 的 10 倍，因此如果哈希表处于病态状态（非常稀疏），我们可以避免以不返回或返回很少元素为代价而阻塞太多时间。</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">long</span> maxiterations = count * <span class="number">10</span>;</span><br><span class="line">        privdata[<span class="number">0</span>] = keys;</span><br><span class="line">        privdata[<span class="number">1</span>] = o;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 扫描约 count 数量的数据</span></span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            <span class="comment">// 返回下次扫描的游标</span></span><br><span class="line">            <span class="built_in">cursor</span> = dictScan(ht, <span class="built_in">cursor</span>, scanCallback, <span class="literal">NULL</span>, privdata);</span><br><span class="line">                <span class="comment">// 游标不为 0</span></span><br><span class="line">        &#125; <span class="keyword">while</span> (<span class="built_in">cursor</span> &amp;&amp; </span><br><span class="line">                 <span class="comment">// 递减迭代次数</span></span><br><span class="line">                 maxiterations-- &amp;&amp; </span><br><span class="line">      <span class="comment">// 扫描数据量达到指定的 count (一般都会大于 count ，因此扫描是以一个桶为单位）。一个桶不够，会扫描多个桶来凑count 大小</span></span><br><span class="line">                 listLength(keys) &lt; (<span class="keyword">unsigned</span> <span class="keyword">long</span>) count); </span><br><span class="line">...  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看出，如果 SCAN 操作的数据结构是哈希表，那么就会采用<strong>高位加法进位的方式遍历哈希表</strong>，具体实现在 <code>dictScan</code>函数中。从以上代码可以看出：</p>
+<ul>
+<li>COUNT 参数项起到大致约束作用，告知 Redis 大约扫描 count 个数据；</li>
+<li>这里设置了最大扫描哈希桶（槽位）的数量为 10*count ，目的是防止遇到过多空的哈希桶，一直达不到 count 的条件阻塞主线程；</li>
+</ul>
+<h5 id="高位加法进位遍历"><a href="#高位加法进位遍历" class="headerlink" title="高位加法进位遍历"></a>高位加法进位遍历</h5><p>由于 Redis 使用的是渐进式 rehash 机制，因此当 SCAN 命令执行时处于 rehash 阶段，就需要同时扫描新表和旧表，然后将结果返回客户端。</p>
+<h6 id="未处于-rehash-过程"><a href="#未处于-rehash-过程" class="headerlink" title="未处于 rehash 过程"></a>未处于 rehash 过程</h6><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="title">dictScan</span><span class="params">(dict *d,</span></span></span><br><span class="line"><span class="function"><span class="params">                       <span class="keyword">unsigned</span> <span class="keyword">long</span> v, <span class="comment">// 游标</span></span></span></span><br><span class="line"><span class="function"><span class="params">                       dictScanFunction *fn,</span></span></span><br><span class="line"><span class="function"><span class="params">                       dictScanBucketFunction *bucketfn,</span></span></span><br><span class="line"><span class="function"><span class="params">                       <span class="keyword">void</span> *privdata)</span> </span>&#123;</span><br><span class="line">    dictht *t0, *t1;</span><br><span class="line">    <span class="keyword">const</span> dictEntry *de, *next;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> m0, m1;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1 跳过空字典</span></span><br><span class="line">    <span class="keyword">if</span> (dictSize(d) == <span class="number">0</span>) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2 没有处于迁移过程，迭代只有一个哈希表的字典</span></span><br><span class="line">    <span class="keyword">if</span> (!dictIsRehashing(d)) &#123;</span><br><span class="line">        <span class="comment">// 指向哈希表</span></span><br><span class="line">        t0 = &amp;(d-&gt;ht[<span class="number">0</span>]);</span><br><span class="line">        <span class="comment">// 记录哈希表的 mask</span></span><br><span class="line">        m0 = t0-&gt;sizemask;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Emit entries at cursor */</span></span><br><span class="line">        <span class="keyword">if</span> (bucketfn) bucketfn(privdata, &amp;t0-&gt;table[v &amp; m0]);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 指向游标 v 对应的哈希桶</span></span><br><span class="line">        de = t0-&gt;table[v &amp; m0];</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果游标 v 对应的哈希桶非空，则遍历游标 v 对应桶中的所有节点</span></span><br><span class="line">        <span class="keyword">while</span> (de) &#123;</span><br><span class="line">            next = de-&gt;next;</span><br><span class="line">            fn(privdata, de);</span><br><span class="line">            de = next;</span><br><span class="line">        &#125;</span><br><span class="line">      </span><br><span class="line">        v |= ~m0;</span><br><span class="line">        <span class="comment">// 1）倒置游标 v</span></span><br><span class="line">        v = rev(v);</span><br><span class="line">        <span class="comment">// 2）加 1</span></span><br><span class="line">        v++;</span><br><span class="line">        <span class="comment">// 3）倒置加1后的游标 v</span></span><br><span class="line">        v = rev(v);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3 正在迁移中，需要迭代两个哈希表</span></span><br><span class="line">     &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      ...</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">   <span class="comment">// 返回的游标是使用高位进位加法实现的</span></span><br><span class="line">    <span class="keyword">return</span> v;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>根据游标定位到哈希桶后，处理完后会紧接着计算下次使用的游标，而计算方法就是 <strong>高位加法进位</strong>。</p>
+<p>下面举例进行说明：</p>
+<p>假设当前哈希表有 4 个桶，也就是默认桶数量，使用 SCAN 命令如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SCAN 0 MATCH * COUNT 1</span><br></pre></td></tr></table></figure>
+
+<p>按照正规的操作步骤，假设得到一个完整的桶迭代顺序如下：</p>
+<blockquote>
+<p>0-&gt;2-&gt;1-&gt;3 ，转换成二进制为：00-&gt;10-&gt;01-&gt;11</p>
+</blockquote>
+<p>我们发现每次这个序列变化是，<strong>将游标倒置 -&gt; 加 1 -&gt; 再倒置</strong>。</p>
+<p>要知道，普通二进制的加法，是从右往左相加、进位。而这个序列是从左往右相加、进位的。代码体现如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1）倒置游标 v</span></span><br><span class="line">v = rev(v);</span><br><span class="line"><span class="comment">// 2）加 1</span></span><br><span class="line">v++;</span><br><span class="line"><span class="comment">// 3）倒置加1后的游标 v</span></span><br><span class="line">v = rev(v);</span><br></pre></td></tr></table></figure>
+
+
+
+<h6 id="处于-rehash-过程"><a href="#处于-rehash-过程" class="headerlink" title="处于 rehash 过程"></a>处于 rehash 过程</h6><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="title">dictScan</span><span class="params">(dict *d,</span></span></span><br><span class="line"><span class="function"><span class="params">                       <span class="keyword">unsigned</span> <span class="keyword">long</span> v, <span class="comment">// 游标</span></span></span></span><br><span class="line"><span class="function"><span class="params">                       dictScanFunction *fn,</span></span></span><br><span class="line"><span class="function"><span class="params">                       dictScanBucketFunction *bucketfn,</span></span></span><br><span class="line"><span class="function"><span class="params">                       <span class="keyword">void</span> *privdata)</span> </span>&#123;</span><br><span class="line">    dictht *t0, *t1;</span><br><span class="line">    <span class="keyword">const</span> dictEntry *de, *next;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> m0, m1;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1 跳过空字典</span></span><br><span class="line">    <span class="keyword">if</span> (dictSize(d) == <span class="number">0</span>) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">     ...</span><br><span class="line">        <span class="comment">// 3 正在迁移中，需要迭代两个哈希表</span></span><br><span class="line">     &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">     </span><br><span class="line">        <span class="comment">// 3.1 指向两个哈希表，即 0 号和 1 号哈希表</span></span><br><span class="line">        t0 = &amp;d-&gt;ht[<span class="number">0</span>];</span><br><span class="line">        t1 = &amp;d-&gt;ht[<span class="number">1</span>];</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3.1 确保 t0 比 t1 要小，即把字典中的两个哈希表较小的赋值给 t0</span></span><br><span class="line">        <span class="comment">// todo 这个是必须的，因为可能是扩容，也可能缩容。遍历顺序是先小表，再到表。</span></span><br><span class="line">        <span class="comment">// 扩容：小的是原哈希表</span></span><br><span class="line">        <span class="comment">// 缩容：小的是新哈希表</span></span><br><span class="line">        <span class="keyword">if</span> (t0-&gt;<span class="built_in">size</span> &gt; t1-&gt;<span class="built_in">size</span>) &#123;</span><br><span class="line">            t0 = &amp;d-&gt;ht[<span class="number">1</span>];</span><br><span class="line">            t1 = &amp;d-&gt;ht[<span class="number">0</span>];</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3.3 记录两个哈希表的掩码</span></span><br><span class="line">        m0 = t0-&gt;sizemask;</span><br><span class="line">        m1 = t1-&gt;sizemask;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Emit entries at cursor */</span></span><br><span class="line">        <span class="keyword">if</span> (bucketfn) bucketfn(privdata, &amp;t0-&gt;table[v &amp; m0]);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 注意，rehash 的单位是哈希桶，因此数据要么在 3.3 中取到，要在 3.4 中取到 */</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3.3 迭代 t0哈希表</span></span><br><span class="line">        <span class="comment">// 根据游标 v 定位到桶，并迭代桶中的所有节点</span></span><br><span class="line">        de = t0-&gt;table[v &amp; m0];</span><br><span class="line">        <span class="keyword">while</span> (de) &#123;</span><br><span class="line">            next = de-&gt;next;</span><br><span class="line">            fn(privdata, de);</span><br><span class="line">            de = next;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3.4 迭代 t1 哈希表</span></span><br><span class="line">        <span class="keyword">do</span> &#123;</span><br><span class="line">            <span class="comment">/* Emit entries at cursor */</span></span><br><span class="line">            <span class="keyword">if</span> (bucketfn) bucketfn(privdata, &amp;t1-&gt;table[v &amp; m1]);</span><br><span class="line">            <span class="comment">// 根据游标 v 定位到桶，并迭代桶中的所有节点</span></span><br><span class="line">            de = t1-&gt;table[v &amp; m1];</span><br><span class="line">            <span class="keyword">while</span> (de) &#123;</span><br><span class="line">                next = de-&gt;next;</span><br><span class="line">                fn(privdata, de);</span><br><span class="line">                de = next;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* Increment the reverse cursor not covered by the smaller mask.*/</span></span><br><span class="line">            v |= ~m1;</span><br><span class="line">            v = rev(v);</span><br><span class="line">            v++;</span><br><span class="line">            v = rev(v);</span><br><span class="line"></span><br><span class="line">          <span class="comment">// 当掩码差异覆盖的位不为零时继续</span></span><br><span class="line">            <span class="comment">// ^ 按位异或</span></span><br><span class="line">        &#125; <span class="keyword">while</span> (v &amp; (m0 ^ m1));</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="comment">// 返回的游标是使用高位进位加法实现的</span></span><br><span class="line">    <span class="keyword">return</span> v;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>SCAN 命令处于 rehash 过程需要同时扫描新表和旧表，虽然扩容和缩容的情况使用的是同一套流程，但是意义上是不同的。下面对关键流程进行总结：</p>
+<ol>
+<li><p>根据字典中的两个哈希表的大小排序，将小的哈希表赋值给 t0，将大的哈希表赋值给 t1；</p>
+</li>
+<li><p>分别记录 t0、t1 的掩码值，用于后续根据游标计算桶的索引；</p>
+</li>
+<li><p>根据索引先后迭代 t0表、t1表；</p>
+</li>
+</ol>
+<p>把 SCAN 扫描图再拿过来：</p>
+<p><img src="/posts/c1861d8c/redis-practice-54.png" alt></p>
+<p><strong>对于扩容来说，t0 是原数组，t1 是新数组：</strong></p>
+<p>在读取游标 v 110 对应的槽位前，哈希表扩容了，此时原数组 t0 数组的 110 槽位的数据可能还在，也可能已经迁移到了新数组 t1 1110 槽位中。此时，SCAN 顺序是先 t0 的 110 槽位，再 t1 的 1110 槽位。可以看到，通过<strong>高位加法进位</strong>遍历，依旧会保留原来的先后顺序，这种情况可以保证遍历时不会遗漏也不会重复。</p>
+<p><strong>对于缩容来说，t0 是新数组，t1 是原数组：</strong></p>
+<p>在读取游标 v 110 对应的槽位前，哈希表缩容了，此时原数组 t1 数组的 110 槽位的数据可能还在，也可能已经迁移到了新数组 t0 10 槽位中。此时，SCAN 顺序是先 t0 的 10 槽位，再 t1 的 110 槽位。可以看到，通过<strong>高位加法进位</strong>遍历，虽然依旧会保留原来的先后顺序，但是出现了<strong>“往回读一个哈希桶”</strong>，要知道已经遍历过的哈希桶在缩容时，可能会映射到新哈希表没有遍历到的位置，所以继续遍历就会对同一个key返回多次。按照图中的就是，010 槽位的元素会被重复遍历，但 010 之前的都不会。</p>
+<h4 id="扫描内存紧凑型结构"><a href="#扫描内存紧凑型结构" class="headerlink" title="扫描内存紧凑型结构"></a>扫描内存紧凑型结构</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scanGenericCommand</span><span class="params">(client *c, robj *o, <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="built_in">cursor</span>)</span> </span>&#123;</span><br><span class="line">...</span><br><span class="line"> <span class="comment">// 3.2 压缩模式，一次性返回所有数据，忽略 count</span></span><br><span class="line">    <span class="comment">// 3.2.1 整数编码</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (o-&gt;type == OBJ_SET) &#123;</span><br><span class="line">        <span class="keyword">int</span> pos = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">int64_t</span> ll;</span><br><span class="line">        <span class="keyword">while</span> (intsetGet(o-&gt;ptr, pos++, &amp;ll))</span><br><span class="line">            listAddNodeTail(keys, createStringObjectFromLongLong(ll));</span><br><span class="line">        <span class="comment">// 游标返回 0</span></span><br><span class="line">        <span class="built_in">cursor</span> = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3.2.2 ziplist b编码</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (o-&gt;type == OBJ_HASH || o-&gt;type == OBJ_ZSET) &#123;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">char</span> *p = ziplistIndex(o-&gt;ptr, <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">char</span> *vstr;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">int</span> vlen;</span><br><span class="line">        <span class="keyword">long</span> <span class="keyword">long</span> vll;</span><br><span class="line">        <span class="keyword">while</span> (p) &#123;</span><br><span class="line">            ziplistGet(p, &amp;vstr, &amp;vlen, &amp;vll);</span><br><span class="line">            listAddNodeTail(keys,</span><br><span class="line">                            (vstr != <span class="literal">NULL</span>) ? createStringObject((<span class="keyword">char</span> *) vstr, vlen) :</span><br><span class="line">                            createStringObjectFromLongLong(vll));</span><br><span class="line">            p = ziplistNext(o-&gt;ptr, p);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 游标返回 0</span></span><br><span class="line">        <span class="built_in">cursor</span> = <span class="number">0</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        serverPanic(<span class="string">"Not handled encoding in SCAN."</span>);</span><br><span class="line">    &#125;</span><br><span class="line">...  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，如果对象的底层实现为 ziplist 、intset 而不是哈希表，那么这些对象通常都只包含了少量元素， 因此会将 ziplist 或者 intset 里面的所有元素都一次返回给调用者，无视 count 参数。</p>
+<h4 id="匹配过滤"><a href="#匹配过滤" class="headerlink" title="匹配过滤"></a>匹配过滤</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scanGenericCommand</span><span class="params">(client *c, robj *o, <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="built_in">cursor</span>)</span> </span>&#123;</span><br><span class="line">...</span><br><span class="line">  <span class="comment">// 4 如果指定了 key 的匹配模式，那么对扫描的结果进行过滤</span></span><br><span class="line">    node = listFirst(keys);</span><br><span class="line">    <span class="keyword">while</span> (node) &#123;</span><br><span class="line">        robj *kobj = listNodeValue(node);</span><br><span class="line">        nextnode = listNextNode(node);</span><br><span class="line">        <span class="keyword">int</span> filter = <span class="number">0</span>;</span><br><span class="line">        <span class="comment">/* Filter element if it does not match the pattern. */</span></span><br><span class="line">        <span class="keyword">if</span> (use_pattern) &#123;</span><br><span class="line">            ...</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">/* Filter an element if it isn't the type we want. */</span></span><br><span class="line">        <span class="keyword">if</span> (!filter &amp;&amp; o == <span class="literal">NULL</span> &amp;&amp; <span class="keyword">typename</span>) &#123;</span><br><span class="line">            ...</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">/* Filter element if it is an expired key. */</span></span><br><span class="line">        <span class="keyword">if</span> (!filter &amp;&amp; o == <span class="literal">NULL</span> &amp;&amp; expireIfNeeded(c-&gt;db, kobj)) filter = <span class="number">1</span>;</span><br><span class="line">        <span class="comment">/* Remove the element and its associated value if needed. */</span></span><br><span class="line">        <span class="keyword">if</span> (filter) &#123;</span><br><span class="line">            decrRefCount(kobj);</span><br><span class="line">            listDelNode(keys, node);</span><br><span class="line">        &#125;</span><br><span class="line">        ...</span><br><span class="line">        node = nextnode;</span><br><span class="line">    &#125;</span><br><span class="line">...  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要注意的是，对元素的模式匹配工作是在命令从数据集中取出元素之后， 向客户端返回元素之前的这段时间内进行的。</p>
+<h4 id="返回扫描结果"><a href="#返回扫描结果" class="headerlink" title="返回扫描结果"></a>返回扫描结果</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"> <span class="function"><span class="keyword">void</span> <span class="title">scanGenericCommand</span><span class="params">(client *c, robj *o, <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="built_in">cursor</span>)</span> </span>&#123;</span><br><span class="line">...</span><br><span class="line">    <span class="comment">// 5 返回给客户端</span></span><br><span class="line">    <span class="comment">// 返回数据项是 2</span></span><br><span class="line">    addReplyArrayLen(c, <span class="number">2</span>);</span><br><span class="line">    <span class="comment">// 第一项是 cursor</span></span><br><span class="line">    addReplyBulkLongLong(c, <span class="built_in">cursor</span>);</span><br><span class="line">    <span class="comment">// 第二项是值或是键值值，值：set和zset ，键值对：hash</span></span><br><span class="line">    addReplyArrayLen(c, listLength(keys));</span><br><span class="line">    <span class="keyword">while</span> ((node = listFirst(keys)) != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        robj *kobj = listNodeValue(node);</span><br><span class="line">        addReplyBulk(c, kobj);</span><br><span class="line">        decrRefCount(kobj);</span><br><span class="line">        listDelNode(keys, node);</span><br><span class="line">    &#125;</span><br><span class="line">...  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/c1861d8c/" title="Redis原理 - SCAN 原理" target="_blank" rel="external">https://gentryhuang.com/posts/c1861d8c/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    
+    <li class="next">
+      <a href="/posts/4eb3381c/" title="分布式锁"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2022 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
