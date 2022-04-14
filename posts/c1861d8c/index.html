@@ -25,15 +25,15 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述SCAN 命令在 Redis 早期版本中就支持，主要是为了解决 Redis 去批量获取 key 时造成的阻塞情况。如 KEYS 命令是获取所有命令，这是一种阻塞操作，这里就可以使用 SCAN 命令来尽可能避免 Redis 的阻塞。 SCAN 命令的复杂度虽然是 O(N)，但它是分次进行的，不会阻塞线程。 SCAN 命令集SCAN 命令及其相关的 SSCAN 命令、 HSCAN 命令和 ZSCA">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/c1861d8c/redis-practice-53.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/c1861d8c/redis-practice-54.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/data_structure/redis-practice-scan-1.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/data_structure/redis-practice-scan-2.png">
 <meta property="og:image" content="https://gentryhuang.com/posts/c1861d8c/redis-practice-54.png">
 <meta property="article:published_time" content="2022-03-01T14:14:47.000Z">
-<meta property="article:modified_time" content="2022-03-02T01:51:11.272Z">
+<meta property="article:modified_time" content="2022-04-14T08:57:00.197Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="SCAN">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/c1861d8c/redis-practice-53.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/data_structure/redis-practice-scan-1.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/c1861d8c/index.html">
   
@@ -501,11 +501,11 @@
 <li>增量式迭代命令在执行之后返回的， 用于延续（continue）迭代过程的游标。</li>
 </ol>
 <h3 id="SCAN-原理"><a href="#SCAN-原理" class="headerlink" title="SCAN 原理"></a>SCAN 原理</h3><p>Redis 使用了 Hash 表作为底层实现：</p>
-<p><img src="/posts/c1861d8c/redis-practice-53.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/data_structure/redis-practice-scan-1.png" alt></p>
 <p>SCAN 命令就是对这个一维数组进行遍历，每次返回的游标值也都是这个数组的索引。如果不考虑字典的扩容缩容，直接按数组下标挨个遍历就行了。COUNT 参数表示遍历数据的数量，该值只是起到一个大致约束的作用，所以返回的结果取决于索引下挂接链表的长度，有些槽位可能是空的，还有些槽位上挂接的链表上的元素可能会有多个。</p>
 <p>如果不考虑扩容与缩容，那么无论是从前遍历还是从后遍历都可以获取所有的key值。但是有扩容、缩容后就需要考虑遍历的<strong>准确性</strong>，是否存在重复遍历，是否存在遗漏的遍历。如果我们<strong>按照低位加法，即从前向后遍历</strong>，当扩容或者缩容时进行的rehash操作使得<strong>数据分散到不同的槽位，这就有可能发生重复遍历与遗漏遍历的情况</strong>。</p>
 <p>因此，Redis 采用了<strong>高位加法进位</strong>计算游标的方式遍历集合，Redis 的 SCAN 命令遍历流程如下图：</p>
-<p><img src="/posts/c1861d8c/redis-practice-54.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/redis/data_structure/redis-practice-scan-2.png" alt></p>
 <p>观察这张图，我们发现<strong>采用高位加法进位计算游标的遍历顺序，rehash 时游标指向的槽位在遍历顺序上是相邻的</strong>。这得益于 Redis rehash 机制:</p>
 <ul>
 <li>扩容时：原来属于 <code>1xx</code>槽位的所有元素分散到 <code>01xx</code>和 <code>11xx</code>槽位中，其中前者是原数组的槽位，后者是扩容的新数组的槽位；</li>

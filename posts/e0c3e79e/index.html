@@ -25,17 +25,17 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="Double Write 介绍为了保证数据写入的可靠性，InnoDB 引入了 Double Write 特性。 具体来说，在刷脏页时先将脏页写入 double write 段中进行备份，写入成功后再将脏页写入数据文件中，保证页面的完整性。 partial writeInnoDB的数据页默认是 16K ，而文件系统的数据页是 4K，磁盘IO操作是按页为单位进行读写的。这就可能出现数据库对一个 16K">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/e0c3e79e/mysql-db-write-process.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/e0c3e79e/mysql-db-write-param.jpg">
-<meta property="og:image" content="https://gentryhuang.com/posts/e0c3e79e/mysql-db-write-use.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/sql/mysql/mysql-db-write-process.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/sql/mysql/mysql-db-write-param.jpg">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/sql/mysql/mysql-db-write-use.jpg">
 <meta property="article:published_time" content="2022-03-09T08:25:44.000Z">
-<meta property="article:modified_time" content="2022-03-09T08:32:53.723Z">
+<meta property="article:modified_time" content="2022-04-14T08:54:16.950Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
 <meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/e0c3e79e/mysql-db-write-process.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/sql/mysql/mysql-db-write-process.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/e0c3e79e/index.html">
   
@@ -452,18 +452,18 @@
 <p>Double Write 机制就是为了解决这个问题的。当将脏数据刷新到磁盘时，会先将脏数据复制到内存中的 <code>double write buffer</code>，之后将该内存数据分 2 次，每次写入 1M 到共享表空间进行持久化备份。写入成功后，再将 dirty page 从 Buffer Pool 刷新到数据文件。</p>
 <h3 id="Double-Write-恢复流程"><a href="#Double-Write-恢复流程" class="headerlink" title="Double Write 恢复流程"></a>Double Write 恢复流程</h3><p>dirty page 刷盘过程中，如果发生了系统宕机或断电，16K 的数据只有 4K 或者 8K 被写到磁盘上，InnoDB 崩溃恢复时发现 page 损坏（比较页面的checksum），直接从共享表空间的 double write 中找到该页的一个最近的副本，复制到数据文件，再应用 redo log 就完成了恢复过程。因为有副本所以也不担心表空间中数据页是否损坏。</p>
 <p>如果在将 dirty page 从内存的 <code>double write buffer</code> 写到共享表空间过程中发生了宕机情况，此时数据文件中的 page 还是干净的，奔溃恢复时 InnoDB 可以利用 redo log 来进行数据的恢复。</p>
-<h3 id="Double-Write-流程"><a href="#Double-Write-流程" class="headerlink" title="Double Write 流程"></a>Double Write 流程</h3><p><img src="/posts/e0c3e79e/mysql-db-write-process.png" alt></p>
+<h3 id="Double-Write-流程"><a href="#Double-Write-流程" class="headerlink" title="Double Write 流程"></a>Double Write 流程</h3><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/sql/mysql/mysql-db-write-process.png" alt></p>
 <p>从 Double Write 流程图中可以看出，在奔溃恢复的时候，还使用到了 redo log 。这是因为有些 dirty page 的改动并没有写入到共享表空间的 double write 中，这部分数据需要使用 redo log 来恢复。</p>
 <h3 id="附加"><a href="#附加" class="headerlink" title="附加"></a>附加</h3><p>一般来说，开启 Double Write 的性能会降低5%~25%的样子，但还是建议使用 Double Write 来保证数据写入的可靠性。</p>
 <ul>
 <li><p>是否开启 Double Write</p>
-<p><img src="/posts/e0c3e79e/mysql-db-write-param.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/sql/mysql/mysql-db-write-param.jpg" alt></p>
 <p>innodb_doublewrite 参数控制是否打开 Double Write，默认开启状态。</p>
 </li>
 </ul>
 <ul>
 <li><p>Double Write 使用情况</p>
-<p><img src="/posts/e0c3e79e/mysql-db-write-use.jpg" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/sql/mysql/mysql-db-write-use.jpg" alt></p>
 </li>
 </ul>
 <p>上图显示，从 Buffer Pool 一共将 22842199 个 page 复制到 <code>double write buffer</code> 中，一共刷盘 1959018 次到系统表空间。相当于每次刷盘了 22842199/1959018 ~= 11.67 个数据页。从这里也能看出，开启 Double Write 不会对效率产生很大影响。</p>
