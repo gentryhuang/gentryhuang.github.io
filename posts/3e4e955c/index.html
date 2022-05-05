@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>并发 - ArrayBlockingQueue | gentryhuang的博客</title>
+  <meta name="description" content="前言ArrayBlockingQueue 是 Java 并发包下一个以数组实现的阻塞队列，它是线程安全的。 数据模型ArrayBlockingQueue 是使用一个固定长度的数组来存储元素的，并使用一系列属性来描述这个数组。虽然这个数组是固定大小，但是使用了复用数组的设计思想，它的空间可以循环写入。循环写入不是无条件地覆盖式写入，而是采用等待可用空间地方式进行写入。从工作原理来说，它有以下特点：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="并发 - ArrayBlockingQueue">
+<meta property="og:url" content="https://gentryhuang.com/posts/3e4e955c/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="前言ArrayBlockingQueue 是 Java 并发包下一个以数组实现的阻塞队列，它是线程安全的。 数据模型ArrayBlockingQueue 是使用一个固定长度的数组来存储元素的，并使用一系列属性来描述这个数组。虽然这个数组是固定大小，但是使用了复用数组的设计思想，它的空间可以循环写入。循环写入不是无条件地覆盖式写入，而是采用等待可用空间地方式进行写入。从工作原理来说，它有以下特点：">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/3e4e955c/array-blocking-queue-1.jpg">
+<meta property="og:image" content="https://gentryhuang.com/posts/3e4e955c/array-blocking-queue-2.jpg">
+<meta property="article:published_time" content="2022-01-22T02:03:10.000Z">
+<meta property="article:modified_time" content="2022-05-05T08:25:49.182Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="JUC">
+<meta property="article:tag" content="Queue">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/3e4e955c/array-blocking-queue-1.jpg">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/3e4e955c/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">16</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.5px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.75px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.13px;">I/O</a> <a href="/tags/JMM/" style="font-size: 13px;">JMM</a> <a href="/tags/JUC/" style="font-size: 13.63px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.25px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.13px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.25px;">Protocol</a> <a href="/tags/Queue/" style="font-size: 13px;">Queue</a> <a href="/tags/RPC/" style="font-size: 13.63px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13.38px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.13px;">Redis数据结构</a> <a href="/tags/SCAN/" style="font-size: 13px;">SCAN</a> <a href="/tags/SPI/" style="font-size: 13.25px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.25px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.13px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13.13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" style="font-size: 13px;">分布式锁</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.88px;">设计模式</a> <a href="/tags/%E9%99%90%E6%B5%81/" style="font-size: 13px;">限流</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/3c450cc6/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/3c450cc6/" class="title">MySQL - 乐观锁和悲观锁</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-04-10T02:46:59.000Z" itemprop="datePublished">2022-04-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/e0c3e79e/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/e0c3e79e/" class="title">MySQL - Double Write</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-03-09T08:25:44.000Z" itemprop="datePublished">2022-03-09</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/c1861d8c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/c1861d8c/" class="title">Redis原理 - SCAN 原理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-03-01T14:14:47.000Z" itemprop="datePublished">2022-03-01</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/3e4e955c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/3e4e955c/" class="title">并发 - ArrayBlockingQueue</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-01-22T02:03:10.000Z" itemprop="datePublished">2022-01-22</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/4eb3381c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/4eb3381c/" class="title">分布式锁</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-01-08T02:10:15.000Z" itemprop="datePublished">2022-01-08</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#数据模型"><span class="toc-number">2.</span> <span class="toc-text">数据模型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码分析"><span class="toc-number">3.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#数据结构"><span class="toc-number">3.1.</span> <span class="toc-text">数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造函数"><span class="toc-number">3.2.</span> <span class="toc-text">构造函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#添加元素"><span class="toc-number">3.3.</span> <span class="toc-text">添加元素</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#add"><span class="toc-number">3.3.1.</span> <span class="toc-text">add()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#offer"><span class="toc-number">3.3.2.</span> <span class="toc-text">offer()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#put"><span class="toc-number">3.3.3.</span> <span class="toc-text">put()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#enqueue"><span class="toc-number">3.3.4.</span> <span class="toc-text">enqueue()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#获取元素"><span class="toc-number">3.4.</span> <span class="toc-text">获取元素</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#remove"><span class="toc-number">3.4.1.</span> <span class="toc-text">remove()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#poll"><span class="toc-number">3.4.2.</span> <span class="toc-text">poll()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#take"><span class="toc-number">3.4.3.</span> <span class="toc-text">take()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#peek"><span class="toc-number">3.4.4.</span> <span class="toc-text">peek()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#dequeue"><span class="toc-number">3.4.5.</span> <span class="toc-text">dequeue()</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用场景"><span class="toc-number">4.</span> <span class="toc-text">使用场景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">5.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-concurrent/ArrayBlockingQueue" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      并发 - ArrayBlockingQueue
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/3e4e955c/" class="article-date">
+	  <time datetime="2022-01-22T02:03:10.000Z" itemprop="datePublished">2022-01-22</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/JDK/">JDK</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/JUC/" rel="tag">JUC</a>, <a class="article-tag-link" href="/tags/Queue/" rel="tag">Queue</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/3e4e955c/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.3k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 13(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>ArrayBlockingQueue 是 Java 并发包下一个以<strong>数组</strong>实现的阻塞队列，它是<strong>线程安全</strong>的。</p>
+<h2 id="数据模型"><a href="#数据模型" class="headerlink" title="数据模型"></a>数据模型</h2><p>ArrayBlockingQueue 是使用一个固定长度的数组来存储元素的，并使用一系列属性来描述这个数组。虽然这个数组是固定大小，但是使用了<strong>复用数组</strong>的设计思想，它的空间可以循环写入。循环写入不是无条件地覆盖式写入，而是采用等待可用空间地方式进行写入。从工作原理来说，它有以下特点：</p>
+<ul>
+<li>循环数组有一个写指针 putIndex，表示在数组 items 中的要写入的位置。如果写指针 putIndex 已经指向了数组末尾，那么此时再写入元素，写指针 putIndex 就会重新指向数组的头部，下次添加元素就可以复用数组了。</li>
+<li>循环数组同时有一个读指针 takeIndex，表示在数组 items 中要读取的位置。如果读指针 takeIndex 指向了数组末尾，那么也会把读指针 takeIndex 重新指向数组头部，下次从数组头部开始继续读取元素。</li>
+</ul>
+<p>下图展示了循环数组的写指针工作机制，读指针也是类似的。</p>
+<p><img src="/posts/3e4e955c/array-blocking-queue-1.jpg" alt></p>
+<p>循环写入非覆盖式写入，具体体现在下图，当写指针 putIndex 追上读指针 takeIndex（也就是队列满了） ，那么就必须阻塞等待读指针向前推进，只有读指针 takeIndex 向前推进了才能继续写。</p>
+<p><img src="/posts/3e4e955c/array-blocking-queue-2.jpg" alt></p>
+<p>同理，当读指针 takeIndex 追上写指针 putIndex（也就是队列空了），那么也必须阻塞等待写指针向前推进，保证队列不为空才能继续读取。</p>
+<h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><h3 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ArrayBlockingQueue</span>&lt;<span class="title">E</span>&gt; <span class="keyword">extends</span> <span class="title">AbstractQueue</span>&lt;<span class="title">E</span>&gt;</span></span><br><span class="line"><span class="class">        <span class="keyword">implements</span> <span class="title">BlockingQueue</span>&lt;<span class="title">E</span>&gt;, <span class="title">java</span>.<span class="title">io</span>.<span class="title">Serializable</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 存放元素的数组</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">final</span> Object[] items;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 取元素时的下标；</span></span><br><span class="line"><span class="comment">     * 每从队列中取出一个元素，takeIndex 递增 1，到数组尾部会重置为 0</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">int</span> takeIndex;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 添加元素的下标</span></span><br><span class="line"><span class="comment">     * 每向队列添加一个元素，putIndex 递增 1，满了会重置为 0</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">int</span> putIndex;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 队列的元素个数</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">int</span> count;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 并发控制使用经典双条件算法。 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 可重入独占锁</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">final</span> ReentrantLock lock;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 当队列为空时，会调用 notEmpty 的 wait 方法，让当前线程等待</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Condition notEmpty;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 当队列满了，会调用 notFull 的 wait 方法，让当前线程等待</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Condition notFull;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/*  并发控制使用经典双条件算法。 */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>循环数组本身被设计为一个 <strong>Object 类型的素组 items</strong> ，然后 ArrayBlockingQueue 设计了以下的变量来描述循环数组的状态：</p>
+<ul>
+<li><strong>count:</strong> 记录队列中元素的个数。</li>
+<li><strong>putIndex:</strong> 记录循环数组的写指针，即循环数组接下来写数据时应该写入的位置。</li>
+<li><strong>takeIndex:</strong> 记录循环数组的读指针，即循环数组接下来读数据时应该读取的位置。</li>
+<li><strong>lock:</strong> 可重入独占锁，用来保证队列安全的。</li>
+<li><strong>notEmpty:</strong> 数组非空的等待条件，当队列为空时，会调用 notEmpty 的 wait 方法，让当前线程等待。</li>
+<li><strong>notFull:</strong> 数组非满的等待条件，当队列满了，会调用 notFull 的 wait 方法，让当前线程等待。</li>
+</ul>
+<h3 id="构造函数"><a href="#构造函数" class="headerlink" title="构造函数"></a>构造函数</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 根据指定的大小创建 fair 类型的 ArrayBlockingQueue；这个公平指的是锁的公平性</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> capacity the capacity of this queue  队列大小</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> IllegalArgumentException if &#123;<span class="doctag">@code</span> capacity &lt; 1&#125; 大小 &lt; 1 抛出异常</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ArrayBlockingQueue</span><span class="params">(<span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>(capacity, <span class="keyword">false</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Creates an &#123;<span class="doctag">@code</span> ArrayBlockingQueue&#125; with the given (fixed)</span></span><br><span class="line"><span class="comment"> * capacity and the specified access policy.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> capacity the capacity of this queue</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> fair     if &#123;<span class="doctag">@code</span> true&#125; then queue accesses for threads blocked</span></span><br><span class="line"><span class="comment"> *                 on insertion or removal, are processed in FIFO order;</span></span><br><span class="line"><span class="comment"> *                 if &#123;<span class="doctag">@code</span> false&#125; the access order is unspecified.</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> IllegalArgumentException if &#123;<span class="doctag">@code</span> capacity &lt; 1&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ArrayBlockingQueue</span><span class="params">(<span class="keyword">int</span> capacity, <span class="keyword">boolean</span> fair)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 阻塞队列的大小必须 &gt; 0</span></span><br><span class="line">    <span class="keyword">if</span> (capacity &lt;= <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 初始化指定大小的 Object 数组</span></span><br><span class="line">    <span class="keyword">this</span>.items = <span class="keyword">new</span> Object[capacity];</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建可重入锁，是否公平取决于 fair</span></span><br><span class="line">    lock = <span class="keyword">new</span> ReentrantLock(fair);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建锁的条件对象，用来等待队列非空</span></span><br><span class="line">    notEmpty = lock.newCondition();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建锁的条件对象，用来等待队列非满</span></span><br><span class="line">    notFull = lock.newCondition();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="添加元素"><a href="#添加元素" class="headerlink" title="添加元素"></a>添加元素</h3><ul>
+<li><strong>add():</strong> 在不超出队列容量的情况下，在队列尾部插入指定的元素，成功返回 true，如果队列已满则抛出异常。其底层使用的是 offer 方法。</li>
+<li><strong>offer():</strong> 在不超出队列容量的情况下，在队列尾部插入指定的元素，成功时返回 true，如果队列已满则返回 false。</li>
+<li><strong>put():</strong> 在队列尾部添加指定元素，如果队列满了，则阻塞等待，直到空间可用。</li>
+</ul>
+<h4 id="add"><a href="#add" class="headerlink" title="add()"></a>add()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 如果可以在不超出队列容量的情况下立即插入指定元素，则在此队列的尾部插入指定元素，</span></span><br><span class="line"><span class="comment"> * 成功时返回 &#123;<span class="doctag">@code</span> true&#125;，如果此队列已满则抛出 &#123;<span class="doctag">@code</span> IllegalStateException&#125;。</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> e the element to add 要添加的元素</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> &#123;<span class="doctag">@code</span> true&#125; (as specified by &#123;<span class="doctag">@link</span> Collection#add&#125;) 添加成功返回 true</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> IllegalStateException if this queue is full 队列满了</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException  if the specified element is null 要添加的元素 e 不能为空</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">add</span><span class="params">(E e)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 调用父类的 add 方法</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">super</span>.add(e);</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     *     public boolean add(E e) &#123;</span></span><br><span class="line"><span class="comment">     *         // 调用 offer 方法</span></span><br><span class="line"><span class="comment">     *         if (offer(e))</span></span><br><span class="line"><span class="comment">     *             return true;</span></span><br><span class="line"><span class="comment">     *         else</span></span><br><span class="line"><span class="comment">     *             throw new IllegalStateException("Queue full");</span></span><br><span class="line"><span class="comment">     *     &#125;</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="offer"><a href="#offer" class="headerlink" title="offer()"></a>offer()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 如果可以在不超出队列容量的情况下立即插入指定元素，则在此队列的尾部插入指定元素，成功时返回 &#123;<span class="doctag">@code</span> true&#125;，</span></span><br><span class="line"><span class="comment"> * 如果此队列已满则返回 &#123;<span class="doctag">@code</span> false&#125;。此方法通常比方法 &#123;<span class="doctag">@link</span> add&#125; 更可取，后者仅通过抛出异常可能无法插入元素。</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException if the specified element is null</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">offer</span><span class="params">(E e)</span> </span>&#123;</span><br><span class="line">       <span class="comment">// 检查要插入的元素 e 不能为空</span></span><br><span class="line">       checkNotNull(e);</span><br><span class="line"></span><br><span class="line">       <span class="comment">// 加锁</span></span><br><span class="line">       <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">       lock.lock();</span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 如果队列满了，直接返回 false ，不插入元素</span></span><br><span class="line">           <span class="keyword">if</span> (count == items.length)</span><br><span class="line">               <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">               <span class="comment">// 如果队列没有满，则向队列的尾部插入元素 e ，插入成功后返回 true</span></span><br><span class="line">           <span class="keyword">else</span> &#123;</span><br><span class="line">               enqueue(e);</span><br><span class="line">               <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 释放锁</span></span><br><span class="line">       &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">           lock.unlock();</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="put"><a href="#put" class="headerlink" title="put()"></a>put()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> InterruptedException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">put</span><span class="params">(E e)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">    <span class="comment">// 检查要添加的元素 e 不能为空</span></span><br><span class="line">    checkNotNull(e);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 加获取可中断锁</span></span><br><span class="line">    <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">    lock.lockInterruptibly();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 判断队列是否满了，满了则阻塞在 notFull 等待被唤醒</span></span><br><span class="line">        <span class="keyword">while</span> (count == items.length)</span><br><span class="line">            notFull.await();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 队列不满，则在队列尾部插入元素</span></span><br><span class="line">        enqueue(e);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 释放锁</span></span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        lock.unlock();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="enqueue"><a href="#enqueue" class="headerlink" title="enqueue()"></a>enqueue()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">  * 在 putIndex 下标位置添加元素；该方法仅在获取到锁时调用</span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line"> <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">enqueue</span><span class="params">(E x)</span> </span>&#123;</span><br><span class="line">     <span class="comment">// assert lock.getHoldCount() == 1;</span></span><br><span class="line">     <span class="comment">// assert items[putIndex] == null;</span></span><br><span class="line"></span><br><span class="line">     <span class="comment">// 获取全局数组</span></span><br><span class="line">     <span class="keyword">final</span> Object[] items = <span class="keyword">this</span>.items;</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 在 putIndex 下标位置添加元素</span></span><br><span class="line">     items[putIndex] = x;</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 向后移动 putIndex ，如果队列满了，则重置 putIndex 为 0</span></span><br><span class="line">     <span class="keyword">if</span> (++putIndex == items.length)</span><br><span class="line">         putIndex = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 数组元素个数累加</span></span><br><span class="line">     count++;</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 尝试唤醒阻塞在 notEmpty 上等待的线程（如果有的话）</span></span><br><span class="line">     notEmpty.signal();</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>该方法是添加元素的最底层方法，涉及到写指针 putIndex 的更新，以及尝试唤醒阻塞在 notEmpty 上等待的线程（如果有的话）。需要注意的是，判断队列是否满了的条件是：<code>putIndex==items.length</code>。</p>
+<h3 id="获取元素"><a href="#获取元素" class="headerlink" title="获取元素"></a>获取元素</h3><ul>
+<li><strong>remove():</strong> 从队列中删除指定元素（如果存在）。</li>
+<li><strong>poll():</strong> 尝试删除并返回队列头部的元素，队列为空返回 null 即可。</li>
+<li><strong>take():</strong> 阻塞式删除并返回队列头部的元素，如果队列为空会一直等待，直到有元素才返回。</li>
+<li><strong>peek():</strong> 返回队列头部元素，但不从队列中删除该元素，队列为空则返回 null。</li>
+</ul>
+<h4 id="remove"><a href="#remove" class="headerlink" title="remove()"></a>remove()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br></pre></td><td class="code"><pre><span class="line"> <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">remove</span><span class="params">(Object o)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 要删除的元素为空，则返回 false，不进行处理</span></span><br><span class="line">        <span class="keyword">if</span> (o == <span class="keyword">null</span>) <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取全局数组</span></span><br><span class="line">        <span class="keyword">final</span> Object[] items = <span class="keyword">this</span>.items;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取锁</span></span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">        lock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 如果队列非空</span></span><br><span class="line">            <span class="keyword">if</span> (count &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="keyword">final</span> <span class="keyword">int</span> putIndex = <span class="keyword">this</span>.putIndex;</span><br><span class="line">                <span class="keyword">int</span> i = takeIndex;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 遍历数组，找到要删除的元素</span></span><br><span class="line">                <span class="keyword">do</span> &#123;</span><br><span class="line">                    <span class="keyword">if</span> (o.equals(items[i])) &#123;</span><br><span class="line">                        <span class="comment">// 删除该元素并移动元素</span></span><br><span class="line">                        removeAt(i);</span><br><span class="line">                        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 数组是循环使用的</span></span><br><span class="line">                    <span class="keyword">if</span> (++i == items.length)</span><br><span class="line">                        i = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 追上 putIndex ，说明已经遍历完了</span></span><br><span class="line">                &#125; <span class="keyword">while</span> (i != putIndex);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 队列为空，或者没有找到要删除的元素</span></span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 释放锁</span></span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">---</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 删除数组下标 removeIndex 处的元素并移动元素使元素连续。仅在获取到锁时调用；</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">removeAt</span><span class="params">(<span class="keyword">final</span> <span class="keyword">int</span> removeIndex)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// assert lock.getHoldCount() == 1;</span></span><br><span class="line">        <span class="comment">// assert items[removeIndex] != null;</span></span><br><span class="line">        <span class="comment">// assert removeIndex &gt;= 0 &amp;&amp; removeIndex &lt; items.length;</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 获取全局数组</span></span><br><span class="line">        <span class="keyword">final</span> Object[] items = <span class="keyword">this</span>.items;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果要删除下标正好是下一个要取出的元素对应的下标，那么同取出元素操作逻辑</span></span><br><span class="line">        <span class="keyword">if</span> (removeIndex == takeIndex) &#123;</span><br><span class="line">            <span class="comment">// removing front item; just advance</span></span><br><span class="line">            <span class="comment">// 置空</span></span><br><span class="line">            items[takeIndex] = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 更新 takeIndex 下标</span></span><br><span class="line">            <span class="keyword">if</span> (++takeIndex == items.length)</span><br><span class="line">                takeIndex = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 更新队列元素个数</span></span><br><span class="line">            count--;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 更新迭代器状态</span></span><br><span class="line">            <span class="keyword">if</span> (itrs != <span class="keyword">null</span>)</span><br><span class="line">                itrs.elementDequeued();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 如果要删除的下标非 takeIndex ，那么说明就是"中间位置"，需要移动元素以覆盖删除的位置</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// an "interior" remove</span></span><br><span class="line">            <span class="comment">// 以要删除的下标 removeIndex 为基准，"向前"移动元素，直到追上 putIndex</span></span><br><span class="line">            <span class="comment">// todo 注意数组循环使用的情况</span></span><br><span class="line">            <span class="keyword">final</span> <span class="keyword">int</span> putIndex = <span class="keyword">this</span>.putIndex;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i = removeIndex; ; ) &#123;</span><br><span class="line">                <span class="keyword">int</span> next = i + <span class="number">1</span>;</span><br><span class="line">                <span class="comment">// 从头开始</span></span><br><span class="line">                <span class="keyword">if</span> (next == items.length)</span><br><span class="line">                    next = <span class="number">0</span>;</span><br><span class="line">                <span class="comment">// 没有追上 putIndex，就向前移动</span></span><br><span class="line">                <span class="keyword">if</span> (next != putIndex) &#123;</span><br><span class="line">                    items[i] = items[next];</span><br><span class="line">                    i = next;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 后退 putIndex </span></span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    items[i] = <span class="keyword">null</span>;</span><br><span class="line">                    <span class="keyword">this</span>.putIndex = i;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 更新队列元素个数</span></span><br><span class="line">            count--;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 更新迭代器</span></span><br><span class="line">            <span class="keyword">if</span> (itrs != <span class="keyword">null</span>)</span><br><span class="line">                itrs.removedAt(removeIndex);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 尝试唤醒阻塞在 notFull 上等待的线程</span></span><br><span class="line">        notFull.signal();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意：</strong>删除元素相对复杂一些，移动数组元素时要考虑数组是循环使用的。</p>
+<h4 id="poll"><a href="#poll" class="headerlink" title="poll()"></a>poll()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 尝试获取队列头部的元素，队列为空返回 null 即可</span></span><br><span class="line"><span class="comment">    *</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   <span class="function"><span class="keyword">public</span> E <span class="title">poll</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       <span class="comment">// 获取锁</span></span><br><span class="line">       <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">       lock.lock();</span><br><span class="line"></span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">           <span class="comment">// 队列为空，返回 null ;队列非空返回 takeIndex 下标位置的元素</span></span><br><span class="line">           <span class="keyword">return</span> (count == <span class="number">0</span>) ? <span class="keyword">null</span> : dequeue();</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 释放锁</span></span><br><span class="line">       &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">           lock.unlock();</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述方法是快速获取的方式，如果没有就立即返回 null。ArrayBlockingQueue 还支持超时获取元素，尽最大努力获取到元素。该方法是在 poll() 方法的基础上增加了超时等待条件。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 尝试超时获取元素</span></span><br><span class="line"><span class="comment">    *</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> timeout</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> unit</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">    * <span class="doctag">@throws</span> InterruptedException</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   <span class="function"><span class="keyword">public</span> E <span class="title">poll</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">       <span class="comment">// 获取元素的超时时间</span></span><br><span class="line">       <span class="keyword">long</span> nanos = unit.toNanos(timeout);</span><br><span class="line"></span><br><span class="line">       <span class="comment">// 获取可中断锁</span></span><br><span class="line">       <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">       lock.lockInterruptibly();</span><br><span class="line">       </span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">           <span class="comment">// 如果队列为空，等待 nanos 纳秒时长</span></span><br><span class="line">           <span class="keyword">while</span> (count == <span class="number">0</span>) &#123;</span><br><span class="line">               <span class="comment">// 等待 nanos 纳秒后，队列还是为空</span></span><br><span class="line">               <span class="keyword">if</span> (nanos &lt;= <span class="number">0</span>)</span><br><span class="line">                   <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">               nanos = notEmpty.awaitNanos(nanos);</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 执行到这里有两种可能： 1）队列非空，直接获取  2）队列为空，但在等待时长内队列又有元素了</span></span><br><span class="line">           <span class="keyword">return</span> dequeue();</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 释放锁</span></span><br><span class="line">       &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">           lock.unlock();</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="take"><a href="#take" class="headerlink" title="take()"></a>take()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 阻塞式获取元素</span></span><br><span class="line"><span class="comment">    *</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">    * <span class="doctag">@throws</span> InterruptedException</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   <span class="function"><span class="keyword">public</span> E <span class="title">take</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">       <span class="comment">// 获取可中断锁</span></span><br><span class="line">       <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">       lock.lockInterruptibly();</span><br><span class="line"></span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">           <span class="comment">// 队列为空，则阻塞等待，直到队列有元素</span></span><br><span class="line">           <span class="keyword">while</span> (count == <span class="number">0</span>)</span><br><span class="line">               notEmpty.await();</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 获取 takeIndex 下标位置的元素</span></span><br><span class="line">           <span class="keyword">return</span> dequeue();</span><br><span class="line"></span><br><span class="line">           <span class="comment">// 释放锁</span></span><br><span class="line">       &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">           lock.unlock();</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>take() 方法相比超时等待的 poll() 方法，前者没有等待时间，会一直等待，直到队列有元素或线程被中断。</p>
+<h4 id="peek"><a href="#peek" class="headerlink" title="peek()"></a>peek()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 读取队列头部元素，但不移除该元素；队列为空，则返回 null</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> E <span class="title">peek</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 获取锁</span></span><br><span class="line">    <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">    lock.lock();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 直接从数组中获取下标为 takeIndex 的元素</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> itemAt(takeIndex); <span class="comment">// null when queue is empty</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 释放锁</span></span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        lock.unlock();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="dequeue"><a href="#dequeue" class="headerlink" title="dequeue()"></a>dequeue()</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 取出 takeIndex 下标位置的元素；该方法仅在获取到锁时调用；</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> E <span class="title">dequeue</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// assert lock.getHoldCount() == 1;</span></span><br><span class="line">    <span class="comment">// assert items[takeIndex] != null;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取全局数组</span></span><br><span class="line">    <span class="keyword">final</span> Object[] items = <span class="keyword">this</span>.items;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取 takeIndex 下标位置的元素</span></span><br><span class="line">    <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>)</span><br><span class="line">    E x = (E) items[takeIndex];</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置 null，便于 GC</span></span><br><span class="line">    items[takeIndex] = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新 takeIndex ，如果到达了数组的末尾，则重置 takeIndex 为 0 ，即下次从数组头开始取元素</span></span><br><span class="line">    <span class="keyword">if</span> (++takeIndex == items.length)</span><br><span class="line">        takeIndex = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 数组元素个数递减</span></span><br><span class="line">    count--;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新迭代器状态</span></span><br><span class="line">    <span class="keyword">if</span> (itrs != <span class="keyword">null</span>)</span><br><span class="line">        itrs.elementDequeued();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 尝试唤醒阻塞在 notFull 上等待的线程（如果有的话）</span></span><br><span class="line">    notFull.signal();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回元素</span></span><br><span class="line">    <span class="keyword">return</span> x;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>该方法是获取元素的最底层方法，涉及到读指针 takeIndex 的更新，以及尝试唤醒阻塞在 notFull 上等待的线程（如果有的话）。</p>
+<h2 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h2><p>典型的使用场景就是生产者-消费者问题。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>本篇文章简单介绍了 ArrayBlockingQueue 的模型，并分析了核心的源码。核心点有以下两点：</p>
+<ul>
+<li>以固定大小数组作为元素的容器，并定义系列描述数组的属性。这个固定大小的数组是可以循环使用的。存取数据遵循：队头取、队尾插，从读写指针也可以看出。</li>
+<li>基本的增、删、查都要先加锁才能操作，使用的锁是 Reentrant 保证了安全性，并使用等待通知机制来实现阻塞的功能。</li>
+</ul>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/3e4e955c/" title="并发 - ArrayBlockingQueue" target="_blank" rel="external">https://gentryhuang.com/posts/3e4e955c/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/posts/c1861d8c/" title="Redis原理 - SCAN 原理"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/posts/4eb3381c/" title="分布式锁"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2022 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
