@@ -28,7 +28,7 @@
 <meta property="og:image" content="https://gentryhuang.com/posts/db98efcf/delay-queue-1.png">
 <meta property="og:image" content="https://gentryhuang.com/posts/db98efcf/delay-queue-2.png">
 <meta property="article:published_time" content="2022-02-20T00:45:53.000Z">
-<meta property="article:modified_time" content="2022-05-09T15:14:01.471Z">
+<meta property="article:modified_time" content="2022-05-10T02:22:42.365Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="JUC">
 <meta property="article:tag" content="Queue">
@@ -392,7 +392,7 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码分析"><span class="toc-number">2.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#属性"><span class="toc-number">2.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Delayed"><span class="toc-number">2.2.</span> <span class="toc-text">Delayed</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-number">2.3.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#入队"><span class="toc-number">2.4.</span> <span class="toc-text">入队</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#add"><span class="toc-number">2.4.1.</span> <span class="toc-text">add()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#put"><span class="toc-number">2.4.2.</span> <span class="toc-text">put()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#超时等待-offer"><span class="toc-number">2.4.3.</span> <span class="toc-text">超时等待 offer()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#offer"><span class="toc-number">2.4.4.</span> <span class="toc-text">offer()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#出队"><span class="toc-number">2.5.</span> <span class="toc-text">出队</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#take"><span class="toc-number">2.5.1.</span> <span class="toc-text">take()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#poll"><span class="toc-number">2.5.2.</span> <span class="toc-text">poll()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#peek"><span class="toc-number">2.5.3.</span> <span class="toc-text">peek()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#remove"><span class="toc-number">2.5.4.</span> <span class="toc-text">remove()</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用场景"><span class="toc-number">3.</span> <span class="toc-text">使用场景</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码分析"><span class="toc-number">2.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#属性"><span class="toc-number">2.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Delayed"><span class="toc-number">2.2.</span> <span class="toc-text">Delayed</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-number">2.3.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#入队"><span class="toc-number">2.4.</span> <span class="toc-text">入队</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#add"><span class="toc-number">2.4.1.</span> <span class="toc-text">add()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#put"><span class="toc-number">2.4.2.</span> <span class="toc-text">put()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#超时等待-offer"><span class="toc-number">2.4.3.</span> <span class="toc-text">超时等待 offer()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#offer"><span class="toc-number">2.4.4.</span> <span class="toc-text">offer()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#出队"><span class="toc-number">2.5.</span> <span class="toc-text">出队</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#take"><span class="toc-number">2.5.1.</span> <span class="toc-text">take()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#poll"><span class="toc-number">2.5.2.</span> <span class="toc-text">poll()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#peek"><span class="toc-number">2.5.3.</span> <span class="toc-text">peek()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#remove"><span class="toc-number">2.5.4.</span> <span class="toc-text">remove()</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用场景"><span class="toc-number">3.</span> <span class="toc-text">使用场景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
     </nav>
   </div>
 </aside>
@@ -436,7 +436,7 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/db98efcf/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.3k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.5k(字)</span>
 	
 	
 		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 13(分)</span>
@@ -528,6 +528,9 @@
 
 
 <h2 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h2><p>DelayQueue 主要适用于定时任务。任务调度系统能够相对准确的把握任务的执行时间。为了具有调用行为，存放到 DelayDeque 的元素必须实现 Delayed 接口。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>DelayQueue 是一个线程安全的、无界的、延时阻塞队列，它使用的是优先级队列 PriorityQueue + 时间维度（到期时间）来实现。具体来说，是在队列的基础上增加了时间维度的优先级，然后通过锁和条件变量来控制入队和出队流程。</p>
+<p>DelayQueue 为了减少不必要的竞争，使用了 <code>Thread leader</code> 来进行优化，作为快速进入条件队列等待的标志。</p>
+<p>ScheduledThreadPoolExecutor 同样支持延时任务，它内部使用的阻塞队列是自己定义的内部类 DelayedWorkQueue ，这个内部类的功能和 DelayQueue 基本一样，唯一区别点是 DelayedWorkQueue 没有直接使用优先级队列 PriorityQueue，而是使用数组又实现了一遍优先级队列，本质上是没什么区别的。</p>
 
       
     </div>
