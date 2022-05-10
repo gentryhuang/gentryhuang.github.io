@@ -25,15 +25,15 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述DelayQueue 是一个线程安全的、无界的、延时阻塞的队列。线程安全体现在使用 ReentrantLock 保证并发安全；无界队列体现在内部使用 PriorityQueue 优先级队列作为容器维护元素；延时阻塞体现在队列元素必须实现 Delayed 接口，使元素对象成为延时对象。此外，Delayed 接口继承了 Comparable 接口，这样元素的优先级也就能保证了。 DelayQueu">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/db98efcf/delay-queue-1.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/db98efcf/delay-queue-2.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/queue/delay-queue-1.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/queue/delay-queue-2.png">
 <meta property="article:published_time" content="2022-02-20T00:45:53.000Z">
-<meta property="article:modified_time" content="2022-05-10T02:22:42.365Z">
+<meta property="article:modified_time" content="2022-05-10T02:30:26.342Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="JUC">
 <meta property="article:tag" content="Queue">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/db98efcf/delay-queue-1.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/queue/delay-queue-1.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/db98efcf/index.html">
   
@@ -448,9 +448,9 @@
       
         <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>DelayQueue 是一个<strong>线程安全的、无界的、延时阻塞</strong>的队列。线程安全体现在使用 <code>ReentrantLock</code> 保证并发安全；无界队列体现在内部使用 <code>PriorityQueue</code> 优先级队列作为容器维护元素；延时阻塞体现在队列元素必须实现 Delayed 接口，使元素对象成为<strong>延时对象</strong>。此外，Delayed 接口继承了 Comparable 接口，这样元素的优先级也就能保证了。</p>
 <p>DelayQueue 保证<strong>只有在延迟期满时才能从中取出元素</strong>，否则就要阻塞等待剩余的到期时间。DelayQueue 相关的 UML 类图如下：</p>
-<p><img src="/posts/db98efcf/delay-queue-1.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/queue/delay-queue-1.png" alt></p>
 <h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><p>DelayQueue 相关源码结构如下：</p>
-<p><img src="/posts/db98efcf/delay-queue-2.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/queue/delay-queue-2.png" alt></p>
 <h3 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DelayQueue</span>&lt;<span class="title">E</span> <span class="keyword">extends</span> <span class="title">Delayed</span>&gt; <span class="keyword">extends</span> <span class="title">AbstractQueue</span>&lt;<span class="title">E</span>&gt;</span></span><br><span class="line"><span class="class">        <span class="keyword">implements</span> <span class="title">BlockingQueue</span>&lt;<span class="title">E</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 保证线程安全的锁</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">transient</span> ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 优先队列</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> PriorityQueue&lt;E&gt; q = <span class="keyword">new</span> PriorityQueue&lt;E&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 标记取元素时是否有线程在排队，减少不必要的竞争</span></span><br><span class="line">    <span class="comment">// leader 不为空，说明有线程在等待元素，后来的线程乖乖地等着就行了，直到被唤醒</span></span><br><span class="line">    <span class="keyword">private</span> Thread leader = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 是否可获取元素的条件变量</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Condition available = lock.newCondition();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <ul>

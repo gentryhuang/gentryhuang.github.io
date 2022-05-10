@@ -25,19 +25,19 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="概述堆是一种特殊的树，它有以下两个特点：  堆是一颗完全二叉树； 堆中某个节点的值不大于或不小于父节点的值；  其中，根节点的值是最大的堆叫做大顶堆，根节点的值是最小的堆叫做小顶堆。具体如下图：  堆前面也说了，堆是一颗完全二叉树。下图就是一颗完全二叉树，也是一个小顶堆：  完全二叉树的节点都是比较紧凑的，并且具有一定的层次关系，所以可以使用数组来存储，这样比较节省空间。上图中的完全二叉树存放到数">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/d917ae55/heap-1.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/d917ae55/heap-2.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/d917ae55/heap-3.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/d917ae55/heap-4.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/d917ae55/heap-5.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-1.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-2.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-3.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-4.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-5.png">
 <meta property="article:published_time" content="2022-02-06T01:34:09.000Z">
-<meta property="article:modified_time" content="2022-05-07T07:59:51.262Z">
+<meta property="article:modified_time" content="2022-05-10T02:34:29.836Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="求职">
 <meta property="article:tag" content="技术">
 <meta property="article:tag" content="生活">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/d917ae55/heap-1.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-1.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/d917ae55/index.html">
   
@@ -451,11 +451,11 @@
 <li>堆中某个节点的值不大于或不小于父节点的值；</li>
 </ul>
 <p>其中，根节点的值是最大的堆叫做大顶堆，根节点的值是最小的堆叫做小顶堆。具体如下图：</p>
-<p><img src="/posts/d917ae55/heap-1.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-1.png" alt></p>
 <h2 id="堆"><a href="#堆" class="headerlink" title="堆"></a>堆</h2><p>前面也说了，堆是一颗完全二叉树。下图就是一颗完全二叉树，也是一个小顶堆：</p>
-<p><img src="/posts/d917ae55/heap-2.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-2.png" alt></p>
 <p>完全二叉树的节点都是比较紧凑的，并且具有一定的层次关系，所以可以使用数组来存储，这样比较节省空间。上图中的完全二叉树存放到数组中如下：</p>
-<p><img src="/posts/d917ae55/heap-3.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-3.png" alt></p>
 <p>这里为了方便描述，下标为 0 的位置不存储元素，从下标为 1 的位置开始存储元素。<strong>每层依次从左到右放到数组中，这样就可以保证父子节点的关系了</strong>。</p>
 <ul>
 <li>已知节点 8，那么 8 的父节点就是：5<code>/</code>2=2，也就是 5 这个节点的位置</li>
@@ -468,7 +468,7 @@
 </ol>
 <p>为了满足特性 1，我们把新元素插入到最后一层的最后一个节点的后面，但是插入之后可能不再满足特性 2 ，这个时候就需要调整堆了。下面我们举例说明。</p>
 <p>我们需要向前面的小顶堆中插入元素 2 ，我们把它放在 9 后面，这时虽然满足特性 1 ，但是不满足特性 2，这个时候就要调整堆。具体过程如下：</p>
-<p><img src="/posts/d917ae55/heap-4.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-4.png" alt></p>
 <p>上述调整过程的原则是，<strong>自下而上</strong>进行调整。</p>
 <p><strong>从二叉树角度看：</strong>插入的节点与它的父节点相比，如果比父节点小，就交换它们的位置，重复这个过程，一直往上和父节点相比，直到比父节点大或者到根节点为止。<br><strong>从数组角度看：</strong>插入的节点与 <code>n/2</code> 位置的节点相比，如果比 <code>n/2</code> 位置的节点小，就交换它们的位置，再往前与 <code>n/4</code> 位置的节点相比，如果比 <code>n/4</code> 位置的节点小，就交换位置，以此类推，直到比 <code>n/(2^x)</code>位置的节点大或者到顶级父节点为止。</p>
 <p>从插入元素的过程，我们可以知道插入元素的时间复杂度为 O(logn) 。</p>
@@ -478,7 +478,7 @@
 <li>堆中某个节点的值要么不大于（或不小于）其父节点的值；</li>
 </ol>
 <p>从堆顶弹出元素后，为了满足特性 1，我们把最有一个元素移到根节点（顶节点）的位置，但是不满足特性 2，这个时候需要调整堆。具体如下：</p>
-<p><img src="/posts/d917ae55/heap-5.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/data-structure/heap/heap-5.png" alt></p>
 <p>上述调整过程的原则是，<strong>自上而下</strong>进行调整。</p>
 <p><strong>从二叉树角度看：</strong>把最后一个节点放到堆顶，然后与左右子节点中较小的交换位置，重复这个过程，依次往下，直到其比左右子节点都小的或到达最后一层为止。<br><strong>从数组角度：</strong>把最后一个元素移到下标为 1 的位置，然后与下标为 2 和 3 的元素对比，发现 8 比 2 大，且 2 是下标为 2 和 3 中较小的，然后与 2 交换位置。依次类推，再和下标为 4 和 5 的元素对比，直到没有比其更小的元素或没有左右子节点为止。</p>
 <p>从弹出堆顶元素的过程，我们可以知道对应的时间复杂度为 O(logn) 。</p>
