@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>并发 - FutureTask | gentryhuang的博客</title>
+  <meta name="description" content="概述FutureTask 表示异步计算的任务，通过间接实现了 Future 和 Runnable 接口，使其具备异步计算结果和任务的特性。异步计算结果支持检查任务是否完成、等待任务完成、获取任务结果、以及取消任务等方法；任务特性是指 FutueTask 是一个任务体，并且用于包装 Callable 或 Runnable 对象，即统一任务为 Callable 类型。 FutureTask 相关的 U">
+<meta property="og:type" content="article">
+<meta property="og:title" content="并发 - FutureTask">
+<meta property="og:url" content="https://gentryhuang.com/posts/a16a077e/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述FutureTask 表示异步计算的任务，通过间接实现了 Future 和 Runnable 接口，使其具备异步计算结果和任务的特性。异步计算结果支持检查任务是否完成、等待任务完成、获取任务结果、以及取消任务等方法；任务特性是指 FutueTask 是一个任务体，并且用于包装 Callable 或 Runnable 对象，即统一任务为 Callable 类型。 FutureTask 相关的 U">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/a16a077e/future-task-1.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/a16a077e/future-task-2.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/a16a077e/future-task-3.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/a16a077e/future-task-4.png">
+<meta property="article:published_time" content="2022-04-22T02:07:06.000Z">
+<meta property="article:modified_time" content="2022-05-13T09:45:42.102Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="JUC">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/a16a077e/future-task-1.png">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/a16a077e/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.44px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.78px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.11px;">I/O</a> <a href="/tags/JMM/" style="font-size: 13px;">JMM</a> <a href="/tags/JUC/" style="font-size: 13.67px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.22px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.11px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.22px;">Protocol</a> <a href="/tags/Queue/" style="font-size: 13.33px;">Queue</a> <a href="/tags/RPC/" style="font-size: 13.56px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13.33px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.11px;">Redis数据结构</a> <a href="/tags/SCAN/" style="font-size: 13px;">SCAN</a> <a href="/tags/SPI/" style="font-size: 13.22px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.22px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.11px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13.11px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" style="font-size: 13px;">分布式锁</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.89px;">设计模式</a> <a href="/tags/%E9%99%90%E6%B5%81/" style="font-size: 13px;">限流</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/a16a077e/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/a16a077e/" class="title">并发 - FutureTask</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-04-22T02:07:06.000Z" itemprop="datePublished">2022-04-22</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/3c450cc6/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/3c450cc6/" class="title">MySQL - 乐观锁和悲观锁</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-04-10T02:46:59.000Z" itemprop="datePublished">2022-04-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/c1861d8c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/c1861d8c/" class="title">Redis原理 - SCAN 原理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-03-12T14:14:47.000Z" itemprop="datePublished">2022-03-12</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/e0c3e79e/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/e0c3e79e/" class="title">MySQL - Double Write</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-03-09T08:25:44.000Z" itemprop="datePublished">2022-03-09</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/db98efcf/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/db98efcf/" class="title">队列 - DelayQueue</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-02-25T13:10:53.000Z" itemprop="datePublished">2022-02-25</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用示例"><span class="toc-number">2.</span> <span class="toc-text">使用示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码分析"><span class="toc-number">3.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#属性"><span class="toc-number">3.1.</span> <span class="toc-text">属性</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#任务状态"><span class="toc-number">3.1.1.</span> <span class="toc-text">任务状态</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#等待链表"><span class="toc-number">3.1.2.</span> <span class="toc-text">等待链表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#CAS属性值"><span class="toc-number">3.1.3.</span> <span class="toc-text">CAS属性值</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-number">3.2.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#任务执行-run"><span class="toc-number">3.3.</span> <span class="toc-text">任务执行 - run()</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#处理异常"><span class="toc-number">3.3.1.</span> <span class="toc-text">处理异常</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#处理结果"><span class="toc-number">3.3.2.</span> <span class="toc-text">处理结果</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#处理异步任务被中断的情况"><span class="toc-number">3.3.3.</span> <span class="toc-text">处理异步任务被中断的情况</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#任务取消-cancel"><span class="toc-number">3.4.</span> <span class="toc-text">任务取消 - cancel</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#完结任务-finishCompletion"><span class="toc-number">3.5.</span> <span class="toc-text">完结任务 - finishCompletion</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#获取任务结果-get"><span class="toc-number">3.6.</span> <span class="toc-text">获取任务结果 - get</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#等待任务完成-awaitDone"><span class="toc-number">3.6.1.</span> <span class="toc-text">等待任务完成 - awaitDone</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#任务最终执行结果"><span class="toc-number">3.6.2.</span> <span class="toc-text">任务最终执行结果</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#FutureTask-amp-ThreadPollExecutor"><span class="toc-number">3.7.</span> <span class="toc-text">FutureTask &amp; ThreadPollExecutor</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#应用场景"><span class="toc-number">4.</span> <span class="toc-text">应用场景</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">5.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-concurrent/FutureTask" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      并发 - FutureTask
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/a16a077e/" class="article-date">
+	  <time datetime="2022-04-22T02:07:06.000Z" itemprop="datePublished">2022-04-22</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/JDK/">JDK</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/JUC/" rel="tag">JUC</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/a16a077e/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 5.3k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 21(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>FutureTask 表示异步计算的任务，通过间接实现了 Future 和 Runnable 接口，使其具备<strong>异步计算结果</strong>和<strong>任务</strong>的特性。异步计算结果支持检查任务是否完成、等待任务完成、获取任务结果、以及取消任务等方法；任务特性是指 FutueTask 是一个任务体，并且用于包装 Callable 或 Runnable 对象，即统一任务为 Callable 类型。</p>
+<p>FutureTask 相关的 UML 类图如下：</p>
+<p><img src="/posts/a16a077e/future-task-1.png" alt></p>
+<h2 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h2><p>我们执行 5 个异步任务，在未来的某一个时刻收集任务执行的结果并打印。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">futureTaskTest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 1 创建固定大小线程池</span></span><br><span class="line">    ExecutorService threadPool = Executors.newFixedThreadPool(<span class="number">8</span>);</span><br><span class="line">    Random random = <span class="keyword">new</span> Random(<span class="number">10000</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2 定义异步计算任务集合</span></span><br><span class="line">    HashSet&lt;Future&lt;String&gt;&gt; futureList = <span class="keyword">new</span> HashSet&lt;&gt;();</span><br><span class="line">    <span class="comment">// List&lt;Future&lt;String&gt;&gt; futureList = new ArrayList&lt;&gt;();</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt;= <span class="number">100</span>; i++) &#123;</span><br><span class="line">        <span class="comment">// submit 方法提交的任务会被 FutureTask 包装，返回的也是这个 FutureTask 对象</span></span><br><span class="line">        <span class="keyword">int</span> finalI = i;</span><br><span class="line">        Future&lt;String&gt; future = threadPool.submit(() -&gt; &#123;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        Thread.sleep(random.nextInt(<span class="number">10000</span>));</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (InterruptedException interruptedException) &#123;</span><br><span class="line">                        Thread.currentThread().interrupt();</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">return</span> Thread.currentThread().getName() + <span class="string">" is run future-task..."</span> + finalI;</span><br><span class="line">                &#125;</span><br><span class="line">        );</span><br><span class="line">        futureList.add(future);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3 任务提交完成后，等待处理完成并打印</span></span><br><span class="line">    futureList.forEach(future -&gt; &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 任务取消，不获取结果&#123;@link get()&#125;，否则会抛出异常</span></span><br><span class="line">            <span class="keyword">if</span> (future.isCancelled()) &#123;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 任务已经在执行了，则阻塞等待最终的结果</span></span><br><span class="line">            <span class="keyword">if</span> (future.isDone()) &#123;</span><br><span class="line">                System.out.println(future.get(<span class="number">3</span>, TimeUnit.SECONDS));</span><br><span class="line"></span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// 执行到这里，说明异步计算任务还是 NEW 状态，阻塞等待被调度、执行</span></span><br><span class="line">                System.out.println(future.get());</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125; <span class="keyword">catch</span> (InterruptedException | ExecutionException | TimeoutException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要说明的是，上述使用示例是结合线程池 ThreadPoolExecutor 进行演示的，并没有直接使用 FutureTask API ，毕竟单独使用 FutureTask 并不多。</p>
+<h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><p>FutureTask 相关的源码结构如下图：</p>
+<p><img src="/posts/a16a077e/future-task-2.png" alt></p>
+<h3 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FutureTask</span>&lt;<span class="title">V</span>&gt; <span class="keyword">implements</span> <span class="title">RunnableFuture</span>&lt;<span class="title">V</span>&gt; </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 任务状态</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">int</span> state;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * FutureTask 封装的任务体。如果是 Runnable 类型，则会对Runnable进行适配转为 Callable 类型</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> Callable&lt;V&gt; callable;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 任务最终的结果，要么是正常的结果，要么是异常。get 方法获取的就是这个属性值。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> Object outcome;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 执行任务的线程，如线程池中的某个线程</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> Thread runner;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 等待任务结果的线程节点，即调用者线程组成的链表结构</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> WaitNode waiters;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>state:</strong> 表示异步计算任务的状态，通过该值可以<strong>追踪任务进行到哪个阶段</strong>了。该属性使用 <code>volatile</code> 进行了修饰；<br><strong>callable:</strong>  异步计算任务封装的任务体，类型统一为 Callable，原因就是异步计算任务需要知道任务执行的结果，而 Runnable 类型不关心任务的结果。这里使用了适配器模型，将任务类型进行了统一。<br><strong>outcome:</strong> 任务最终的结果，要么是正常的结果，要么是异常，get 方法获取的就是这个属性值。通过 state 属性值可以明确 outcome 属性值的情况；<br><strong>runner:</strong> 表示执行任务的线程，谁执行 callable 这个属性就记录谁；<br><strong>waiters:</strong> 等待任务结果的线程节点组成的等待链表，链表中的每个节点都封装了等待结果的线程；</p>
+<h4 id="任务状态"><a href="#任务状态" class="headerlink" title="任务状态"></a>任务状态</h4><p>异步计算任务 FutureTask 的状态定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 可能的状态转换：</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 任务正常运行结束：NEW -&gt; COMPLETING -&gt; NORMAL</span></span><br><span class="line"><span class="comment"> * 任务异常运行结束：NEW -&gt; COMPLETING -&gt; EXCEPTIONAL</span></span><br><span class="line"><span class="comment"> * 任务取消：NEW -&gt; CANCELLED</span></span><br><span class="line"><span class="comment"> * 任务被中断：NEW -&gt; INTERRUPTING -&gt; INTERRUPTED</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * 异步任务状态仅在 &#123;<span class="doctag">@link</span> set(V v)&#125;、&#123;<span class="doctag">@link</span> setException(Throwable t)&#125;、&#123;<span class="doctag">@link</span> cancel()&#125; 方法中转换为最终状态，</span></span><br><span class="line"><span class="comment"> * 在这期间，状态可能会采用 COMPLETING 或 INTERRUPTING 的中间状态。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">int</span> state;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> NEW = <span class="number">0</span>; <span class="comment">// 新建状态</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> COMPLETING = <span class="number">1</span>; <span class="comment">// 执行中间态</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> NORMAL = <span class="number">2</span>;     <span class="comment">// 完成</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> EXCEPTIONAL = <span class="number">3</span>; <span class="comment">// 异常</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> CANCELLED = <span class="number">4</span>; <span class="comment">// 取消</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> INTERRUPTING = <span class="number">5</span>; <span class="comment">// 中断中</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> INTERRUPTED = <span class="number">6</span>; <span class="comment">// 中断</span></span><br></pre></td></tr></table></figure>
+
+<p>异步计算任务 FutureTask 的状态流转如下图：</p>
+<p><img src="/posts/a16a077e/future-task-3.png" alt></p>
+<p>可以看到异步计算任务 FutureTask 具有生命周期的特性，每个阶段都对应着任务的执行进度。其中，需要强调两个状态：</p>
+<ul>
+<li><code>COMPLETING</code>: 表示任务计算过程的中间状态，任务快要完成，达到这个状态说明任务已经执行完成或者出现异常，紧接着保存结果或异常信息即可。</li>
+<li><code>INTERRUPTING</code>: 表示对新建状态的任务进行中断处理中，如果任务正被线程在执行，那么就对该线程进行中断，否则不处理线程中断逻辑。达到这个状态说明已经成功对未完成的任务进行了中断处理，紧接着会将异步计算任务状态更新为 <code>INTERRUPTED</code>，此时中断才算完成。</li>
+</ul>
+<p>既然 <code>COMPLETING</code> 和 <code>INTERRUPTING</code> 都只是一个中间状态，那么它们的必要性体现在哪里呢？</p>
+<ul>
+<li><code>COMPLETING</code>: 表示任务快要完成，有了这个标志，获取任务结果的调用线程更加明确任务执行到哪个阶段了，可以选择等待结果还是直接获取结果；</li>
+<li><code>INTERRUPTING</code>: 表示中断者准备对异步计算任务进行中断，只是还没有完成这个中断的整个过程，有了这个标志就可以明确异步任务被中断的阶段了；</li>
+</ul>
+<h4 id="等待链表"><a href="#等待链表" class="headerlink" title="等待链表"></a>等待链表</h4><p>异步计算任务 FutureTask 实现了一个单向链表，用来排队等待结果的业务线程。链表结构如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">WaitNode</span> </span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 等待任务结果的线程</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">volatile</span> Thread thread;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 后置指针</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">volatile</span> WaitNode next;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 创建线程节点</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    WaitNode() &#123;</span><br><span class="line">        thread = Thread.currentThread();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>等待链表本身比较简单，需要特别说明的是，进入到链表的线程都是处于等待（任务结果）状态，具体是通过 <code>LockSupport.park</code> 方法来实现阻塞的。当任务执行结束或被取消，那么等待链表中的线程会通过 <code>LockSupport.unpark</code> 方法依次被唤醒。</p>
+<h4 id="CAS属性值"><a href="#CAS属性值" class="headerlink" title="CAS属性值"></a>CAS属性值</h4><p>异步计算任务 FutureTask 针对 <code>state</code>、<code>runner</code>、<code>waiters</code> 这 3 个属性，通过 Unsafe 实现了 CAS 机制对其进行写操作，保证线程安全。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FutureTask</span>&lt;<span class="title">V</span>&gt; <span class="keyword">implements</span> <span class="title">RunnableFuture</span>&lt;<span class="title">V</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">int</span> state;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> Thread runner;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> WaitNode waiters;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Unsafe mechanics</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> sun.misc.Unsafe UNSAFE;</span><br><span class="line">    <span class="comment">// 内存地址偏移量</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> stateOffset;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> runnerOffset;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> waitersOffset;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            UNSAFE = sun.misc.Unsafe.getUnsafe();</span><br><span class="line">            Class&lt;?&gt; k = FutureTask<span class="class">.<span class="keyword">class</span></span>;</span><br><span class="line">            stateOffset = UNSAFE.objectFieldOffset</span><br><span class="line">                    (k.getDeclaredField(<span class="string">"state"</span>));</span><br><span class="line">            runnerOffset = UNSAFE.objectFieldOffset</span><br><span class="line">                    (k.getDeclaredField(<span class="string">"runner"</span>));</span><br><span class="line">            waitersOffset = UNSAFE.objectFieldOffset</span><br><span class="line">                    (k.getDeclaredField(<span class="string">"waiters"</span>));</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> Error(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><p>FutureTask 的构造方法用于封装任务体以屏蔽不同任务的差异。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 创建任务</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> callable the callable task 可调用任务</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException if the callable is null</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">FutureTask</span><span class="params">(Callable&lt;V&gt; callable)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 任务不允许为空</span></span><br><span class="line">    <span class="keyword">if</span> (callable == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 保存到属性中</span></span><br><span class="line">    <span class="keyword">this</span>.callable = callable;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 异步计算任务状态初始化为新建状态</span></span><br><span class="line">    <span class="keyword">this</span>.state = NEW;       <span class="comment">// ensure visibility of callable</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 创建任务，需要将 Runnable 类型包装成 Callable 类型</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> runnable the runnable task 可运行任务</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> result   the result to return on successful completion. If</span></span><br><span class="line"><span class="comment"> *                 you don't need a particular result, consider using</span></span><br><span class="line"><span class="comment"> *                 constructions of the form:</span></span><br><span class="line"><span class="comment"> *                 &#123;<span class="doctag">@code</span> Future&lt;?&gt; f = new FutureTask&lt;Void&gt;(runnable, null)&#125;</span></span><br><span class="line"><span class="comment"> *                 成功完成后返回的结果。如果不需要特定结果，传入 null </span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException if the runnable is null</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">FutureTask</span><span class="params">(Runnable runnable, V result)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 1 将 Runnable 类型任务适配成 Callable 类型，并保存到属性中</span></span><br><span class="line">    <span class="keyword">this</span>.callable = Executors.callable(runnable, result);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2 异步计算任务状态初始化为新建状态</span></span><br><span class="line">    <span class="keyword">this</span>.state = NEW;       <span class="comment">// ensure visibility of callable</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>构造方法主要做了以下两个工作：</p>
+<ul>
+<li>将不同的任务统一处理成 Callable 类型，这是异步计算结果必须的；</li>
+<li>异步计算任务在创建时的状态为<strong>新建状态 NEW</strong>；</li>
+</ul>
+<h3 id="任务执行-run"><a href="#任务执行-run" class="headerlink" title="任务执行 - run()"></a>任务执行 - run()</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 判断任务是否可以执行</span></span><br><span class="line">    <span class="comment">// 任务状态不为 NEW 或 设置执行该任务的线程（也就是 runner 属性）失败 ，那么不能执行该任务</span></span><br><span class="line">    <span class="keyword">if</span> (state != NEW ||</span><br><span class="line">            !UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, runnerOffset,</span><br><span class="line">                    <span class="keyword">null</span>, Thread.currentThread()))</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 真正的任务，这里统一是 Callable 类型，Runnable 被适配成了 Callable 类型</span></span><br><span class="line">        Callable&lt;V&gt; c = callable;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 任务状态必须是 NEW 才能运行</span></span><br><span class="line">        <span class="keyword">if</span> (c != <span class="keyword">null</span> &amp;&amp; state == NEW) &#123;</span><br><span class="line">            <span class="comment">// 任务执行结果</span></span><br><span class="line">            V result;</span><br><span class="line">            <span class="comment">// 任务是否执行成功</span></span><br><span class="line">            <span class="keyword">boolean</span> ran;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 执行任务</span></span><br><span class="line">                result = c.call();</span><br><span class="line">                ran = <span class="keyword">true</span>;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 出现异常</span></span><br><span class="line">            &#125; <span class="keyword">catch</span> (Throwable ex) &#123;</span><br><span class="line">                result = <span class="keyword">null</span>;</span><br><span class="line">                ran = <span class="keyword">false</span>;</span><br><span class="line">                <span class="comment">// 处理异常结果并更新任务状态</span></span><br><span class="line">                setException(ex);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 任务执行成功，设置结果并更新任务状态</span></span><br><span class="line">            <span class="keyword">if</span> (ran)</span><br><span class="line">                set(result);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="comment">// 任务处理完成后，将 runner 置 null ，防止并发调用 run()</span></span><br><span class="line">        runner = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 重新读取状态以防止漏掉中断的处理「想一下这种场景，线程在执行 c.call() 方法时被中断了」</span></span><br><span class="line">        <span class="keyword">int</span> s = state;</span><br><span class="line">        <span class="keyword">if</span> (s &gt;= INTERRUPTING)</span><br><span class="line">            <span class="comment">// 处理可能因取消时进行的中断，如果处于中断中，等待中断者完成即可</span></span><br><span class="line">            handlePossibleCancellationInterrupt(s);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>任务可以执行的条件是：异步任务状态为 NEW &amp;&amp; 设置执行任务的线程为当前线程成功；</li>
+<li>调用任务的 call() 方法，即方法调用，执行任务；</li>
+<li>处理结果和异常，并更新异步任务状态以及唤醒等待异步计算结果的（调用）线程；</li>
+<li>线程执行完任务后，置空 runner 为下次任务执行做准备（试想下，如果不置空会怎样？后续的线程可能不能执行任务，因为 CAS 不会成功），并且处理异步任务被中断的情况；</li>
+</ol>
+<h4 id="处理异常"><a href="#处理异常" class="headerlink" title="处理异常"></a>处理异常</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">setException</span><span class="params">(Throwable t)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 将任务状态 NEW 更新为 COMPLETING</span></span><br><span class="line">    <span class="keyword">if</span> (UNSAFE.compareAndSwapInt(<span class="keyword">this</span>, stateOffset, NEW, COMPLETING)) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 结果设置为异常信息</span></span><br><span class="line">        <span class="comment">// 该属性是 get 方法返回的</span></span><br><span class="line">        outcome = t;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 设置任务最终的状态为 EXCEPTIONAL</span></span><br><span class="line">        UNSAFE.putOrderedInt(<span class="keyword">this</span>, stateOffset, EXCEPTIONAL); <span class="comment">// final state</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 处理任务完成的后续工作</span></span><br><span class="line">        finishCompletion();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当执行任务的过程发生异常，就会执行该方法，该方法有四步操作：</p>
+<ol>
+<li>将异步计算任务状态 NEW 转换为 COMPLETING 状态，标志异步计算任务快完成了；</li>
+<li>将异常信息保存到待返回的属性中，该属性是 get 方法获取的值；</li>
+<li>将异步计算任务状态由 COMPLETING 转换为 EXCEPTIONAL 状态，标志异步计算任务执行异常，是个完结状态；</li>
+<li>任务完结后的收尾工作，包括唤醒等待链表中的线程和置空任务体等；</li>
+</ol>
+<p>至此，FutureTask 的状态流转为：<strong>NEW -&gt; COMPLETING -&gt; EXCEPTIONAL</strong></p>
+<h4 id="处理结果"><a href="#处理结果" class="headerlink" title="处理结果"></a>处理结果</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">set</span><span class="params">(V v)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 将任务状态 NEW 更新为 COMPLETING</span></span><br><span class="line">    <span class="keyword">if</span> (UNSAFE.compareAndSwapInt(<span class="keyword">this</span>, stateOffset, NEW, COMPLETING)) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 结果设置为传入的值</span></span><br><span class="line">        <span class="comment">// 该属性是 get 方法返回的</span></span><br><span class="line">        outcome = v;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 设置任务最终的状态为  NORMAL</span></span><br><span class="line">        UNSAFE.putOrderedInt(<span class="keyword">this</span>, stateOffset, NORMAL); <span class="comment">// final state</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 处理任务完成的后续工作</span></span><br><span class="line">        finishCompletion();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>执行任务无异常，就会执行该方法，该方法同样有四步操作：</p>
+<ol>
+<li>将异步计算任务状态 NEW 转换为 COMPLETING 状态，标志异步计算任务快完成了；</li>
+<li>将任务结果保存到待返回的属性中，该属性是 get 方法获取的值；</li>
+<li>将异步计算任务状态由 COMPLETING 转换为 NORMAL 状态，标志异步计算任务完成，是个完结状态；</li>
+<li>任务完结后的收尾工作，包括唤醒等待链表中的线程和置空任务体等；</li>
+</ol>
+<p>至此，FutureTask 的状态流转为：<strong>NEW -&gt; COMPLETING -&gt; NORMAL</strong></p>
+<h4 id="处理异步任务被中断的情况"><a href="#处理异步任务被中断的情况" class="headerlink" title="处理异步任务被中断的情况"></a>处理异步任务被中断的情况</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 确保在 run 或 runAndReset 执行时，来自可能的 cancel(true) 方法的中断</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">handlePossibleCancellationInterrupt</span><span class="params">(<span class="keyword">int</span> s)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 等待中断者完成中断，这里让出 CPU 等待</span></span><br><span class="line">    <span class="keyword">if</span> (s == INTERRUPTING)</span><br><span class="line">        <span class="keyword">while</span> (state == INTERRUPTING)</span><br><span class="line">            Thread.yield(); <span class="comment">// wait out pending interrupt  等待挂起的中断</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>执行该方法的情况是，在线程执行任务的 <code>call()</code> 方法期间，任务被中断者中断了，一般是中断者调用 <code>cancel(true)</code> 方法，但是还没有完成整个中断流程，因此任务执行完毕后等待中断者完成整个中断逻辑；</p>
+<h3 id="任务取消-cancel"><a href="#任务取消-cancel" class="headerlink" title="任务取消 - cancel"></a>任务取消 - cancel</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 取消任务，可能是中断，也可能是取消</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> mayInterruptIfRunning 是否中断</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">cancel</span><span class="params">(<span class="keyword">boolean</span> mayInterruptIfRunning)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 取消任务的条件：任务状态为 NEW &amp;&amp; 更新任务状态 NEW-&gt;INTERRUPTING 或者 NEW-&gt;CANCELLED 成功</span></span><br><span class="line">    <span class="keyword">if</span> (!(state == NEW &amp;&amp;</span><br><span class="line">            UNSAFE.compareAndSwapInt(<span class="keyword">this</span>, stateOffset, NEW,</span><br><span class="line">                    mayInterruptIfRunning ? INTERRUPTING : CANCELLED)))</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> &#123;    <span class="comment">// in case call to interrupt throws exception</span></span><br><span class="line">        <span class="comment">// 如果中断线程</span></span><br><span class="line">        <span class="keyword">if</span> (mayInterruptIfRunning) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                Thread t = runner;</span><br><span class="line">                <span class="keyword">if</span> (t != <span class="keyword">null</span>)</span><br><span class="line">                    <span class="comment">// 中断线程</span></span><br><span class="line">                    t.interrupt();</span><br><span class="line">            &#125; <span class="keyword">finally</span> &#123; <span class="comment">// final state</span></span><br><span class="line">                UNSAFE.putOrderedInt(<span class="keyword">this</span>, stateOffset, INTERRUPTED);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="comment">// 完结任务</span></span><br><span class="line">        finishCompletion();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>异步计算任务 FutureTask 支持取消任务，这个取消任务可能是中断任务，也可能是取消任务，由调用方决定。最终的结果是任务不能执行了。</p>
+<ol>
+<li>取消任务的前提是，异步计算任务的状态为 NEW，否则不能取消；</li>
+<li>如果是中断式取消任务，那么即使任务正在线程执行，也会对该线程进行中断，没有被执行则忽略中断；</li>
+<li>取消任务后，执行后续的收尾工作，包括唤醒等待结果的线程、置空任务体；</li>
+</ol>
+<p>取消任务的情况下，异步计算任务的状态变更：<strong>NEW-&gt;CANCELLED</strong>。<br>中断式取消任务的情况下，异步计算任务的状态变更：<strong>NEW-&gt;INTERRUPTING-&gt;INTERRUPTED</strong>。</p>
+<p>其中，中断式取消任务的情况下，涉及到两个状态的变更。<code>INTERRUPTING</code> 只是标记中断开始，此时中断的整个过程还没有完成。还记得任务执行过程中对中断情况的特别处理吗？就是这里的情况。</p>
+<h3 id="完结任务-finishCompletion"><a href="#完结任务-finishCompletion" class="headerlink" title="完结任务 - finishCompletion"></a>完结任务 - finishCompletion</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">finishCompletion</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="comment">// assert state &gt; COMPLETING;</span></span><br><span class="line">     <span class="comment">// 如果线程等待队列不为空（这个线程队列实际上是调用者线程）</span></span><br><span class="line">     <span class="keyword">for</span> (WaitNode q; (q = waiters) != <span class="keyword">null</span>; ) &#123;</span><br><span class="line">         <span class="comment">// 置空队列</span></span><br><span class="line">         <span class="keyword">if</span> (UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, waitersOffset, q, <span class="keyword">null</span>)) &#123;</span><br><span class="line">             <span class="comment">// 唤醒并从等待列表中移除等待结果的节点</span></span><br><span class="line">             <span class="keyword">for</span> (; ; ) &#123;</span><br><span class="line">                 Thread t = q.thread;</span><br><span class="line">                 <span class="keyword">if</span> (t != <span class="keyword">null</span>) &#123;</span><br><span class="line">                     q.thread = <span class="keyword">null</span>;</span><br><span class="line">                     <span class="comment">// 唤醒线程 t</span></span><br><span class="line">                     LockSupport.unpark(t);</span><br><span class="line">                 &#125;</span><br><span class="line">                 WaitNode next = q.next;</span><br><span class="line">                 <span class="keyword">if</span> (next == <span class="keyword">null</span>)</span><br><span class="line">                     <span class="keyword">break</span>;</span><br><span class="line">                 q.next = <span class="keyword">null</span>; <span class="comment">// unlink to help gc</span></span><br><span class="line">                 q = next;</span><br><span class="line">             &#125;</span><br><span class="line">             <span class="keyword">break</span>;</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 执行钩子方法</span></span><br><span class="line">     done();</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 任务体完成后置空</span></span><br><span class="line">     callable = <span class="keyword">null</span>;        <span class="comment">// to reduce footprint</span></span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>完结任务方法被多个地方使用，该方法主要做以下 3 件事：</p>
+<ol>
+<li>依次唤醒等待链表中的调用者线程，让它们去拿结果或异常；</li>
+<li>执行钩子方法；</li>
+<li>置空任务体 callable；</li>
+</ol>
+<p><img src="/posts/a16a077e/future-task-4.png" alt></p>
+<h3 id="获取任务结果-get"><a href="#获取任务结果-get" class="headerlink" title="获取任务结果 - get"></a>获取任务结果 - get</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 获得任务的执行结果，如果任务未执行完毕，会阻塞直到任务结束；</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> CancellationException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> V <span class="title">get</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException, ExecutionException </span>&#123;</span><br><span class="line">    <span class="comment">// 任务执行状态</span></span><br><span class="line">    <span class="keyword">int</span> s = state;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果任务还没可能完成，则进入等待链表中等待</span></span><br><span class="line">    <span class="keyword">if</span> (s &lt;= COMPLETING)</span><br><span class="line">        s = awaitDone(<span class="keyword">false</span>, <span class="number">0L</span>);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回任务的结果或异常</span></span><br><span class="line">    <span class="keyword">return</span> report(s);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 超时获取执行结果</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> CancellationException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> V <span class="title">get</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException, ExecutionException, TimeoutException </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (unit == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取任务的状态</span></span><br><span class="line">    <span class="keyword">int</span> s = state;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果任务还没有完成，则超时等待（进入等待链表中），超时或有结果了会醒来</span></span><br><span class="line">    <span class="keyword">if</span> (s &lt;= COMPLETING &amp;&amp;</span><br><span class="line">            (s = awaitDone(<span class="keyword">true</span>, unit.toNanos(timeout))) &lt;= COMPLETING)</span><br><span class="line">        <span class="comment">// 超时无结果，抛出异常    </span></span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> TimeoutException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回任务的结果或异常</span></span><br><span class="line">    <span class="keyword">return</span> report(s);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>获取任务结果有两种方式，一种是阻塞式，另一种是超时获取，它们分别对应上述的方法。</p>
+<h4 id="等待任务完成-awaitDone"><a href="#等待任务完成-awaitDone" class="headerlink" title="等待任务完成 - awaitDone"></a>等待任务完成 - awaitDone</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 在中断或超时时等待完成或中止</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> timed true if use timed waits 是否超时等待</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> nanos time to wait, if timed 等待时间长，纳秒</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> state upon completion</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">int</span> <span class="title">awaitDone</span><span class="params">(<span class="keyword">boolean</span> timed, <span class="keyword">long</span> nanos)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">    <span class="comment">// 等待的截止时间，非超时就是 0</span></span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">long</span> deadline = timed ? System.nanoTime() + nanos : <span class="number">0L</span>;</span><br><span class="line"></span><br><span class="line">    WaitNode q = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">boolean</span> queued = <span class="keyword">false</span>;</span><br><span class="line">    <span class="keyword">for</span> (; ; ) &#123;</span><br><span class="line">        <span class="comment">// 如果获取结果的线程被中断，则尝试移除节点 q，然后抛出中断异常</span></span><br><span class="line">        <span class="keyword">if</span> (Thread.interrupted()) &#123;</span><br><span class="line">            removeWaiter(q);</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> InterruptedException();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 任务状态</span></span><br><span class="line">        <span class="keyword">int</span> s = state;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果任务状态 &gt; COMPLETING，那么可以返回了，此时能拿到最终的结果或异常「参考 report 中的逻辑」。</span></span><br><span class="line">        <span class="comment">// todo 这里是自旋出口</span></span><br><span class="line">        <span class="keyword">if</span> (s &gt; COMPLETING) &#123;</span><br><span class="line">            <span class="keyword">if</span> (q != <span class="keyword">null</span>)</span><br><span class="line">                q.thread = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">return</span> s;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 如果任务状态处于 COMPLETING 状态，说明任务快完成了，就差设置状态到NORMAL或EXCEPTIONAL和设置结果了</span></span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (s == COMPLETING) <span class="comment">// cannot time out yet 还不能超时</span></span><br><span class="line">            <span class="comment">// 让出 CPU，优先完成任务「调用线程不占用CPU了，让任务尽快完成」</span></span><br><span class="line">            Thread.yield();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 创建线程节点，节点中记录调用者线程</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (q == <span class="keyword">null</span>)</span><br><span class="line">            q = <span class="keyword">new</span> WaitNode();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 将线程节点 q 加入到等待链表中</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (!queued)</span><br><span class="line">            <span class="comment">// CAS 的链表头插法</span></span><br><span class="line">            queued = UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, waitersOffset,</span><br><span class="line">                    q.next = waiters, q);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 超时获取结果</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (timed) &#123;</span><br><span class="line">            <span class="comment">// 计算是否超时</span></span><br><span class="line">            nanos = deadline - System.nanoTime();</span><br><span class="line">            <span class="keyword">if</span> (nanos &lt;= <span class="number">0L</span>) &#123;</span><br><span class="line">                <span class="comment">// 超时了，则从等待链表中移除节点 q，并返回 state</span></span><br><span class="line">                removeWaiter(q);</span><br><span class="line">                <span class="keyword">return</span> state;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 超时阻塞线程</span></span><br><span class="line">            LockSupport.parkNanos(<span class="keyword">this</span>, nanos);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 阻塞式获取结果，阻塞当前线程（调用者线程）</span></span><br><span class="line">        &#125; <span class="keyword">else</span></span><br><span class="line">            <span class="comment">// 阻塞线程</span></span><br><span class="line">            LockSupport.park(<span class="keyword">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>等待任务完成的方法还是比较复杂的，它的特点是：<strong>在循环中控制整个流程，以状态 state 驱动流程，也就是随着 state 的不同，执行的分支流也不同</strong>。我们假设调用者线程获取结果时任务还没有完成，异步计算任务的状态为 NEW，那么一个完整的流程大致如下：</p>
+<ol>
+<li>第一次循环，state=NEW，此时会将调用者线程封装在 WaitNode 节点中；</li>
+<li>第二次循环，state=NEW，此时调用者线程节点 WaitNode 会加入到等待链表的头部「<strong>这里是入等待链表的入口</strong>」，注意此时调用者线程并没有阻塞等待；</li>
+<li>第三次循环，state=NEW，执行调用者线程会进入阻塞，假设调用者获取结果使用的是 get() 方法，那么就是 <code>LockSupport.park(this)</code>；</li>
+<li>假设在调用者线程阻塞等待期间，任务完成了，在完结任务的处理方法中，会通过 <code>LockSupport.unpark(t)</code> 依次唤醒等待链表中的调用者线程；</li>
+<li>第四次循环，此时 state &gt; COMPLETING ，退出方法；</li>
+</ol>
+<p>在获取任务结果时，异步计算任务的状态是 COMPLETING 的情况，那么就会让出 CPU 等待任务完成。</p>
+<h4 id="任务最终执行结果"><a href="#任务最终执行结果" class="headerlink" title="任务最终执行结果"></a>任务最终执行结果</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 为已完成的任务返回结果或抛出异常。</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> s completed state value</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>)</span><br><span class="line"><span class="function"><span class="keyword">private</span> V <span class="title">report</span><span class="params">(<span class="keyword">int</span> s)</span> <span class="keyword">throws</span> ExecutionException </span>&#123;</span><br><span class="line">    <span class="comment">// 任务执行的结果或异常</span></span><br><span class="line">    Object x = outcome;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果任务正常运行结束，返回结果</span></span><br><span class="line">    <span class="keyword">if</span> (s == NORMAL)</span><br><span class="line">        <span class="keyword">return</span> (V) x;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果任务被取消或被中断，则抛出任务取消异常</span></span><br><span class="line">    <span class="keyword">if</span> (s &gt;= CANCELLED)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> CancellationException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 任务异常运行</span></span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> ExecutionException((Throwable) x);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>如果任务正常执行结束，则返回任务的执行结果；</li>
+<li>如果任务被取消，则抛出取消异常；</li>
+<li>如果任务异常结束，则包装成 ExecutionException 异常抛出；</li>
+</ul>
+<h3 id="FutureTask-amp-ThreadPollExecutor"><a href="#FutureTask-amp-ThreadPollExecutor" class="headerlink" title="FutureTask &amp; ThreadPollExecutor"></a>FutureTask &amp; ThreadPollExecutor</h3><p>在介绍<a href="https://gentryhuang.com/posts/d7cef21d/">并发 - 线程池</a>一文中，我们简单地对 FutureTask 进行了介绍，下面我们收个尾，看看两者是如何配合使用的。</p>
+<p>使用线程池提交任务时，一般有两种方法，其中的 <code>submit</code> 方法返回的就是 <code>FutureTask</code> 。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> &lt;T&gt; <span class="function">Future&lt;T&gt; <span class="title">submit</span><span class="params">(Callable&lt;T&gt; task)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 非空检查</span></span><br><span class="line">    <span class="keyword">if</span> (task == <span class="keyword">null</span>) <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">    <span class="comment">// 使用 FutureTask 封装任务</span></span><br><span class="line">    RunnableFuture&lt;T&gt; ftask = newTaskFor(task);</span><br><span class="line">    <span class="comment">// 使用 execute 方法执行任务</span></span><br><span class="line">    execute(ftask);</span><br><span class="line">    <span class="comment">// 返回 FutureTask </span></span><br><span class="line">    <span class="keyword">return</span> ftask;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">protected</span> &lt;T&gt; <span class="function">RunnableFuture&lt;T&gt; <span class="title">newTaskFor</span><span class="params">(Callable&lt;T&gt; callable)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> FutureTask&lt;T&gt;(callable);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这样一来，任务提交到线程池后就会返回一个和任务相关的异步计算任务对象 FutureTask ，通过这个对象我们就可以对提交到线程池中的任务的状态进行追踪。</p>
+<h2 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h2><p>RPC 框架中的同步调用和异步调用本质上都是异步调用，其中异步调用就可以使用 Future 衍生实现。比如 Dubbo 中的异步调用：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">ResponseFuture future = currentClient.request(inv, timeout);</span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 1 调用 RpcContext#setFuture(future) 方法，在 FutureFitler 中，异步回调。</span></span><br><span class="line"><span class="comment"> * 2 将DefaultFuture 对象封装到 FutureAdapter实例中，并将 FutureAdapter实例设置到RpcContext 中，我们可以在需要的地方取出使用 【在合适的地方调用 get方法】</span></span><br><span class="line"><span class="comment"> * 3 FutureAdapter 是一个适配器，用于将 Dubbo 中的 ResponseFuture 与 JDK 中的 Future 进行适配，这样当用户线程调用 Future 的 get 方法时，经过 FutureAdapter 适配，最终会调用 ResponseFuture 实现类对象的 get 方法，也就是 DefaultFuture 的 get 方法</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"> RpcContext.getContext().setFuture(<span class="keyword">new</span> FutureAdapter&lt;Object&gt;(future));</span><br><span class="line">  <span class="comment">// 返回 空结果</span></span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">new</span> RpcResult();</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>FutureTask 表示异步计算的任务，它支持检查任务是否完成、等待任务完成、获取任务结果、以及取消任务等方法。<strong>通过这个异步计算任务，我们可以追踪任务的状态，从而可以灵活操作任务</strong>。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/a16a077e/" title="并发 - FutureTask" target="_blank" rel="external">https://gentryhuang.com/posts/a16a077e/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    
+    <li class="next">
+      <a href="/posts/3c450cc6/" title="MySQL - 乐观锁和悲观锁"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2022 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>

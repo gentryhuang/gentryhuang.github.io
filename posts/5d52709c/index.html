@@ -28,7 +28,7 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/queue/linked-blocking-queue-1.png">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/java-base/queue/linked-blocking-queue-2.png">
 <meta property="article:published_time" content="2022-02-04T01:05:14.000Z">
-<meta property="article:modified_time" content="2022-05-10T02:31:31.181Z">
+<meta property="article:modified_time" content="2022-05-12T02:54:41.455Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Queue">
 <meta property="article:tag" content="JUC">
@@ -216,7 +216,7 @@
   <div class="widget">
     <h3 class="widget-title">分类</h3>
     <div class="widget-body">
-      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">20</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">21</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
     </div>
   </div>
 
@@ -252,6 +252,31 @@
     <div class="widget-body">
       <ul class="recent-post-list list-unstyled ">
         
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/a16a077e/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/a16a077e/" class="title">并发 - FutureTask</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-04-22T02:07:06.000Z" itemprop="datePublished">2022-04-22</time>
+              </p>
+            </div>
+          </li>
+          
           <li>
             
             <div class="item-thumb">
@@ -352,31 +377,6 @@
             </div>
           </li>
           
-          <li>
-            
-            <div class="item-thumb">
-              <a href="/posts/62ea789a/" class="thumb">
-    
-    
-        <span class="thumb-image thumb-none"></span>
-    
-</a>
-
-            </div>
-            
-            <div class="item-inner">
-              <p class="item-category">
-                <a class="category-link" href="/categories/JDK/">JDK</a>
-              </p>
-              <p class="item-title">
-                <a href="/posts/62ea789a/" class="title">队列 - PriorityQueue</a>
-              </p>
-              <p class="item-date">
-                <time datetime="2022-02-12T03:38:34.000Z" itemprop="datePublished">2022-02-12</time>
-              </p>
-            </div>
-          </li>
-          
       </ul>
     </div>
   </div>
@@ -392,7 +392,7 @@
   <div class="slimContent">
     <nav id="toc" class="article-toc">
       <h3 class="toc-title">文章目录</h3>
-      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码分析"><span class="toc-number">2.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#数据结构"><span class="toc-number">2.1.</span> <span class="toc-text">数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-number">2.2.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#添加元素"><span class="toc-number">2.3.</span> <span class="toc-text">添加元素</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#put"><span class="toc-number">2.3.1.</span> <span class="toc-text">put()</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#enqueue"><span class="toc-number">2.3.1.1.</span> <span class="toc-text">enqueue()</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#signalNotEmpty"><span class="toc-number">2.3.1.2.</span> <span class="toc-text">signalNotEmpty()</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#offer"><span class="toc-number">2.3.2.</span> <span class="toc-text">offer()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#获取元素"><span class="toc-number">2.4.</span> <span class="toc-text">获取元素</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#take"><span class="toc-number">2.4.1.</span> <span class="toc-text">take()</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#dequeue"><span class="toc-number">2.4.1.1.</span> <span class="toc-text">dequeue()</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#signalNotFull"><span class="toc-number">2.4.1.2.</span> <span class="toc-text">signalNotFull()</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#poll"><span class="toc-number">2.4.2.</span> <span class="toc-text">poll()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#peek"><span class="toc-number">2.4.3.</span> <span class="toc-text">peek()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#遍历链表操作"><span class="toc-number">2.5.</span> <span class="toc-text">遍历链表操作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ArrayBlockingQueue-VS-LinkedBlockingQueue"><span class="toc-number">3.</span> <span class="toc-text">ArrayBlockingQueue VS LinkedBlockingQueue</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码分析"><span class="toc-number">2.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#数据结构"><span class="toc-number">2.1.</span> <span class="toc-text">数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-number">2.2.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#添加元素"><span class="toc-number">2.3.</span> <span class="toc-text">添加元素</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#put"><span class="toc-number">2.3.1.</span> <span class="toc-text">put()</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#enqueue"><span class="toc-number">2.3.1.1.</span> <span class="toc-text">enqueue()</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#signalNotEmpty"><span class="toc-number">2.3.1.2.</span> <span class="toc-text">signalNotEmpty()</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#offer"><span class="toc-number">2.3.2.</span> <span class="toc-text">offer()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#获取元素"><span class="toc-number">2.4.</span> <span class="toc-text">获取元素</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#take"><span class="toc-number">2.4.1.</span> <span class="toc-text">take()</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#dequeue"><span class="toc-number">2.4.1.1.</span> <span class="toc-text">dequeue()</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#signalNotFull"><span class="toc-number">2.4.1.2.</span> <span class="toc-text">signalNotFull()</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#poll"><span class="toc-number">2.4.2.</span> <span class="toc-text">poll()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#peek"><span class="toc-number">2.4.3.</span> <span class="toc-text">peek()</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#遍历链表操作"><span class="toc-number">2.5.</span> <span class="toc-text">遍历链表操作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ArrayBlockingQueue-VS-LinkedBlockingQueue"><span class="toc-number">3.</span> <span class="toc-text">ArrayBlockingQueue VS LinkedBlockingQueue</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ArrayBlockingQueue-双锁问题"><span class="toc-number">3.1.</span> <span class="toc-text">ArrayBlockingQueue 双锁问题</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
     </nav>
   </div>
 </aside>
@@ -436,10 +436,10 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/5d52709c/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 3.9k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 4.1k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 15(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 16(分)</span>
 	
 
       </div>
@@ -527,6 +527,9 @@
 <li>ArrayBlockingQueue 内部使用一个锁来控制元素的添加和取出操作，而 LinkedBlockingQueue 则是使用两个锁来控制。可以看出，前者不管是添加还是获取元素，都可能被阻塞，而后者在添加和获取时分别使用了两个锁，只会相同操作有阻塞可能，因此性能方面后者更强。</li>
 <li>ArrayBlockingQueue 内部使用的是固定内存，而 LinkedBlockingQueue 内部使用的是动态内存，无论是分配内存还是释放内存（甚至GC），动态内存的性能自然都会比固定内存要差。</li>
 </ol>
+<h3 id="ArrayBlockingQueue-双锁问题"><a href="#ArrayBlockingQueue-双锁问题" class="headerlink" title="ArrayBlockingQueue 双锁问题"></a>ArrayBlockingQueue 双锁问题</h3><p>LinkedBlockingQueue 使用两个锁来保证并发安全，性能更好。那为什么 ArrayBlockingQueue 不使用双锁实现呢？</p>
+<p>在不考虑设计的情况下，ArrayBlockingQueue 完全可以按照 LinkedBlockingQueue 的双锁设计思路无脑式实现。但是不要忘了，忽略了最初的设计，那么就失去了初衷，存在即合理嘛。</p>
+<p>此外，ArrayBlockingQueue 还支持公平的特性，这是 LinkedBlockingQueue 双锁没有实现的。</p>
 <h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>LinkedBlockingQueue 是一个基于链表（单链表）实现的先进先出的阻塞队列。在入队和出队时（不含删除、清除），分别使用两把独占锁保证安全，也提高了并发度，其他操作基本都会同时使用两把锁，因此线程安全问题没问题。</p>
 <p>LinkedBlockingQueue 虽然性能比 ArrayBlockingQueue 好，但是在内存处理上却不如后者好。此外，ConcurrentLinkedQueue 不再使用锁机制，而是采用 CAS 的方式，在性能上更强于 LinkedBlockingQueue 。</p>
 
