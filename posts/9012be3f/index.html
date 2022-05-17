@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform" />
+  <meta http-equiv="Cache-Control" content="no-siteapp" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000" />
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top" />
+  
+  
+  <title>并发 - ScheduledThreadPoolExecutor | gentryhuang的博客</title>
+  <meta name="description" content="概述ScheduledThreadPoolExecutor 是基于 ThreadPoolExecutor 扩展的执行定时任务线程池，线程池相关的核心逻辑都是在后者中实现的，前者主要用于实现定时任务或周期性任务逻辑，后续的功能交给父类 ThreadPoolExecutor 实现。 为了保证任务是在未来某个时间点执行，ScheduledThreadPoolExecutor 使用的阻塞队列是具有延时特性">
+<meta property="og:type" content="article">
+<meta property="og:title" content="并发 - ScheduledThreadPoolExecutor">
+<meta property="og:url" content="https://gentryhuang.com/posts/9012be3f/index.html">
+<meta property="og:site_name" content="gentryhuang‘s blog">
+<meta property="og:description" content="概述ScheduledThreadPoolExecutor 是基于 ThreadPoolExecutor 扩展的执行定时任务线程池，线程池相关的核心逻辑都是在后者中实现的，前者主要用于实现定时任务或周期性任务逻辑，后续的功能交给父类 ThreadPoolExecutor 实现。 为了保证任务是在未来某个时间点执行，ScheduledThreadPoolExecutor 使用的阻塞队列是具有延时特性">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gentryhuang.com/posts/9012be3f/scheduled-thread-pool-1.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/9012be3f/scheduled-thread-pool-2.png">
+<meta property="og:image" content="https://gentryhuang.com/posts/9012be3f/scheduled-thread-pool-3.png">
+<meta property="article:published_time" content="2022-05-02T01:55:06.000Z">
+<meta property="article:modified_time" content="2022-05-17T04:44:53.750Z">
+<meta property="article:author" content="gentryhuang">
+<meta property="article:tag" content="JUC">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gentryhuang.com/posts/9012be3f/scheduled-thread-pool-1.png">
+  <!-- Canonical links -->
+  <link rel="canonical" href="https://gentryhuang.com/posts/9012be3f/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="gentryhuang‘s blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+  
+  
+    <link href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.css" rel="stylesheet">
+  
+  
+<meta name="generator" content="Hexo 4.2.1"></head>
+
+
+<body class="main-center" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://gentryhuang.com" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpeg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">Gentryhuang&#39;s Blog</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md"></h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Hangzhou, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav menu-highlight">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-repository">
+          <a href="/repository">
+            
+            <i class="icon icon-project"></i>
+            
+            <span class="menu-title">项目</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about">
+            
+            <i class="icon icon-cup-fill"></i>
+            
+            <span class="menu-title">关于</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      
+
+<script defer="" src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+
+            
+
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JDK/">JDK</a><span class="category-list-count">22</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/RPC/">RPC</a><span class="category-list-count">68</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/Redis/">Redis</a><span class="category-list-count">8</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6/">任务调度</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">6</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">网络通信</a><span class="category-list-count">3</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a><span class="category-list-count">32</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+<!-- 这里使用 false 关闭右侧标签  -->
+
+
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/AQS/" style="font-size: 13.5px;">AQS</a> <a href="/tags/ConcurrentHashMap/" style="font-size: 13px;">ConcurrentHashMap</a> <a href="/tags/CopyOnWrite/" style="font-size: 13px;">CopyOnWrite</a> <a href="/tags/Dubbo/" style="font-size: 14px;">Dubbo</a> <a href="/tags/Filter/" style="font-size: 13.75px;">Filter</a> <a href="/tags/Gossip/" style="font-size: 13px;">Gossip</a> <a href="/tags/HashMap/" style="font-size: 13px;">HashMap</a> <a href="/tags/HashedWheelTimer/" style="font-size: 13px;">HashedWheelTimer</a> <a href="/tags/I-O/" style="font-size: 13.13px;">I/O</a> <a href="/tags/JMM/" style="font-size: 13px;">JMM</a> <a href="/tags/JUC/" style="font-size: 13.75px;">JUC</a> <a href="/tags/Javassist/" style="font-size: 13.25px;">Javassist</a> <a href="/tags/Lock/" style="font-size: 13.13px;">Lock</a> <a href="/tags/Mina/" style="font-size: 13px;">Mina</a> <a href="/tags/Netty/" style="font-size: 13px;">Netty</a> <a href="/tags/Protocol/" style="font-size: 13.25px;">Protocol</a> <a href="/tags/Queue/" style="font-size: 13.38px;">Queue</a> <a href="/tags/RPC/" style="font-size: 13.63px;">RPC</a> <a href="/tags/Raft/" style="font-size: 13px;">Raft</a> <a href="/tags/Redis/" style="font-size: 13.38px;">Redis</a> <a href="/tags/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 13.13px;">Redis数据结构</a> <a href="/tags/SCAN/" style="font-size: 13px;">SCAN</a> <a href="/tags/SPI/" style="font-size: 13.25px;">SPI</a> <a href="/tags/Spring/" style="font-size: 13.25px;">Spring</a> <a href="/tags/Thread/" style="font-size: 13.13px;">Thread</a> <a href="/tags/Zookeeper/" style="font-size: 13.13px;">Zookeeper</a> <a href="/tags/%E4%BB%A3%E7%90%86/" style="font-size: 13px;">代理</a> <a href="/tags/%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95/" style="font-size: 13px;">共识算法</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" style="font-size: 13px;">分布式锁</a> <a href="/tags/%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" style="font-size: 13px;">慢查询日志</a> <a href="/tags/%E7%BC%93%E5%AD%98/" style="font-size: 13px;">缓存</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 13.88px;">设计模式</a> <a href="/tags/%E9%99%90%E6%B5%81/" style="font-size: 13px;">限流</a>
+    </div>
+  </div>
+
+    
+      <!-- 这里使用 false 关闭右侧归档  -->
+
+
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled ">
+        
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/9012be3f/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/9012be3f/" class="title">并发 - ScheduledThreadPoolExecutor</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-05-02T01:55:06.000Z" itemprop="datePublished">2022-05-02</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/a16a077e/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/JDK/">JDK</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/a16a077e/" class="title">并发 - FutureTask</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-04-22T02:07:06.000Z" itemprop="datePublished">2022-04-22</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/3c450cc6/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/3c450cc6/" class="title">MySQL - 乐观锁和悲观锁</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-04-10T02:46:59.000Z" itemprop="datePublished">2022-04-10</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/c1861d8c/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/Redis/">Redis</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/c1861d8c/" class="title">Redis原理 - SCAN 原理</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-03-12T14:14:47.000Z" itemprop="datePublished">2022-03-12</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-thumb">
+              <a href="/posts/e0c3e79e/" class="thumb">
+    
+    
+        <span class="thumb-image thumb-none"></span>
+    
+</a>
+
+            </div>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/MySQL/">MySQL</a>
+              </p>
+              <p class="item-title">
+                <a href="/posts/e0c3e79e/" class="title">MySQL - Double Write</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2022-03-09T08:25:44.000Z" itemprop="datePublished">2022-03-09</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<aside class="sidebar sidebar-toc collapse" id="collapseToc" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    <nav id="toc" class="article-toc">
+      <h3 class="toc-title">文章目录</h3>
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#使用示例"><span class="toc-number">2.</span> <span class="toc-text">使用示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#源码分析"><span class="toc-number">3.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#属性"><span class="toc-number">3.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-number">3.2.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#提交延时任务"><span class="toc-number">3.3.</span> <span class="toc-text">提交延时任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#提交周期性延时任务"><span class="toc-number">3.4.</span> <span class="toc-text">提交周期性延时任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#提交零延时任务"><span class="toc-number">3.5.</span> <span class="toc-text">提交零延时任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#延时调度"><span class="toc-number">3.6.</span> <span class="toc-text">延时调度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#延时计算任务是否可执行"><span class="toc-number">3.7.</span> <span class="toc-text">延时计算任务是否可执行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#确保有线程执行任务"><span class="toc-number">3.8.</span> <span class="toc-text">确保有线程执行任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#重新排队周期任务"><span class="toc-number">3.9.</span> <span class="toc-text">重新排队周期任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#取消并清除不适应shutdown的任务"><span class="toc-number">3.10.</span> <span class="toc-text">取消并清除不适应shutdown的任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#内置任务-ScheduledFutureTask"><span class="toc-number">3.11.</span> <span class="toc-text">内置任务 - ScheduledFutureTask</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#属性-1"><span class="toc-number">3.11.1.</span> <span class="toc-text">属性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#构造方法-1"><span class="toc-number">3.11.2.</span> <span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#元素优先级"><span class="toc-number">3.11.3.</span> <span class="toc-text">元素优先级</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#任务体"><span class="toc-number">3.11.4.</span> <span class="toc-text">任务体</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#周期性时间"><span class="toc-number">3.11.5.</span> <span class="toc-text">周期性时间</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#取消任务"><span class="toc-number">3.11.6.</span> <span class="toc-text">取消任务</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#内置延时队列-DelayedWorkQueue"><span class="toc-number">3.12.</span> <span class="toc-text">内置延时队列 - DelayedWorkQueue</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#小结"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol>
+    </nav>
+  </div>
+</aside>
+
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-concurrent/ScheduledThreadPoolExecutor" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      并发 - ScheduledThreadPoolExecutor
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/posts/9012be3f/" class="article-date">
+	  <time datetime="2022-05-02T01:55:06.000Z" itemprop="datePublished">2022-05-02</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/JDK/">JDK</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/JUC/" rel="tag">JUC</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/9012be3f/#comments" class="article-comment-link">评论</a></span>
+        
+	
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 5.4k(字)</span>
+	
+	
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 22(分)</span>
+	
+
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>ScheduledThreadPoolExecutor 是基于 ThreadPoolExecutor <strong>扩展的</strong>执行定时任务线程池，<strong>线程池相关的核心逻辑都是在后者中实现的</strong>，前者主要用于<strong>实现定时任务或周期性任务逻辑</strong>，后续的功能交给父类 ThreadPoolExecutor 实现。</p>
+<p>为了保证任务是在未来某个时间点执行，ScheduledThreadPoolExecutor 使用的阻塞队列是具有延时特性的阻塞队列，但它并没有直接使用 DelayQueue ，而是自己实现了一个延时阻塞队列，不过跟 DelayQueue 实现原理是一样的。</p>
+<p>ScheduledThreadPoolExecutor 相关的 UML 类图如下所示：</p>
+<p><img src="/posts/9012be3f/scheduled-thread-pool-1.png" alt></p>
+<h2 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ScheduledThreadPoolExecutorDemo</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">        ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = <span class="keyword">new</span> ScheduledThreadPoolExecutor(<span class="number">5</span>);</span><br><span class="line">        <span class="comment">// 设置 线程池关闭后（shutdown)继续执行存在的周期性任务</span></span><br><span class="line">        scheduledThreadPoolExecutor.setContinueExistingPeriodicTasksAfterShutdownPolicy(<span class="keyword">true</span>);</span><br><span class="line">        <span class="comment">// scheduledThreadPoolExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(true);</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 线程池关闭后（shutdown)是否继续执行存在的周期性任务（包括 fixedRate/fixedDelay）</span></span><br><span class="line">        System.out.println(<span class="string">"existingPeriodicTasksAfterShutdownPolicy: "</span> + scheduledThreadPoolExecutor.getContinueExistingPeriodicTasksAfterShutdownPolicy());</span><br><span class="line">        <span class="comment">// 线程关闭后（shutdown）是否继续执行存在的延迟任务</span></span><br><span class="line">        System.out.println(<span class="string">"existingDelayedTasksAfterShutdownPolicy: "</span> + scheduledThreadPoolExecutor.getExecuteExistingDelayedTasksAfterShutdownPolicy());</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1 固定频率 - 每 2s 执行一次</span></span><br><span class="line">        ScheduledFuture&lt;?&gt; scheduledFuture = scheduledThreadPoolExecutor.scheduleAtFixedRate(() -&gt; &#123;</span><br><span class="line">            System.out.println(LocalDateTime.now().format(DateTimeFormatter.ofPattern(<span class="string">"yyyy-MM-dd hh:mm:ss"</span>)) + <span class="string">" 固定频率执行...."</span>);</span><br><span class="line">        &#125;, <span class="number">1</span>, <span class="number">4</span>, TimeUnit.SECONDS);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2 固定延迟时间 - 每 3s 执行一次</span></span><br><span class="line">        ScheduledFuture&lt;?&gt; scheduledFuture1 = scheduledThreadPoolExecutor.scheduleWithFixedDelay(() -&gt; &#123;</span><br><span class="line">            System.out.println(LocalDateTime.now().format(DateTimeFormatter.ofPattern(<span class="string">"yyyy-MM-dd hh:mm:ss"</span>)) + <span class="string">" 固定延迟时间执行...."</span>);</span><br><span class="line">        &#125;, <span class="number">1</span>, <span class="number">2</span>, TimeUnit.SECONDS);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3 延迟调度 - 执行无返回值任务</span></span><br><span class="line">        ScheduledFuture&lt;?&gt; scheduledFuture2 = scheduledThreadPoolExecutor.schedule(() -&gt; &#123;</span><br><span class="line">            System.out.println(<span class="string">"schedule...runnable..."</span>);</span><br><span class="line">        &#125;, <span class="number">1</span>, TimeUnit.SECONDS);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4 延迟调度 - 执行有返回值任务</span></span><br><span class="line">        ScheduledFuture&lt;Object&gt; scheduledFuture3 = scheduledThreadPoolExecutor.schedule(() -&gt; &#123;</span><br><span class="line">            System.out.println(<span class="string">"schedule...callable..."</span>);</span><br><span class="line">            <span class="keyword">return</span> <span class="string">"future"</span>;</span><br><span class="line">        &#125;, <span class="number">1</span>, TimeUnit.SECONDS);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Object o = scheduledFuture3.get();</span><br><span class="line">            System.out.println(o);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">            ex.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 5 关闭线程池</span></span><br><span class="line">        scheduledThreadPoolExecutor.shutdown();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            System.out.println(<span class="string">"10s 后开始停止线程池，届时所有还未执行的任务会被终止！"</span>);</span><br><span class="line">            Thread.sleep(<span class="number">10000</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">            ex.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 6 停止线程池</span></span><br><span class="line">        List&lt;Runnable&gt; runnables = scheduledThreadPoolExecutor.shutdownNow();</span><br><span class="line">        System.out.println(<span class="string">"还未执行的任务数："</span> + runnables.size());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>ScheduledThreadPoolExecutor 执行的定时任务类型可分为四种</strong>，上述示例中已全部列出：</p>
+<ul>
+<li>定时任务，有返回值；</li>
+<li>定时任务，无返回值；</li>
+<li>周期性任务，按固定频率重复执行任务，无返回值；</li>
+<li>周期性任务，按固定延时重复执行任务，无返回值；</li>
+</ul>
+<h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><p>ScheduledThreadPoolExecutor 相关的源码结构如下图所示：</p>
+<p><img src="/posts/9012be3f/scheduled-thread-pool-2.png" alt></p>
+<p>ScheduledThreadPoolExecutor 主要通过以下方式对 <a href="https://gentryhuang.com/posts/d7cef21d/">线程池</a> 进行扩展：</p>
+<ul>
+<li>自定义任务类型 <strong><code>ScheduledFutureTask</code></strong>，统一任务为延迟任务；</li>
+<li>自定义延时队列 <strong><code>DelayedWorkQueue</code></strong>，同 DelayQueue 是无界的延时阻塞队列；</li>
+<li>支持可配置的 <strong><code>run-after-shutdown</code></strong> 参数，在线程池关闭后（shutdown)对任务执行进行干预；</li>
+</ul>
+<h3 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ScheduledThreadPoolExecutor</span></span></span><br><span class="line"><span class="class">        <span class="keyword">extends</span> <span class="title">ThreadPoolExecutor</span></span></span><br><span class="line"><span class="class">        <span class="keyword">implements</span> <span class="title">ScheduledExecutorService</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 线程池关闭后（shutdown)是否继续执行存在的周期性任务（包括 fixedRate/fixedDelay），默认为 flase</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> continueExistingPeriodicTasksAfterShutdown;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 线程池关闭后（shutdown）是否继续执行存在的延迟任务，默认为 true</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> executeExistingDelayedTasksAfterShutdown = <span class="keyword">true</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 取消任务时，是否立即从队列中删除</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> removeOnCancel = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 用于生成任务添加到 ScheduledThreadPoolExecutor 中的序号</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> AtomicLong sequencer = <span class="keyword">new</span> AtomicLong();</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ScheduledThreadPoolExecutor</span><span class="params">(<span class="keyword">int</span> corePoolSize)</span> </span>&#123;</span><br><span class="line">     <span class="comment">// 最大线程数为 Integer.MAX_VALUE；空闲线程存活时间为 0 ；阻塞队列为 ScheduledThreadPoolExecutor 自定义的延时队列 DelayedWorkQueue ；</span></span><br><span class="line">     <span class="keyword">super</span>(corePoolSize, Integer.MAX_VALUE, <span class="number">0</span>, NANOSECONDS,</span><br><span class="line">             <span class="keyword">new</span> DelayedWorkQueue());</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="title">ScheduledThreadPoolExecutor</span><span class="params">(<span class="keyword">int</span> corePoolSize,</span></span></span><br><span class="line"><span class="function"><span class="params">                                    ThreadFactory threadFactory)</span> </span>&#123;</span><br><span class="line">     <span class="keyword">super</span>(corePoolSize, Integer.MAX_VALUE, <span class="number">0</span>, NANOSECONDS,</span><br><span class="line">             <span class="keyword">new</span> DelayedWorkQueue(), threadFactory);</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="title">ScheduledThreadPoolExecutor</span><span class="params">(<span class="keyword">int</span> corePoolSize,</span></span></span><br><span class="line"><span class="function"><span class="params">                                    RejectedExecutionHandler handler)</span> </span>&#123;</span><br><span class="line">     <span class="keyword">super</span>(corePoolSize, Integer.MAX_VALUE, <span class="number">0</span>, NANOSECONDS,</span><br><span class="line">             <span class="keyword">new</span> DelayedWorkQueue(), handler);</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"> <span class="function"><span class="keyword">public</span> <span class="title">ScheduledThreadPoolExecutor</span><span class="params">(<span class="keyword">int</span> corePoolSize,</span></span></span><br><span class="line"><span class="function"><span class="params">                                    ThreadFactory threadFactory,</span></span></span><br><span class="line"><span class="function"><span class="params">                                    RejectedExecutionHandler handler)</span> </span>&#123;</span><br><span class="line">     <span class="keyword">super</span>(corePoolSize, Integer.MAX_VALUE, <span class="number">0</span>, NANOSECONDS,</span><br><span class="line">             <span class="keyword">new</span> DelayedWorkQueue(), threadFactory, handler);</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>ScheduledThreadPoolExecutor 的构造函数只需注意两点即可：</p>
+<ul>
+<li>最终调用父类 ThreadPoolExecutor 的构造方法创建线程池；</li>
+<li>使用的阻塞队列是内置的 DelayedWorkQueue ，并且最大线程数固定为 <code>Integer.MAX_VALUE</code>，且空闲线程最大存活时间为 0；</li>
+</ul>
+<p><strong>注意：</strong>从 ScheduledThreadPoolExecutor 的构造方法中，我们可以知道执行定时任务的线程池底层使用的也是 ThreadPoolExecutor 的主流程，只是通过自定义阻塞队列 DelayedWorkQueue 来干预线程池的主流程。</p>
+<h3 id="提交延时任务"><a href="#提交延时任务" class="headerlink" title="提交延时任务"></a>提交延时任务</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 执行延迟任务</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> command 没有返回值的任务</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> delay 延时时间粒度</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> unit 延时时间粒度的单位</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> RejectedExecutionException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException       &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> ScheduledFuture&lt;?&gt; schedule(Runnable command,</span><br><span class="line">                                   <span class="keyword">long</span> delay,</span><br><span class="line">                                   TimeUnit unit) &#123;</span><br><span class="line">    <span class="comment">// 参数校验</span></span><br><span class="line">    <span class="keyword">if</span> (command == <span class="keyword">null</span> || unit == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 执行钩子方法</span></span><br><span class="line">    RunnableScheduledFuture&lt;?&gt; t = decorateTask(command,</span><br><span class="line">            <span class="comment">// 将普通的任务装饰成 ScheduledFutureTask</span></span><br><span class="line">            <span class="keyword">new</span> ScheduledFutureTask&lt;Void&gt;(command, <span class="keyword">null</span>,</span><br><span class="line">                    triggerTime(delay, unit)));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 延时执行</span></span><br><span class="line">    delayedExecute(t);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 返回延时计算任务</span></span><br><span class="line">    <span class="keyword">return</span> t;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 执行延迟任务</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> callable 有返回值的任务</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> delay 延时时间粒度</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> unit 延时时间粒度的单位</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> RejectedExecutionException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException       &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> &lt;V&gt; <span class="function">ScheduledFuture&lt;V&gt; <span class="title">schedule</span><span class="params">(Callable&lt;V&gt; callable,</span></span></span><br><span class="line"><span class="function"><span class="params">                                       <span class="keyword">long</span> delay,</span></span></span><br><span class="line"><span class="function"><span class="params">                                       TimeUnit unit)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 参数校验</span></span><br><span class="line">    <span class="keyword">if</span> (callable == <span class="keyword">null</span> || unit == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 执行钩子方法</span></span><br><span class="line">    RunnableScheduledFuture&lt;V&gt; t = decorateTask(callable,</span><br><span class="line">            <span class="comment">// 将普通的任务装饰成 ScheduledFutureTask</span></span><br><span class="line">            <span class="keyword">new</span> ScheduledFutureTask&lt;V&gt;(callable,</span><br><span class="line">                    triggerTime(delay, unit)));</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 延时执行</span></span><br><span class="line">    delayedExecute(t);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回延时计算任务</span></span><br><span class="line">    <span class="keyword">return</span> t;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="提交周期性延时任务"><a href="#提交周期性延时任务" class="headerlink" title="提交周期性延时任务"></a>提交周期性延时任务</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 提交一个按固定频率执行的任务</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> command      没有返回值的任务</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> initialDelay 初始延时时间</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> period       频率</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> unit         延时时间粒度的单位</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> RejectedExecutionException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException       &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> IllegalArgumentException   &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> ScheduledFuture&lt;?&gt; scheduleAtFixedRate(Runnable command,</span><br><span class="line">                                              <span class="keyword">long</span> initialDelay,</span><br><span class="line">                                              <span class="keyword">long</span> period,</span><br><span class="line">                                              TimeUnit unit) &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 参数判断</span></span><br><span class="line">    <span class="keyword">if</span> (command == <span class="keyword">null</span> || unit == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">    <span class="comment">// 必须是固定频率（该方法就是按固定频率执行任务）</span></span><br><span class="line">    <span class="keyword">if</span> (period &lt;= <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 将普通的任务装饰成 ScheduledFutureTask</span></span><br><span class="line">    ScheduledFutureTask&lt;Void&gt; sft =</span><br><span class="line">            <span class="keyword">new</span> ScheduledFutureTask&lt;Void&gt;(</span><br><span class="line">                    command,</span><br><span class="line">                    <span class="keyword">null</span>,</span><br><span class="line">                    triggerTime(initialDelay, unit),</span><br><span class="line">                    unit.toNanos(period));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 钩子方法，可在任务执行之前进行干预</span></span><br><span class="line">    RunnableScheduledFuture&lt;Void&gt; t = decorateTask(command, sft);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 保存任务 t，用于周期性执行</span></span><br><span class="line">    sft.outerTask = t;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 延时执行</span></span><br><span class="line">    delayedExecute(t);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回延时计算任务</span></span><br><span class="line">    <span class="keyword">return</span> t;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 提交一个固定延迟的任务</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> command      没有返回值的任务</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> initialDelay 初始延时时间</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> delay        固定延时时间</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> unit         延时时间粒度的单位</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> RejectedExecutionException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException       &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> IllegalArgumentException   &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> ScheduledFuture&lt;?&gt; scheduleWithFixedDelay(Runnable command,</span><br><span class="line">                                                 <span class="keyword">long</span> initialDelay,</span><br><span class="line">                                                 <span class="keyword">long</span> delay,</span><br><span class="line">                                                 TimeUnit unit) &#123;</span><br><span class="line">    <span class="comment">// 参数判断</span></span><br><span class="line">    <span class="keyword">if</span> (command == <span class="keyword">null</span> || unit == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 固定延迟时间校验</span></span><br><span class="line">    <span class="keyword">if</span> (delay &lt;= <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 将普通的任务装饰成 ScheduledFutureTask</span></span><br><span class="line">    ScheduledFutureTask&lt;Void&gt; sft =</span><br><span class="line">            <span class="keyword">new</span> ScheduledFutureTask&lt;Void&gt;(command,</span><br><span class="line">                    <span class="keyword">null</span>,</span><br><span class="line">                    triggerTime(initialDelay, unit),</span><br><span class="line">                    unit.toNanos(-delay)); <span class="comment">// 注意这里是个负数，用于判断周期性任务属于哪一种</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 钩子方法，可在任务执行之前进行干预</span></span><br><span class="line">    RunnableScheduledFuture&lt;Void&gt; t = decorateTask(command, sft);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 保存任务 t，用于周期性执行</span></span><br><span class="line">    sft.outerTask = t;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 延时执行</span></span><br><span class="line">    delayedExecute(t);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回延时计算任务</span></span><br><span class="line">    <span class="keyword">return</span> t;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="提交零延时任务"><a href="#提交零延时任务" class="headerlink" title="提交零延时任务"></a>提交零延时任务</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">execute</span><span class="params">(Runnable command)</span> </span>&#123;</span><br><span class="line">    schedule(command, <span class="number">0</span>, NANOSECONDS);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Override AbstractExecutorService methods</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> RejectedExecutionException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException       &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> Future&lt;?&gt; submit(Runnable task) &#123;</span><br><span class="line">    <span class="keyword">return</span> schedule(task, <span class="number">0</span>, NANOSECONDS);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> RejectedExecutionException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException       &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> &lt;T&gt; <span class="function">Future&lt;T&gt; <span class="title">submit</span><span class="params">(Runnable task, T result)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> schedule(Executors.callable(task, result), <span class="number">0</span>, NANOSECONDS);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> RejectedExecutionException &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@throws</span> NullPointerException       &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> &lt;T&gt; <span class="function">Future&lt;T&gt; <span class="title">submit</span><span class="params">(Callable&lt;T&gt; task)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> schedule(task, <span class="number">0</span>, NANOSECONDS);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ScheduledThreadPoolExecutor 重写了 execute 和 submit 方法，<strong>通过这两个方法提交的任务会被当成 0 延时的任务进行提交</strong>。</p>
+<h3 id="延时调度"><a href="#延时调度" class="headerlink" title="延时调度"></a>延时调度</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * @param task the task</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">delayedExecute</span><span class="params">(RunnableScheduledFuture&lt;?&gt; task)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 如果线程池关闭了，执行拒绝策略</span></span><br><span class="line">    <span class="keyword">if</span> (isShutdown())</span><br><span class="line">        reject(task);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 线程池未关闭</span></span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 先把任务放到队列中（这个队列本质上是一个优先级队列）</span></span><br><span class="line">        <span class="keyword">super</span>.getQueue().add(task);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 再次检查线程池状态，必要时取消并删除任务</span></span><br><span class="line">        <span class="keyword">if</span> (isShutdown() &amp;&amp;</span><br><span class="line">                !canRunInCurrentRunState(task.isPeriodic()) &amp;&amp;</span><br><span class="line">                remove(task))</span><br><span class="line">            task.cancel(<span class="keyword">false</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 确保有线程执行任务</span></span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            ensurePrestart();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>延时调度方法 delayedExecute 是 ScheduledThreadPoolExecutor 提交任务最底层的方法，在此之前的流程都是上层延时计算任务的处理。该方法就相当于线程池中的 <code>execute</code> 方法，只是<strong>两者的流程不一样，根本原因是 ScheduledThreadPoolExecutor 执行的是延时任务</strong>。</p>
+<p>下面对该流程进行说明：</p>
+<ol>
+<li>判断线程池是否关闭，关闭则执行拒绝策略以拒绝任务的调度；</li>
+<li>将延时计算任务放入队列中。注意，ThreadPollExecutor 是 <code>&gt;=</code> 核心线程数时才添加任务到阻塞队列中。因为这里是定时线程池，任务时间到了才会执行，因此是要从任务队列中获取的。</li>
+<li>再次判断线程池状态，如果是 shutdown 状态并且当前任务的特性是遇到线程池关闭则无需执行，那么就取消该任务，必要情况还会从队列中删除。</li>
+<li>当前任务可以被执行，那么就需要确保有线程执行任务；</li>
+</ol>
+<h3 id="延时计算任务是否可执行"><a href="#延时计算任务是否可执行" class="headerlink" title="延时计算任务是否可执行"></a>延时计算任务是否可执行</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">boolean</span> <span class="title">canRunInCurrentRunState</span><span class="params">(<span class="keyword">boolean</span> periodic)</span> </span>&#123;</span><br><span class="line">     <span class="comment">/*</span></span><br><span class="line"><span class="comment">        final boolean isRunningOrShutdown(boolean shutdownOK) &#123;</span></span><br><span class="line"><span class="comment">           int rs = runStateOf(ctl.get());</span></span><br><span class="line"><span class="comment">           return rs == RUNNING || (rs == SHUTDOWN &amp;&amp; shutdownOK);</span></span><br><span class="line"><span class="comment">          &#125;</span></span><br><span class="line"><span class="comment">      */</span></span><br><span class="line">     <span class="keyword">return</span> isRunningOrShutdown(periodic ?</span><br><span class="line">             <span class="comment">// 线程池关闭后是否继续执行周期性任务</span></span><br><span class="line">             continueExistingPeriodicTasksAfterShutdown :</span><br><span class="line">             <span class="comment">// 线程池关闭后是否继续执行延迟任务</span></span><br><span class="line">             executeExistingDelayedTasksAfterShutdown);</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>判断延时计算任务是否可被执行的情况有两种：</p>
+<ul>
+<li>如果线程池处于运行状态，那么任务可被执行；</li>
+<li>如果线程池处于关闭状态（shutdown)，那么只有该延时计算任务设置了线程池关闭后仍可被执行的情况下才能被执行；</li>
+</ul>
+<p>对于第二种情况就是 ScheduledThreadPoolExecutor 的 <code>run-after-shutdown</code> 的参数控制情况，也就是定时线程池提供了两个可配置参数用来控制即使线程池 shutdown 的情况下，是否继续执行延时计算任务。由于延时计算任务有两种，因此提供了两个可配置参数：</p>
+<ul>
+<li><code>continueExistingPeriodicTasksAfterShutdown:</code>线程池关闭后是否继续执行周期性任务(包括固定频率和固定延时);</li>
+<li><code>executeExistingDelayedTasksAfterShutdown:</code>  线程池关闭后是否继续执行延迟任务;</li>
+</ul>
+<h3 id="确保有线程执行任务"><a href="#确保有线程执行任务" class="headerlink" title="确保有线程执行任务"></a>确保有线程执行任务</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">+--- ThreadPoolExecutor</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">ensurePrestart</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 线程池线程数</span></span><br><span class="line">        <span class="keyword">int</span> wc = workerCountOf(ctl.get());</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 当前线程池中线程数未达到核心线程数，则创建核心线程</span></span><br><span class="line">        <span class="keyword">if</span> (wc &lt; corePoolSize)</span><br><span class="line">            addWorker(<span class="keyword">null</span>, <span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 这里处理核心线程数为 0 的情况，保证线程池至少有一个线程</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (wc == <span class="number">0</span>)</span><br><span class="line">            addWorker(<span class="keyword">null</span>, <span class="keyword">false</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>由于 ScheduledThreadPoolExecutor 是定时线程池，它是先将延时任务放到队列中，然后再创建线程去执行，这个和 ThreadPoolExecutor 的调度流程不同。通过上述方法可以知道，<strong>如果设置了核心线程数(&gt;0)，那么每次都会创建新的线程直到达到核心线程数；如果没有设置核心线程数(=0)，那么线程池中最多只会有一个线程，每次判断线程池空了创建一个就行了。</strong></p>
+<p>这也指导我们在使用 ScheduledThreadPoolExecutor 时最好设置合适的核心线程数，虽然构造方法中最大线程数是 <code>Integer.MAX_VALUE</code>，但事实上最大线程没啥特别的用处，只有当核心线程数为 0 时，才会作为是否能创建线程的条件，而且线程池同时最多有一个非核心线程。如果设置了核心线程数，那么就不会创建非核心线程了。</p>
+<h3 id="重新排队周期任务"><a href="#重新排队周期任务" class="headerlink" title="重新排队周期任务"></a>重新排队周期任务</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">  * 重新排队周期任务，除非当前运行状态排除它。</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  * 除了丢弃任务而不是拒绝，其他的与 delayedExecute 方法基本相同</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  * <span class="doctag">@param</span> task the task</span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line"> <span class="function"><span class="keyword">void</span> <span class="title">reExecutePeriodic</span><span class="params">(RunnableScheduledFuture&lt;?&gt; task)</span> </span>&#123;</span><br><span class="line">     <span class="comment">// 判断是否可以该运行任务</span></span><br><span class="line">     <span class="keyword">if</span> (canRunInCurrentRunState(<span class="keyword">true</span>)) &#123;</span><br><span class="line"></span><br><span class="line">         <span class="comment">// 将任务再次添加到任务队列中</span></span><br><span class="line">         <span class="keyword">super</span>.getQueue().add(task);</span><br><span class="line"></span><br><span class="line">         <span class="comment">// 再次检查是否可以运行任务，如果不能运行则移除并取消任务</span></span><br><span class="line">         <span class="keyword">if</span> (!canRunInCurrentRunState(<span class="keyword">true</span>) &amp;&amp; remove(task))</span><br><span class="line">             task.cancel(<span class="keyword">false</span>);</span><br><span class="line"></span><br><span class="line">         <span class="keyword">else</span></span><br><span class="line">             <span class="comment">// 确保有线程执行任务</span></span><br><span class="line">             ensurePrestart();</span><br><span class="line">     &#125;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述方法用于 ScheduledThreadPoolExecutor 调度的是一个周期性任务，当任务执行完毕后，任务会重新被加入队列中等待调度。</p>
+<h3 id="取消并清除不适应shutdown的任务"><a href="#取消并清除不适应shutdown的任务" class="headerlink" title="取消并清除不适应shutdown的任务"></a>取消并清除不适应shutdown的任务</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">onShutdown</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     BlockingQueue&lt;Runnable&gt; q = <span class="keyword">super</span>.getQueue();</span><br><span class="line">     <span class="comment">// 延迟任务关闭策略</span></span><br><span class="line">     <span class="keyword">boolean</span> keepDelayed =</span><br><span class="line">             getExecuteExistingDelayedTasksAfterShutdownPolicy();</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 周期任务关闭策略</span></span><br><span class="line">     <span class="keyword">boolean</span> keepPeriodic =</span><br><span class="line">             getContinueExistingPeriodicTasksAfterShutdownPolicy();</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 不支持线程池关闭执行，则取消并移除相关任务</span></span><br><span class="line">     <span class="keyword">if</span> (!keepDelayed &amp;&amp; !keepPeriodic) &#123;</span><br><span class="line">         <span class="keyword">for</span> (Object e : q.toArray())</span><br><span class="line">             <span class="keyword">if</span> (e <span class="keyword">instanceof</span> RunnableScheduledFuture&lt;?&gt;)</span><br><span class="line">                 ((RunnableScheduledFuture&lt;?&gt;) e).cancel(<span class="keyword">false</span>);</span><br><span class="line">         q.clear();</span><br><span class="line">     &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">         <span class="comment">// Traverse snapshot to avoid iterator exceptions</span></span><br><span class="line">         <span class="keyword">for</span> (Object e : q.toArray()) &#123;</span><br><span class="line">             <span class="keyword">if</span> (e <span class="keyword">instanceof</span> RunnableScheduledFuture) &#123;</span><br><span class="line">                 RunnableScheduledFuture&lt;?&gt; t =</span><br><span class="line">                         (RunnableScheduledFuture&lt;?&gt;) e;</span><br><span class="line">                 <span class="keyword">if</span> ((t.isPeriodic() ? !keepPeriodic : !keepDelayed) || t.isCancelled()) &#123; <span class="comment">// also remove if already cancelled</span></span><br><span class="line">                     <span class="keyword">if</span> (q.remove(t))</span><br><span class="line">                         t.cancel(<span class="keyword">false</span>);</span><br><span class="line">                 &#125;</span><br><span class="line">             &#125;</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="comment">// 尝试终止线程池</span></span><br><span class="line">     tryTerminate();</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<p>在线程池 shutdown 时会取消并清除不适应线程池关闭的所有任务。也就是说，如果 continueExistingPeriodicTasksAfterShutdown 或者 continueExistingPeriodicTasksAfterShutdown 为 true，那么表示线程池关闭也会执行任务；为 false ，那么在关闭的时候就会移除并取消任务。</p>
+<h3 id="内置任务-ScheduledFutureTask"><a href="#内置任务-ScheduledFutureTask" class="headerlink" title="内置任务 - ScheduledFutureTask"></a>内置任务 - ScheduledFutureTask</h3><p>ScheduledThreadPoolExecutor 自定义了 ScheduledFutureTask 类型的任务，用于描述延时计算任务。该类的 UML 类图如下：</p>
+<p><img src="/posts/9012be3f/scheduled-thread-pool-3.png" alt></p>
+<h4 id="属性-1"><a href="#属性-1" class="headerlink" title="属性"></a>属性</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">+--- ScheduledFutureTask</span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 当前任务被添加到 ScheduledThreadPoolExecutor 中的序号</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">long</span> sequenceNumber;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 以 nanoTime 为单位，任务被执行的时间</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">long</span> time;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 重复任务的周期（以纳秒为单位）:</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * 1. 正值表示固定频率执行。</span></span><br><span class="line"><span class="comment"> * 2. 负值表示固定延迟执行。</span></span><br><span class="line"><span class="comment"> * 3. 值 0 表示非重复任务。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">long</span> period;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 由 reExecutePeriodic 重新入队的实际任务，用于周期性任务</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">RunnableScheduledFuture&lt;V&gt; outerTask = <span class="keyword">this</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 索引到延迟队列，以支持更快的取消。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">int</span> heapIndex;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>sequenceNumber:</strong> 优先级排序使用，当执行时间 time 相同的情况下，越早加入到 ScheduledThreadPoolExecutor 中的任务优先级越高；</li>
+<li><strong>time:</strong> 延时任务执行的时间；</li>
+<li><strong>period:</strong> 任务的周期性特征，具体见注释；</li>
+</ul>
+<h4 id="构造方法-1"><a href="#构造方法-1" class="headerlink" title="构造方法"></a>构造方法</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">ScheduledFutureTask(Runnable r, V result, <span class="keyword">long</span> ns) &#123;</span><br><span class="line">    <span class="comment">// FutureTask 的构造方法</span></span><br><span class="line">    <span class="keyword">super</span>(r, result);</span><br><span class="line">    <span class="keyword">this</span>.time = ns;</span><br><span class="line">    <span class="keyword">this</span>.period = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">this</span>.sequenceNumber = sequencer.getAndIncrement();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">ScheduledFutureTask(Runnable r, V result, <span class="keyword">long</span> ns, <span class="keyword">long</span> period) &#123;</span><br><span class="line">    <span class="comment">// FutureTask 的构造方法</span></span><br><span class="line">    <span class="keyword">super</span>(r, result);</span><br><span class="line">    <span class="keyword">this</span>.time = ns;</span><br><span class="line">    <span class="keyword">this</span>.period = period;</span><br><span class="line">    <span class="keyword">this</span>.sequenceNumber = sequencer.getAndIncrement();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">ScheduledFutureTask(Callable&lt;V&gt; callable, <span class="keyword">long</span> ns) &#123;</span><br><span class="line">    <span class="comment">// FutureTask 的构造方法</span></span><br><span class="line">    <span class="keyword">super</span>(callable);</span><br><span class="line">    <span class="keyword">this</span>.time = ns;</span><br><span class="line">    <span class="keyword">this</span>.period = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">this</span>.sequenceNumber = sequencer.getAndIncrement();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从构造方法可以看出，ScheduledFutureTask 主要是基于 FutureTask 异步计算任务进行扩展的；</p>
+<h4 id="元素优先级"><a href="#元素优先级" class="headerlink" title="元素优先级"></a>元素优先级</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">+--- ScheduledFutureTask </span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 元素优先级比较</span></span><br><span class="line"><span class="comment"> * </span></span><br><span class="line"><span class="comment"> * 1. time 小的排在前面（时间早的任务将被先执行）</span></span><br><span class="line"><span class="comment"> * 2. 如果两个任务的 time 相同，那么比较 sequenceNumber ，sequenceNumber 小的排在前面（如果两个任务的执行时间相同，那么先提交的任务将被先执行）</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> other</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">compareTo</span><span class="params">(Delayed other)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 元素相同</span></span><br><span class="line">    <span class="keyword">if</span> (other == <span class="keyword">this</span>) <span class="comment">// compare zero if same object</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ScheduledFutureTask 类型的，则先比较 time 大小，无法区分大小再比较 sequenceNumber</span></span><br><span class="line">    <span class="keyword">if</span> (other <span class="keyword">instanceof</span> ScheduledFutureTask) &#123;</span><br><span class="line">        ScheduledFutureTask&lt;?&gt; x = (ScheduledFutureTask&lt;?&gt;) other;</span><br><span class="line">        <span class="keyword">long</span> diff = time - x.time;</span><br><span class="line">        <span class="keyword">if</span> (diff &lt; <span class="number">0</span>)</span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (diff &gt; <span class="number">0</span>)</span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (sequenceNumber &lt; x.sequenceNumber)</span><br><span class="line">            <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 比较剩余延时时间</span></span><br><span class="line">    <span class="keyword">long</span> diff = getDelay(NANOSECONDS) - other.getDelay(NANOSECONDS);</span><br><span class="line">    <span class="keyword">return</span> (diff &lt; <span class="number">0</span>) ? -<span class="number">1</span> : (diff &gt; <span class="number">0</span>) ? <span class="number">1</span> : <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述 ScheduledFutureTask 的比较方法将用于加入内置队列时判断元素的优先级，也就是最先执行的任务排在前面。</p>
+<h4 id="任务体"><a href="#任务体" class="headerlink" title="任务体"></a>任务体</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">+--- ScheduledFutureTask</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 覆盖 FutureTask 的方法，以便定期重置 requeue。</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 判断是否周期性任务</span></span><br><span class="line">        <span class="keyword">boolean</span> periodic = isPeriodic();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 判断是否可以运行任务，不可以运行就取消并移除任务</span></span><br><span class="line">        <span class="keyword">if</span> (!canRunInCurrentRunState(periodic))</span><br><span class="line">            cancel(<span class="keyword">false</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 如果是一次性任务，直接调用父类的 run 方法，这个方法实际是 FutureTask 的方法</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (!periodic)</span><br><span class="line">            ScheduledFutureTask.<span class="keyword">super</span>.run();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 如果是周期性任务，调用父类的 runAndReset() 方法，执行并重复任务，这个父类是 FutureTask 的方法</span></span><br><span class="line">            <span class="comment">// runAndReset 和 run 方法类似，只是其任务运行完毕后不会修改 NEW 状态</span></span><br><span class="line">            <span class="comment">// todo 如果任务执行异常，那么就不会继续周期性执行。注意，线程并没有退出。</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (ScheduledFutureTask.<span class="keyword">super</span>.runAndReset()) &#123;</span><br><span class="line">            <span class="comment">// 设置下次任务执行的时间</span></span><br><span class="line">            setNextRunTime();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 重新排队周期任务</span></span><br><span class="line">            reExecutePeriodic(outerTask);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>ScheduledFutureTask 可能是延时任务，也可能是周期性延时任务，因此需要根据情况执行不同的分支逻辑。</p>
+<ul>
+<li>判断即使线程池关闭（shutdown)后是否可以继续执行 ScheduledFutureTask ；</li>
+<li>如果是延时任务，直接调用父类的 run 方法执行任务即可；</li>
+<li>如果是周期性延时任务，直接调用父类的 runAndReset 方法执行并重置任务，然后重新计算任务执行时间并加入到阻塞队列中。</li>
+</ul>
+<h4 id="周期性时间"><a href="#周期性时间" class="headerlink" title="周期性时间"></a>周期性时间</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">+--- ScheduledFutureTask</span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 设置下一次运行周期性任务的时间。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">setNextRunTime</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">long</span> p = period;</span><br><span class="line">    <span class="comment">// scheduleAtFixedRate 方式，以上一个任务开始时间为基础，计算下次触发时间</span></span><br><span class="line">    <span class="keyword">if</span> (p &gt; <span class="number">0</span>)</span><br><span class="line">        time += p;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// scheduleWithFixedDelay 方式，以上个任务结束时间即当前时间为基础，计算下次触发时间</span></span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        time = triggerTime(-p);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述方法只针对周期性任务，一次性延时任务不会用到该方法。</p>
+<p><strong>注意：</strong>固定频率的周期任务 <code>period</code> 的值在提交任务时被设置为正数，固定延时时间的周期任务 <code>period</code> 的值在提交任务时被设置为负数；</p>
+<h4 id="取消任务"><a href="#取消任务" class="headerlink" title="取消任务"></a>取消任务</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 取消任务</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> mayInterruptIfRunning</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">cancel</span><span class="params">(<span class="keyword">boolean</span> mayInterruptIfRunning)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 调用父类 FutureTask 的 cancel 方法</span></span><br><span class="line">    <span class="keyword">boolean</span> cancelled = <span class="keyword">super</span>.cancel(mayInterruptIfRunning);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 取消成功后，判断是否立即移除队列中的任务</span></span><br><span class="line">    <span class="keyword">if</span> (cancelled &amp;&amp; removeOnCancel &amp;&amp; heapIndex &gt;= <span class="number">0</span>)</span><br><span class="line">        remove(<span class="keyword">this</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> cancelled;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ScheduledFutureTask 重写了父类 FutureTask 中的取消任务方法，在此基础上加入了从内置队列中移除元素的逻辑，因为任务取消了，那么在队列中的该任务也就无需执行。</p>
+<h3 id="内置延时队列-DelayedWorkQueue"><a href="#内置延时队列-DelayedWorkQueue" class="headerlink" title="内置延时队列 - DelayedWorkQueue"></a>内置延时队列 - DelayedWorkQueue</h3><p>我们知道，阻塞队列对于线程池来说是非常重要的，<strong>不仅可以缓冲任务，还可以根据阻塞队列的特性调整线程池的调度流程</strong>。ScheduledThreadPoolExecutor 是一个延时线程池，这个<strong>延时的特性其实就体现在它所使用的队列上</strong>。这就要求这个队列不能像普通的阻塞队列那样，队列中即使有任务，如果任务没有到期是不能拿出来的。<strong>从这个特点也解释了前面介绍的延时线程池的调度流程，先把任务放到队列中然后再确保线程执行该任务，目的就是为了延时执行</strong>。</p>
+<p>具体对应到线程池中的执行逻辑如下，从队列中获取任务时：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line">+--- ThreadPoolExecutor#getTask</span><br><span class="line">    <span class="function"><span class="keyword">private</span> Runnable <span class="title">getTask</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">boolean</span> timedOut = <span class="keyword">false</span>; <span class="comment">// Did the last poll() time out?</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (; ; ) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 获取线程池状态码</span></span><br><span class="line">            <span class="keyword">int</span> c = ctl.get();</span><br><span class="line">            <span class="comment">// 获取线程池状态</span></span><br><span class="line">            <span class="keyword">int</span> rs = runStateOf(c);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 线程池关闭且队列为空，应该回收线程。这个条件不仅可以回收非核心线程，也可以回收核心线程。todo 核心线程唯一回收条件</span></span><br><span class="line">            <span class="keyword">if</span> (rs &gt;= SHUTDOWN &amp;&amp; (rs &gt;= STOP || workQueue.isEmpty())) &#123;</span><br><span class="line">                <span class="comment">// 减少线程池中的线程数</span></span><br><span class="line">                decrementWorkerCount();</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 线程池中的线程数</span></span><br><span class="line">            <span class="keyword">int</span> wc = workerCountOf(c);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 允许核心线程数内的线程回收，或线程池中的线程数超过了核心线程数，那么有可能发生超时关闭</span></span><br><span class="line">            <span class="keyword">boolean</span> timed = allowCoreThreadTimeOut || wc &gt; corePoolSize;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 如果线程池中的线程数大于最大线程数或获取任务超时（不设置 allowCoreThreadTimeOut，核心线程没有超时概念），并且任务队列为空，则应该回收当前线程。</span></span><br><span class="line">            <span class="comment">// wc &gt; maximumPoolSize ，可能是执行 setMaximumPoolSize 方法修改了最大值。</span></span><br><span class="line">            <span class="keyword">if</span> ((wc &gt; maximumPoolSize || (timed &amp;&amp; timedOut)) &amp;&amp; (wc &gt; <span class="number">1</span> || workQueue.isEmpty())) &#123;</span><br><span class="line">                <span class="comment">// 减少工作线程数</span></span><br><span class="line">                <span class="keyword">if</span> (compareAndDecrementWorkerCount(c))</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 从队列中取出任务</span></span><br><span class="line">                <span class="comment">// 注意，真正响应中断是在 poll() 方法或者 take() 方法中</span></span><br><span class="line">                Runnable r = timed ?</span><br><span class="line">                        <span class="comment">// 超时获取任务，因为线程超时要被回收。如果线程在等待的过程发生了中断，会抛出中断异常</span></span><br><span class="line">                        workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS) :</span><br><span class="line">                        <span class="comment">// 不需要超时</span></span><br><span class="line">                        workQueue.take();</span><br><span class="line">                <span class="keyword">if</span> (r != <span class="keyword">null</span>)</span><br><span class="line">                    <span class="keyword">return</span> r;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 获取任务超时，进行重试</span></span><br><span class="line">                timedOut = <span class="keyword">true</span>;</span><br><span class="line"></span><br><span class="line">            &#125; <span class="keyword">catch</span> (InterruptedException retry) &#123;</span><br><span class="line">                <span class="comment">// 发生中断重置超时标记</span></span><br><span class="line">                timedOut = <span class="keyword">false</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>ScheduledThreadPoolExecutor 为了<strong>控制任务在某个时刻执行</strong>，自己实现了一个和 DelayQueue 功能一致的内部延时队列 DelayedWorkQueue 。区别点是 DelayQueue 内部使用的是优先级队列 PriorityQueue ，延时逻辑由自身实现。而 DelayedWorkQueue 将优先级和延时特性重新实现了一遍，即将 PriorityQueue 和 DelayQueue 逻辑在一个类中实现，本质上同 DelayQueue 的特性和逻辑，源码部分就不再详细说明，参考 <a href="https://gentryhuang.com/posts/db98efcf/">DelayQueue</a> 即可。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>ScheduledThreadPoolExecutor 是<strong>基于 ThreadPoolExecutor 扩展的、可执行定时任务</strong>的线程池。前者重写了 ThreadPoolExecutor.execute 的调度流程，遵循任务先加入队列原则，根本原因是 ScheduledThreadPoolExecutor 是执行定时任务的线程池。</p>
+<p>ScheduledThreadPoolExecutor 支持定时任务和周期性任务。对于定时任务，是通过内部的延时队列 DelayedWorkQueue 来实现的；对于周期性任务，是通过在任务执行后再次将任务加入到延时队列中来实现的。可见，延时队列在定时任务执行过程中的重要性。</p>
+<p>ScheduledThreadPoolExecutor 通过内部的 ScheduledFutureTask 对任务进行了统一封装，使任务具备<strong>异步计算、延时</strong>的特性，这不仅是 ScheduledThreadPoolExecutor 的要求，也是内部延时队列 DelayedWorkQueue 的要求。</p>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="https://gentryhuang.com/posts/9012be3f/" title="并发 - ScheduledThreadPoolExecutor" target="_blank" rel="external">https://gentryhuang.com/posts/9012be3f/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://gentryhuang.com" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpeg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h2 id="name" style="margin: -2px 0 5px 0">
+        <a href="https://gentryhuang.com" target="_blank">
+           <span class="text-dark">gentryhuang</span>
+           <small class="ml-1x">xw</small>
+        </a>
+      </h2>
+        <div>万丈高楼平地起</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    
+    <li class="next">
+      <a href="/posts/a16a077e/" title="并发 - FutureTask"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+    <li class="toggle-toc">
+      <a class="toggle-btn collapsed" data-toggle="collapse" href="#collapseToc" aria-expanded="false" title="文章目录" role="button">
+        <span>[&nbsp;</span><span>文章目录</span>
+        <i class="text-collapsed icon icon-anchor"></i>
+        <i class="text-in icon icon-close"></i>
+        <span>]</span>
+      </a>
+    </li>
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  
+<script type="text/javascript">
+    var sc_project=12352980; 
+    var sc_invisible=0; 
+    var sc_security="3d83ff9f"; 
+    var scJsHost = "https://";
+    document.write("<sc"+"ript type='text/javascript' src='" +
+    scJsHost+
+    "statcounter.com/counter/counter.js'></"+"script>");
+</script>
+
+<footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/gentryhuang" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2019 - 2022 gentryhuang
+        
+       
+        <!-- 统计代码 -->
+        <div class="publishby">
+            <div class="statcounter">
+                <a title="Web Analytics" href="http://statcounter.com/p12352980/summary/?guest=1" target="_blank">
+                    <img class="statcounter" src="https://c.statcounter.com/12352980/0/3d83ff9f/0/" alt="Web Analytics">
+               </a>
+        </div>
+    </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+
+<script src="/js/plugin.min.js"></script>
+
+
+<script src="/js/application.js"></script>
+
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+
+<script src="/js/insight.js"></script>
+
+
+
+
+
+
+   
+
+
+
+
+
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.3.5/dist/jquery.fancybox.min.js"></script>
+  <script>
+  //利用 FancyBox 实现点击图片放大
+  $(document).ready(function() {
+    $('article img').not('[hidden]').not('.panel-body img').each(function() {
+      var $image = $(this);
+      var imageCaption = $image.attr('alt');
+      var $imageWrapLink = $image.parent('a');
+      if ($imageWrapLink.length < 1) {
+        var src = this.getAttribute('src');
+        var idx = src.lastIndexOf('?');
+        if (idx != -1) {
+          src = src.substring(0, idx);
+        }
+        $imageWrapLink = $image.wrap('<a href="' + src + '"></a>').parent('a');
+      }
+      $imageWrapLink.attr('data-fancybox', 'images');
+      if (imageCaption) {
+        $imageWrapLink.attr('data-caption', imageCaption);
+      }
+    });
+    $().fancybox({
+      selector: '[data-fancybox="images"]',
+      hash: false,
+      loop: false,
+    });
+  });
+  </script>
+
+
+
+
+
+</body>
+</html>
