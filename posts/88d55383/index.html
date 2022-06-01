@@ -25,18 +25,18 @@
 <meta property="og:site_name" content="gentryhuang‘s blog">
 <meta property="og:description" content="前言在并发编程时，我们基本都只会关注共享变量的访问控制上以保证线程安全，很少会关注系统硬件及JVM底层相关的影响因素。我们今天的主题–伪共享，就是一个涉及系统底层而影响性能的无形杀手。伪共享简单来说就是，当多个线程修改互相独立的变量时，如果这些变量在同一个缓存行中，那么就会无意中影响彼此的性能。 从伪共享的简单定义可以看出，和伪共享紧密相关的是 CPU 缓存，因此在介绍伪共享之前我们需要先对 CP">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://gentryhuang.com/posts/88d55383/false-sharing-1.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/88d55383/false-sharing-2.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/88d55383/false-sharing-3.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/88d55383/false-sharing-4.png">
-<meta property="og:image" content="https://gentryhuang.com/posts/88d55383/false-sharing-5.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-1.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-2.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-3.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-4.png">
+<meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-5.png">
 <meta property="article:published_time" content="2021-01-19T02:51:06.000Z">
-<meta property="article:modified_time" content="2022-05-31T07:17:23.785Z">
+<meta property="article:modified_time" content="2022-06-01T10:00:45.487Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="false sharing">
 <meta property="article:tag" content="cahce">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://gentryhuang.com/posts/88d55383/false-sharing-1.png">
+<meta name="twitter:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-1.png">
   <!-- Canonical links -->
   <link rel="canonical" href="https://gentryhuang.com/posts/88d55383/index.html">
   
@@ -452,9 +452,9 @@
         <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>在并发编程时，我们基本都只会关注共享变量的访问控制上以保证线程安全，很少会关注系统硬件及JVM底层相关的影响因素。我们今天的主题–伪共享，就是一个涉及系统底层而影响性能的无形杀手。伪共享简单来说就是，当多个线程修改互相独立的变量时，如果这些变量在同一个缓存行中，那么就会无意中影响彼此的性能。</p>
 <p>从伪共享的简单定义可以看出，和伪共享紧密相关的是 CPU 缓存，因此在介绍伪共享之前我们需要先对 CPU 缓存相关的必要知识进行介绍。</p>
 <h2 id="CPU缓存"><a href="#CPU缓存" class="headerlink" title="CPU缓存"></a>CPU缓存</h2><p>由于 CPU 和内存的访问性能相差很大，因此在 CPU 和内存之间嵌入了高速缓存 CPU Cache 以调和两者之间速度的差距。高速缓存一般分为三级缓存，级别越低的离 CPU 核心越近，访问速度越快，但存储容量相对就会越小。其中，在多核心的 CPU 架构中，每个核心都有各自的 L1 Cache、L2 Cache ，而 L3 Cache 是该 CPU 的所有核心共享使用的。CPU 架构如下：</p>
-<p><img src="/posts/88d55383/false-sharing-1.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-1.png" alt></p>
 <p><strong>高速缓存 CPU Cache 是由很多个缓存行 Cache Line 组成的，CPU Line 也是 CPU 从内存读取数据的基本单位</strong>。大致如下：</p>
-<p><img src="/posts/88d55383/false-sharing-2.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-2.png" alt></p>
 <h3 id="缓存问题"><a href="#缓存问题" class="headerlink" title="缓存问题"></a>缓存问题</h3><h4 id="缓存读写"><a href="#缓存读写" class="headerlink" title="缓存读写"></a>缓存读写</h4><p>CPU 读取数据的时候，都是先从 CPU Cache 中读取，没有命中才会再从内存中读取数据。对于写操作，数据写入 CPU Cache 后，内存和 CPU Cache 相对应的数据会不同，这时就需要将 CPU Cache 中的数据同步到内存中。</p>
 <p>CPU Cache 同步到内存的策略具体如下：</p>
 <ul>
@@ -464,7 +464,7 @@
 <h4 id="缓存一致性问题"><a href="#缓存一致性问题" class="headerlink" title="缓存一致性问题"></a>缓存一致性问题</h4><p>前面简单介绍了 CPU 单核下的读写过程，但是现代 CPU 都是多核的，而且 L1 Cache 和 L2 Cache 是多个核心各自独立的，这就会带来<strong>缓存一致性问题</strong>，缓存一致性问题得不到解决，就可能造成计算结果的错误。</p>
 <p>下面我们以一个含有两个核心的 CPU 为例，说明缓存一致性问题是怎么发生的。假设 CPU 的 A 号核心和 B 号核心同时运行两个线程，都操作共享变量 i=0 。</p>
 <p><strong>时刻 t1:</strong> A 号核心执行了 i++ 语句，先把值为 1 的执行结果写入到 A 号核心的 L1 Cache 和 L2 Cache，然后将 L1 Cache 和 L2 Cache 中对应的 Line 标记为 Dirty。注意，此时数据 i 的值没有被同步到内存中；<br><strong>时刻 t2:</strong> B 号核心从内存读取 i 的值，读取到的是 0，这是一个错误的值，因为在 t1 时刻 A 号核心更新 i 的值还没有写入到内存中，内存中的值依然是 0；</p>
-<p><img src="/posts/88d55383/false-sharing-3.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-3.png" alt></p>
 <p>这就出现了缓存一致性问题，A 号和 B 号核心的缓存是不一致的，这就会导致计算结果错误。</p>
 <p>那么如何解决这一问题呢？可以从以下两个方面入手：</p>
 <ul>
@@ -486,12 +486,12 @@
 </ul>
 <p>可以看见，如果处于 M 状态的缓存行，再由本地处理器写入/读出，状态是不会改变的，也就不需要发送广播消息给其它 CPU 核心，这无疑减少了总线带宽的压力。</p>
 <p>整个 MESI 的状态转换使用了一个有限状态机来描述，不同状态触发的事件操作，不仅仅来自本地 CPU 核心，还可以来自其它 CPU 核心通过总线发出的广播事件。下图展示了状态转换过程：</p>
-<p><img src="/posts/88d55383/false-sharing-4.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-4.png" alt></p>
 <h2 id="伪共享"><a href="#伪共享" class="headerlink" title="伪共享"></a>伪共享</h2><p>了解了 CPU 缓存相关的点后，伪共享问题就很简单了。</p>
 <p>数据在缓存内部都是以<strong>缓存行</strong>为单位进行存储的。缓存行一般都是 <code>2^n</code> 个字节大小，现在最为常见的缓存行的大小是 64 字节。因此，缓存中的数据并不是一个个单独的变量进行储存，可能是多个变量放到一个缓存行中存储。</p>
 <p>我们以数组和链表举例，数组的内存地址是连续的，当读取数组中的元素时 CPU 会连续加载若干元素到缓存中以提高效率。反观链表，由于内存地址不连续，高效不起来。</p>
 <p>在文章的开头，我们已经简单定义了伪共享，下面我们结合具体例子对伪共享进行说明。假设某个 CPU 中缓存了 <code>x,y</code> 两个变量，它们同时已经在不同的三级缓存之中。这时有两个线程A和B同时去修改位于 Core1 和 Core2 的变量 <code>x</code> 和 <code>y</code>。当线程A去修改 Core1 中的缓存中的 <code>x</code> 变量时，由于缓存一致性协议会要求 Core2 中对应缓存了 <code>x</code> 变量的缓存行失效，要继续访问 <code>x</code> 变量就需要从主内存中重新加载。反之亦然，Core1 中对应缓存了 <code>y</code> 变量的缓存行失效。示例图如下：</p>
-<p><img src="/posts/88d55383/false-sharing-5.png" alt></p>
+<p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/false-sharing/false-sharing-5.png" alt></p>
 <p>像这样，<strong>当多个线程修改互相独立的变量时，如果这些变量在同一个缓存行中，会导致缓存消失进而导致频繁的主内存访问，性能就会下降，这就是伪共享问题</strong>。</p>
 <h3 id="解决伪共享问题"><a href="#解决伪共享问题" class="headerlink" title="解决伪共享问题"></a>解决伪共享问题</h3><p>知道了伪共享问题后，接下来我们就要避免了，那怎么避免呢？</p>
 <p>我们知道伪共享根本问题是 CPU 缓存行的存储规则，但是改变缓存行的存储规则是做不到的，因此我们需要想别的办法。</p>
