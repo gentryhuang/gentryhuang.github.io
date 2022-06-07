@@ -48,7 +48,7 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-replication-process-5.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-log-compaction.png">
 <meta property="article:published_time" content="2021-04-23T11:28:56.000Z">
-<meta property="article:modified_time" content="2021-07-24T08:06:03.669Z">
+<meta property="article:modified_time" content="2022-06-07T09:36:40.148Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="Raft">
 <meta property="article:tag" content="共识算法">
@@ -648,7 +648,7 @@
 <p><strong>切换到 Leader 状态</strong></p>
 <p>如果候选人在选举超时时间内获得 majority 投票，那么它就会成为本届任期内新的领导者。<br><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/architecture/raft-election-4.jpg" alt></p>
 <p><strong>发送心跳消息</strong><br>节点 A 当选领导者后，它会立刻向其它节点发送心跳消息（AppendEntries RPC），避免其它节点触发新的选举，以维护自己领导者的地位。注意心跳消息一致性检查的作用，通过这种机制，领导者在获得权力的时候就不需要任何特殊的操作来恢复一致性，只需要进行正常的操作，然后日志就能自动的在回复附加日志 RPC 的一致性检查失败的时候自动趋于一致。关于日志复制内容下文详细介绍。以上是正常流选举 Leader 的过程，下面对候选者选举的所有可能情况进行介绍。</p>
-<h2 id="选举结果"><a href="#选举结果" class="headerlink" title="选举结果"></a>选举结果</h2><p>第一、在选举超时时间内得到了 majority 投票，然后它会将自己的状态切换到 Leader 并立即向集群中其它服务节点发送心跳消息，以建立它的领导者地位并防止进行新的选举。注意，收到 Leader 的 RPC 消息后（包括日志复制消息和心跳消息），其它节点的心跳超时时间会重置。这也是前面介绍的正常流的过程。</p>
+<h2 id="选举结果"><a href="#选举结果" class="headerlink" title="选举结果"></a>选举结果</h2><p>第一、在选举超时时间内得到了 majority 投票，然后它会将自己的状态切换到 Leader 并立即向集群中其它服务节点发送心跳消息，以建立它的领导者地位并防止进行新的选举。注意，收到 Leader 的 RPC 消息后（包括日志复制消息和心跳消息），其它节点的选举超时时间会重置。这也是前面介绍的正常流的过程。</p>
 <p>第二、在等待投票结果时收到其它节点发送的 AppendEntries RPC 消息（以领导者身份），如果该领导者的任期（包括在此次 RPC 消息中）不小于候选者当前任期，则候选者转成 Follower 状态，并更新自己的任期，否则候选者拒绝该 RPC 请求并继续处于候选人的状态。</p>
 <p>第三、没有任何服务节点获胜。可能存在有多个服务节点同时成为 Candidate 导致了分票，没有服务节点获得 majority 投票。发生这种情况时，每一个 Candidate 都等待选举超时，其中先超时的会增加其任期，然后进行一轮新的选举。<strong>注意这里选举超时时间的重要性，没有该机制的话，选票就可能会被无限地瓜分，那么就延长了系统不可用的时间（没有leader是不能处理客户端相关请求的）。</strong></p>
 <h2 id="选举规则"><a href="#选举规则" class="headerlink" title="选举规则"></a>选举规则</h2><p>选举过程涉及的约定如下，其中包含了 Raft 安全约定中的部分内容。</p>
