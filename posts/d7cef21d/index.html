@@ -45,7 +45,7 @@
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/threadpool-monitor-method.jpg">
 <meta property="og:image" content="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/threadpool-dynamic-method.jpg">
 <meta property="article:published_time" content="2020-12-16T16:00:00.000Z">
-<meta property="article:modified_time" content="2022-05-13T09:45:52.022Z">
+<meta property="article:modified_time" content="2022-06-11T11:32:19.469Z">
 <meta property="article:author" content="gentryhuang">
 <meta property="article:tag" content="JUC">
 <meta name="twitter:card" content="summary">
@@ -452,10 +452,10 @@
         <span class="post-comment"><i class="icon icon-comment"></i> <a href="/posts/d7cef21d/#comments" class="article-comment-link">评论</a></span>
         
 	
-		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 17.6k(字)</span>
+		<span class="post-wordcount hidden-xs" itemprop="wordCount">字数统计: 17.7k(字)</span>
 	
 	
-		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 67(分)</span>
+		<span class="post-readcount hidden-xs" itemprop="timeRequired">阅读时长: 68(分)</span>
 	
 
       </div>
@@ -793,7 +793,8 @@
 
 <p>线程回收流程如下图所示：</p>
 <p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/threadpool-worker-exit.jpg" alt></p>
-<p>需要注意的是，线程销毁工作不是只有 <code>processWorkerExit</code> 方法才能完成，前文介绍的新增Worker线程逻辑中对异常流处理的 <code>addWorkerFailed</code> 方法也可以做到。这两者销毁线程的时机不同，前者是线程执行任务的逻辑中销毁，后者是创建线程后启动失败的处理。</p>
+<p><strong>线程数是否够用：</strong>针对核心线程数的，如果线程池设置核心线程数为 0 或允许回收核心线程，那么就要确保在任务队列非空的情况下至少有一个线程；如果不允许回收核心线程，且设置的核心线程数 &gt; 0 ，那么要尽量填充核心线程数至上限。</p>
+<p>需要注意的是，线程销毁工作不是只有 <code>processWorkerExit</code> 方法才能完成，前文介绍的新增Worker线程逻辑中对异常流处理的 <code>addWorkerFailed</code> 方法也可以做到。这两者销毁线程的时机不同，前者是线程执行任务的逻辑中销毁，后者是创建线程后启动失败的处理。<strong>线程是在执行任务的逻辑中由于执行异常被销毁，那么就需要补一个线程来替代该销毁的线程</strong>。</p>
 <p>上述 <code>processWorkerExit</code> 方法在将Worker线程移除线程池后也就完成了线程的回收工作，但由于执行该方法的原因很多，线程正常退出<code>getTask</code>方法或者执行任务异常都会执行该方法，因此在该方法中需要额外完成两个工作。一是使线程池自适应当前状态，另一个是根据需要创建线程。</p>
 <p>至此，<code>processWorkerExit</code> 执行完之后Worker线程被销毁，该线程的整个生命周期结束。下面对整个过程使用流程图的形式进行总结，流程图如下：</p>
 <p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/concurrent/threadpool/threadpool-worker-process.jpg" alt></p>
