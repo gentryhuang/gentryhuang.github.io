@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://gentryhuang.com/"/>
-  <updated>2024-05-24T13:39:19.340Z</updated>
+  <updated>2022-07-12T05:46:53.504Z</updated>
   <id>https://gentryhuang.com/</id>
   
   <author>
@@ -15,21 +15,6 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
-  
-  <entry>
-    <title>二分查找</title>
-    <link href="https://gentryhuang.com/posts/e8eb0481/"/>
-    <id>https://gentryhuang.com/posts/e8eb0481/</id>
-    <published>2024-05-24T13:39:19.000Z</published>
-    <updated>2024-05-24T13:39:19.340Z</updated>
-    
-    <summary type="html">
-    
-    </summary>
-    
-    
-    
-  </entry>
   
   <entry>
     <title>Redis原理 - SCAN 原理</title>
@@ -526,6 +511,30 @@
     
     
       <category term="JMM" scheme="https://gentryhuang.com/tags/JMM/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>网络通信 - Reactor模型</title>
+    <link href="https://gentryhuang.com/posts/ae5dbc38/"/>
+    <id>https://gentryhuang.com/posts/ae5dbc38/</id>
+    <published>2021-09-12T13:10:23.000Z</published>
+    <updated>2021-09-12T05:53:02.438Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Reactor 编程模型具有以下特征：</p><ul><li><strong>三种事件类型：</strong>连接事件、读事件、写事件</li><li><strong>三种关键角色：</strong> Reactor、Acceptor、Handler </li></ul><p>Reactor 模型就是基于以上三种事件和三种角色来处理网络IO请求的，这就它工作的机制。</p><h1 id="演化"><a href="#演化" class="headerlink" title="演化"></a>演化</h1><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/reactor/reactor-classic-service-design-.jpg" alt></p><p>上图是传统阻塞IO模型，每个处理程序在自己的线程中运行。</p><p><strong>缺点如下：</strong></p><p>每个连接都需要独立线程处理，当并发数大时会创建多个线程，过度消耗资源。由于每个连接都对应一个线程，当连接没有就绪时线程就会阻塞等待。</p><p><strong>优化方案：</strong></p><ul><li>基于 IO 多路复用模型，多个连接可以共用一个线程。</li><li>使用线程池，将业务逻辑交给线程池处理。</li></ul><p>基于以上问题，为了高效处理网络 IO 的事件，演化出了 Reactor 模型，该模型的思想就是基于IO多路复用和线程池的结合。</p><h1 id="事件类型"><a href="#事件类型" class="headerlink" title="事件类型"></a>事件类型</h1><p>Reactor 模型处理的是客户端和服务器端的交互过程，而<strong>连接事件</strong>、<strong>读事件</strong>、<strong>写事件</strong>对应了客户端和服务器端交互过程中不同类型的请求在服务器端引发的待处理事件。</p><p>具体引发的待处理事件如下：</p><ul><li>客户端向服务器端发送连接请求以建立连接，这对应了服务器端的一个<strong>连接事件</strong>。</li><li>连接建立后，客户端会给服务器端发送读或写请求，服务器端需要从客户端读取请求内容，这对应了服务器端的<strong>读事件</strong>。</li><li>服务器端在处理完请求后，需要向客户端写回数据，这对应了服务器端的<strong>写事件</strong>。</li></ul><h1 id="关键角色"><a href="#关键角色" class="headerlink" title="关键角色"></a>关键角色</h1><p>Reactor 模型中的不同类型事件的处理是由对应的角色完成的，三种关键角色的任务如下：</p><ul><li>Acceptor 用于处理客户端连接事件，负责接收连接。</li><li>Handler 用于处理读写事件。</li><li>Reactor 负责监听和分派事件。当有连接请求时，Reactor 将产生的连接事件交给 Acceptor 处理；当有读写请求时，Reactor 将读写事件交给 Handler 处理。</li></ul><p>需要注意的是，以上三种角色是 Reactor 模型中实现功能的<strong>抽象</strong>。遵循 Reactor 模型进行服务器端网络框架开发时，需要对 Reactor、Acceptor 以及 Handler 进行逻辑实现。</p><h1 id="分类"><a href="#分类" class="headerlink" title="分类"></a>分类</h1><p>根据 Reactor 的数量和处理资源的线程数量的不同，可以分为三类：</p><ul><li>单 Reactor 单线程模型</li><li>单 Reactor 多线程模型</li><li>多 Reactor 多线程模型</li></ul><p>下面依次介绍以上三种 Reactor 线程模型。</p><h2 id="单Reactor单线程模型"><a href="#单Reactor单线程模型" class="headerlink" title="单Reactor单线程模型"></a>单Reactor单线程模型</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/reactor/reactor-basic-design.jpg" alt></p><p>在单 Reactor 单线程模型下，监听、分派事件由 Reactor 完成，处理连接事件由 Acceptor 完成，处理读写事件和业务逻辑由 Handler 完成，但<strong>始终只有一个线程去完成所有的工作</strong>。</p><p><strong>缺点如下：</strong></p><ul><li>仅使用一个线程完成所有工作，不能充分利用多核机器资源</li><li>当处理任务导致线程负载过高，处理速度会下降，任务会堆积。请求并发量比较低的时候还是可以抗住的，一旦高并发可能将不堪重负</li><li>单线程不能保证可靠性</li></ul><h2 id="单Reactor多线程模型"><a href="#单Reactor多线程模型" class="headerlink" title="单Reactor多线程模型"></a>单Reactor多线程模型</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/reactor/reactor-worker-thread-pool.jpg" alt></p><p>单 Reactor 多线程模型下，不再采用所有工作都由 Reactor 线程独自完成。监听、分派事件由 Reactor 完成，处理连接事件由 Acceptor 完成，处理读写事件由 Handler 完成，这些操作由 Reactor 线程执行。<strong>对于业务逻辑的处理交给线程池（多线程），不再是 Reactor 线程</strong>。相比 单 Reactor 单线程模型，充分利用多核机器的资源、提高性能并且增加可靠性。</p><p><strong>缺点如下：</strong><br>Reactor 线程承担了所有事件的处理，没有解决高并发场景下单线程存在的性能问题。如并发太高，Reactor 线程来不及处理连接请求和读写数据。</p><h2 id="多Reactor多线程模型"><a href="#多Reactor多线程模型" class="headerlink" title="多Reactor多线程模型"></a>多Reactor多线程模型</h2><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/reactor/reactor-multiple-reactor.jpg" alt></p><p>多 Reactor 多线程模型是将 Reactor 拆分成了 mainReactor 和 subReactor 两个部分。主要有一个 mainReactor，多个 subReactor 以及每个 subReactor 附带一个线程池。mainReactor 主要负责监听客户端的连接请求，当有连接请求到达会分派给 Acceptor（位于 mainReactor 中）处理，并将产生的连接信息交给 subReactor ，后续 subReactor 监听到读写事件后，分派给 Handler 处理，业务逻辑交给线程池处理。</p><h1 id="事件驱动框架"><a href="#事件驱动框架" class="headerlink" title="事件驱动框架"></a>事件驱动框架</h1><p>至此，我们已经了解了 Reactor 模型的组件和工作机制，但是 Reactor 中的角色和事件是怎么联动起来的呢？这就需要事件驱动框架了。</p><p>在实现 Reactor 模型时，利用事件驱动框架对整体流程进行控制。事件驱动框架在设计时包括但不限于以下内容：</p><ul><li>事件定义及初始化</li><li>事件监听、分派(分派给对应的程序处理)、处理</li><li>轮询（一般是循环逻辑）</li></ul><h2 id="事件初始化"><a href="#事件初始化" class="headerlink" title="事件初始化"></a>事件初始化</h2><p>Reactor 模型是基于事件和角色工作的，事件驱动框架的实现自然也离不开事件的定义以及初始化。事件初始化的作用主要是创建需要监听的事件类型，并为该类型事件关联对应的处理程序，也就是处理连接事件的 Acceptor、处理读写事件的 Handler以及处理业务逻辑的其它处理程序。</p><h2 id="事件分派、处理"><a href="#事件分派、处理" class="headerlink" title="事件分派、处理"></a>事件分派、处理</h2><p>监听、分派事件是由 Reactor 来完成的，在事件驱动框架中通常会用一个<strong>主循环程序</strong>实现。在这个主循环中，监听发生的事件，并根据事件类型将待处理的事件分派给与之关联的 Acceptor 和 Handler 处理。</p><h2 id="串联部件"><a href="#串联部件" class="headerlink" title="串联部件"></a>串联部件</h2><p>Reactor 模型的工作机制：客户端不同类型请求和服务器端结果处理会在服务器端触发连接、读、写事件，这三类事件的监听、分派和处理又是由 Reactor、Acceptor、Handler 三类角色来完成的，这三类角色会通过事件驱动框架来实现交互和事件处理。不难发现，实现一个 Reactor 模型的关键就是要实现一个事件驱动框架串联起 Reactor 所有部件。</p><p><strong>Reactor 模型的工作机制整体流程图如下：</strong></p><p><img src="https://blog-picture-oss.oss-cn-hangzhou.aliyuncs.com/network/reactor/reactor-event-process.jpg" alt></p><h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>本篇文章对 Reactor 模型进行了介绍。先是对 Reactor 中涉及的部件及功能进行说明，接着对 Reactor 的演化进行了简单介绍，然后分别对不同种类的 Reactor 进行了逐一说明，最后介绍了事件驱动框架，它是串联 Reactor 模型下所有部件的关键程序。</p><p><strong>参考：</strong><br><a href="http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf" target="_blank" rel="noopener">http://gee.cs.oswego.edu/dl/cpjslides/nio.pdf</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;概述&quot;&gt;&lt;a href=&quot;#概述&quot; class=&quot;headerlink&quot; title=&quot;概述&quot;&gt;&lt;/a&gt;概述&lt;/h1&gt;&lt;p&gt;Reactor 模型是高性能网络系统实现高并发请求处理的一个解决方案，具体来说就是网络服务端处理高并发网络 IO 请求的一种编程模型。Rea
+      
+    
+    </summary>
+    
+    
+      <category term="网络通信" scheme="https://gentryhuang.com/categories/%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/"/>
+    
     
   </entry>
   
